@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ChatScreenProps {
   navigation: any;
@@ -51,6 +52,7 @@ const mockChats: ChatItem[] = [
 
 export default function ChatScreen({ navigation }: ChatScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const insets = useSafeAreaInsets();
 
   const renderChatItem = ({ item }: { item: ChatItem }) => (
     <TouchableOpacity style={styles.chatItem}>
@@ -104,6 +106,7 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         style={styles.chatList}
+        contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
       />
     </View>
   );

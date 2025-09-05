@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 
 interface WelcomeScreenProps {
   navigation: any;
@@ -8,25 +8,29 @@ interface WelcomeScreenProps {
 export default function WelcomeScreen({ navigation }: WelcomeScreenProps) {
   return (
     <View style={styles.container}>
-      <ImageBackground 
-        source={{ uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800' }}
-        style={styles.backgroundImage}
-      >
-        <View style={styles.overlay}>
-          <Text style={styles.title}>SportMap</Text>
-          <Text style={styles.subtitle}>Znajdź partnerów do treningu</Text>
-          <Text style={styles.description}>
-            Łącz się z innymi sportowcami, organizuj wydarzenia i odkrywaj nowe miejsca do treningu
-          </Text>
-          
-          <TouchableOpacity 
-            style={styles.button}
-            onPress={() => navigation.navigate('Auth')}
-          >
-            <Text style={styles.buttonText}>Rozpocznij</Text>
-          </TouchableOpacity>
-        </View>
-      </ImageBackground>
+      <View style={styles.backgroundImage}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <View style={styles.overlay}>
+            <Text style={styles.title}>SportMap</Text>
+            <Text style={styles.subtitle}>Znajdź partnerów do treningu</Text>
+            <Text style={styles.debugText}>App is working! 🎉</Text>
+            <Text style={styles.description}>
+              Łącz się z innymi sportowcami, organizuj wydarzenia i odkrywaj nowe miejsca do treningu
+            </Text>
+            
+            <TouchableOpacity 
+              style={styles.button}
+              onPress={() => navigation.navigate('Auth')}
+            >
+              <Text style={styles.buttonText}>Rozpocznij</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -38,6 +42,7 @@ const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
     width: '100%',
+    backgroundColor: '#2E7D32',
   },
   overlay: {
     flex: 1,
@@ -77,6 +82,15 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  debugText: {
+    fontSize: 16,
+    color: '#4CAF50',
+    marginBottom: 10,
+    fontWeight: 'bold',
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
 });
 

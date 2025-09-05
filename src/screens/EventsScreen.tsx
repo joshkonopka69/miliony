@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface EventsScreenProps {
   navigation: any;
@@ -72,6 +73,7 @@ const mockEvents: Event[] = [
 export default function EventsScreen({ navigation }: EventsScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const insets = useSafeAreaInsets();
 
   const filters = [
     { key: 'all', label: 'Wszystkie' },
@@ -176,6 +178,7 @@ export default function EventsScreen({ navigation }: EventsScreenProps) {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         style={styles.eventsList}
+        contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
       />
     </View>
   );

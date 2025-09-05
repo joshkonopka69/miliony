@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface MapScreenProps {
   navigation: any;
@@ -7,9 +8,14 @@ interface MapScreenProps {
 
 export default function MapScreen({ navigation }: MapScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.container}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={[styles.contentContainer, { paddingBottom: 80 + insets.bottom }]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
@@ -43,7 +49,7 @@ export default function MapScreen({ navigation }: MapScreenProps) {
           <Text style={styles.actionButtonText}>🎯 Szukaj w okolicy</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -51,6 +57,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
+    flexGrow: 1,
   },
   searchContainer: {
     flexDirection: 'row',
