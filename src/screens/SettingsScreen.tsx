@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Alert, SafeAreaView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomNavBar } from '../components';
 
 interface SettingsScreenProps {
   navigation: any;
@@ -52,22 +53,17 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   );
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
-      showsVerticalScrollIndicator={false}
-    >
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
       <Text style={styles.header}>Ustawienia</Text>
       
       {/* Profile Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Profil</Text>
-        {renderSettingItem(
-          'Edytuj profil',
-          'Zmień swoje dane osobowe',
-          '👤',
-          () => navigation.navigate('ProfileCreation')
-        )}
         {renderSettingItem(
           'Moje sporty',
           'Zarządzaj wybranymi sportami',
@@ -167,15 +163,29 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>SportMap v1.0.0</Text>
-        <Text style={styles.footerText}>© 2024 Wszystkie prawa zastrzeżone</Text>
-      </View>
-    </ScrollView>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>SportMap v1.0.0</Text>
+          <Text style={styles.footerText}>© 2024 Wszystkie prawa zastrzeżone</Text>
+        </View>
+      </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNavBar 
+        activeTab="Map"
+        onAddPress={() => {
+          console.log('Add button pressed from Settings screen');
+          // You can add functionality here
+        }}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

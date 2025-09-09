@@ -40,7 +40,6 @@ src/
 │   ├── WelcomeScreen.tsx
 │   ├── AuthScreen.tsx
 │   ├── SportSelectionScreen.tsx
-│   ├── ProfileCreationScreen.tsx
 │   ├── MapScreen.tsx
 │   ├── ChatScreen.tsx
 │   ├── EventsScreen.tsx

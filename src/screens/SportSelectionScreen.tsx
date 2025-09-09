@@ -1,25 +1,61 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } from 'react-native';
+import { useAppNavigation } from '../navigation';
 
-interface SportSelectionScreenProps {
-  navigation: any;
+interface Sport {
+  id: string;
+  name: string;
+  icon: string;
 }
 
-const sports = [
-  'Piłka nożna', 'Koszykówka', 'Tenis', 'Bieganie', 'Rower', 
-  'Pływanie', 'Siłownia', 'Joga', 'CrossFit', 'Boks',
-  'MMA', 'Karate', 'Taekwondo', 'Pilates', 'Zumba'
+const sports: Sport[] = [
+  { id: 'football', name: 'Football', icon: '⚽' },
+  { id: 'basketball', name: 'Basketball', icon: '🏀' },
+  { id: 'tennis', name: 'Tennis', icon: '🎾' },
+  { id: 'swimming', name: 'Swimming', icon: '🏊' },
+  { id: 'gym', name: 'Gym', icon: '🏋️' },
+  { id: 'running', name: 'Running', icon: '🏃' },
+  { id: 'cycling', name: 'Cycling', icon: '🚴' },
+  { id: 'volleyball', name: 'Volleyball', icon: '🏐' },
+  { id: 'golf', name: 'Golf', icon: '⛳' },
+  { id: 'skiing', name: 'Skiing', icon: '🎿' },
+  { id: 'mma', name: 'MMA', icon: '🥊' },
+  { id: 'yoga', name: 'Yoga', icon: '🧘' },
+  { id: 'boxing', name: 'Boxing', icon: '🥊' },
+  { id: 'baseball', name: 'Baseball', icon: '⚾' },
+  { id: 'badminton', name: 'Badminton', icon: '🏸' },
+  { id: 'tabletennis', name: 'Table Tennis', icon: '🏓' },
+  { id: 'hockey', name: 'Hockey', icon: '🏒' },
+  { id: 'rugby', name: 'Rugby', icon: '🏉' },
+  { id: 'cricket', name: 'Cricket', icon: '🏏' },
+  { id: 'skateboarding', name: 'Skateboarding', icon: '🛹' },
+  { id: 'surfing', name: 'Surfing', icon: '🏄' },
+  { id: 'climbing', name: 'Rock Climbing', icon: '🧗' },
+  { id: 'archery', name: 'Archery', icon: '🏹' },
+  { id: 'fencing', name: 'Fencing', icon: '🤺' },
+  { id: 'wrestling', name: 'Wrestling', icon: '🤼' },
+  { id: 'karate', name: 'Karate', icon: '🥋' },
+  { id: 'judo', name: 'Judo', icon: '🥋' },
+  { id: 'taekwondo', name: 'Taekwondo', icon: '🦵' },
+  { id: 'crossfit', name: 'CrossFit', icon: '💪' },
+  { id: 'pilates', name: 'Pilates', icon: '🤸' },
+  { id: 'dance', name: 'Dance', icon: '💃' },
+  { id: 'hiking', name: 'Hiking', icon: '🥾' },
+  { id: 'fishing', name: 'Fishing', icon: '🎣' },
+  { id: 'bowling', name: 'Bowling', icon: '🎳' },
+  { id: 'darts', name: 'Darts', icon: '🎯' },
+  { id: 'billiards', name: 'Billiards', icon: '🎱' },
 ];
 
-export default function SportSelectionScreen({ navigation }: SportSelectionScreenProps) {
-  const [selectedSports, setSelectedSports] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+export default function SportSelectionScreen() {
+  const navigation = useAppNavigation();
+  const [selectedSports, setSelectedSports] = useState<string[]>(['basketball', 'running']);
 
-  const toggleSport = (sport: string) => {
-    if (selectedSports.includes(sport)) {
-      setSelectedSports(selectedSports.filter(s => s !== sport));
+  const toggleSport = (sportId: string) => {
+    if (selectedSports.includes(sportId)) {
+      setSelectedSports(selectedSports.filter(id => id !== sportId));
     } else {
-      setSelectedSports([...selectedSports, sport]);
+      setSelectedSports([...selectedSports, sportId]);
     }
   };
 
@@ -27,140 +63,204 @@ export default function SportSelectionScreen({ navigation }: SportSelectionScree
     if (selectedSports.length === 0) {
       return;
     }
-    navigation.navigate('ProfileCreation');
+    navigation.navigate('Map');
   };
 
-  const filteredSports = sports.filter(sport =>
-    sport.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Wybierz swoje sporty</Text>
-      <Text style={styles.subtitle}>
-        Wybierz sporty, które uprawiasz lub chcesz uprawiać
-      </Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Wyszukaj sport..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-      />
-      
-      <ScrollView style={styles.sportsContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+      >
+        {/* App Logo */}
+        <View style={styles.logoSection}>
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoIcon}>⚽</Text>
+          </View>
+          <Text style={styles.logoText}>SportMap</Text>
+        </View>
+
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Select Your Sports</Text>
+          <Text style={styles.subtitle}>Choose your favorites to find partners.</Text>
+        </View>
+
+        {/* Sports Grid */}
         <View style={styles.sportsGrid}>
-          {filteredSports.map((sport) => (
-            <TouchableOpacity
-              key={sport}
-              style={[
-                styles.sportButton,
-                selectedSports.includes(sport) && styles.selectedSport
-              ]}
-              onPress={() => toggleSport(sport)}
-            >
-              <Text style={[
-                styles.sportText,
-                selectedSports.includes(sport) && styles.selectedSportText
-              ]}>
-                {sport}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {sports.map((sport) => {
+            const isSelected = selectedSports.includes(sport.id);
+            return (
+              <TouchableOpacity
+                key={sport.id}
+                style={[
+                  styles.sportItem,
+                  isSelected && styles.selectedSportItem
+                ]}
+                onPress={() => toggleSport(sport.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.sportIcon,
+                  isSelected && styles.selectedSportIcon
+                ]}>
+                  {sport.icon}
+                </Text>
+                <Text style={[
+                  styles.sportName,
+                  isSelected && styles.selectedSportName
+                ]}>
+                  {sport.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Continue Button */}
+        <View style={styles.continueSection}>
+          <TouchableOpacity 
+            style={styles.continueButton}
+            onPress={handleContinue}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.continueButtonText}>Continue</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
-      
-      <TouchableOpacity 
-        style={[
-          styles.continueButton,
-          selectedSports.length === 0 && styles.disabledButton
-        ]}
-        onPress={handleContinue}
-        disabled={selectedSports.length === 0}
-      >
-        <Text style={styles.continueButtonText}>
-          Kontynuuj ({selectedSports.length} wybranych)
-        </Text>
-      </TouchableOpacity>
-    </View>
+
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 20,
+    backgroundColor: '#ffffff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
+  },
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#ffd400', // --primary-color
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  logoIcon: {
+    fontSize: 32,
+    color: '#ffffff',
+  },
+  logoText: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#1F2937', // gray-800
+    textAlign: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#1F2937', // gray-800
     textAlign: 'center',
-    marginBottom: 10,
-    color: '#333',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
+    color: '#6B7280', // gray-500
     textAlign: 'center',
-    marginBottom: 30,
-    color: '#666',
-  },
-  searchInput: {
-    backgroundColor: 'white',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginBottom: 20,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  sportsContainer: {
-    flex: 1,
   },
   sportsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    marginBottom: 40,
   },
-  sportButton: {
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
+  sportItem: {
+    width: '30%',
+    aspectRatio: 1,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB', // gray-200
+    borderRadius: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: 25,
-    marginBottom: 15,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    minWidth: '48%',
+    paddingHorizontal: 8,
   },
-  selectedSport: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
+  selectedSportItem: {
+    backgroundColor: '#ffd400', // --primary-color
+    borderColor: '#ffd400',
   },
-  sportText: {
+  sportIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+    color: '#6B7280', // gray-500
+  },
+  selectedSportIcon: {
+    color: '#000000',
+  },
+  sportName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1F2937', // gray-800
     textAlign: 'center',
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
   },
-  selectedSportText: {
-    color: 'white',
-    fontWeight: 'bold',
+  selectedSportName: {
+    color: '#000000',
+  },
+  continueSection: {
+    alignItems: 'center',
+    marginTop: 40,
   },
   continueButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 15,
-    borderRadius: 10,
-    marginTop: 20,
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#ffd400', // --primary-color
+    paddingVertical: 16,
+    borderRadius: 50,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   continueButtonText: {
-    color: 'white',
-    textAlign: 'center',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#1F2937', // gray-900
+    textAlign: 'center',
   },
 });
 
