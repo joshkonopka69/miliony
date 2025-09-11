@@ -6,11 +6,20 @@ import { createStackNavigator } from '@react-navigation/stack';
 import {
   WelcomeScreen,
   AuthScreen,
-  SportSelectionScreen,
+  RegisterScreen,
   MapScreen,
   ChatScreen,
   EventsScreen,
+  EventDetailsScreen,
   SettingsScreen,
+  ProfileScreen,
+  AddFriendScreen,
+  CreateGroupScreen,
+  MyGroupsScreen,
+  LanguageScreen,
+  GameChatScreen,
+  TermsOfServiceScreen,
+  PrivacyPolicyScreen,
 } from '../screens';
 
 // Import navigation utilities and types
@@ -76,9 +85,9 @@ export default function AppNavigator() {
           options={ROUTE_CONFIG[ROUTES.AUTH]}
         />
         <Stack.Screen 
-          name={ROUTES.SPORT_SELECTION} 
-          component={SportSelectionScreen}
-          options={ROUTE_CONFIG[ROUTES.SPORT_SELECTION]}
+          name={ROUTES.REGISTER} 
+          component={RegisterScreen}
+          options={ROUTE_CONFIG[ROUTES.REGISTER]}
         />
         
         {/* Main App Screens */}
@@ -98,11 +107,55 @@ export default function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen 
+          name={ROUTES.EVENT_DETAILS} 
+          component={EventDetailsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
           name={ROUTES.SETTINGS} 
           component={SettingsScreen}
           options={{ headerShown: false }}
         />
-        {/* Profile screen to be implemented later */}
+        <Stack.Screen 
+          name={ROUTES.PROFILE} 
+          component={ProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.ADD_FRIEND} 
+          component={AddFriendScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.CREATE_GROUP} 
+          component={CreateGroupScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.MY_GROUPS} 
+          component={MyGroupsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.LANGUAGE} 
+          component={LanguageScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.GAME_CHAT} 
+          component={GameChatScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.TERMS_OF_SERVICE} 
+          component={TermsOfServiceScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.PRIVACY_POLICY} 
+          component={PrivacyPolicyScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

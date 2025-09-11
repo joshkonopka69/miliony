@@ -7,7 +7,7 @@ export type {
   RootStackScreenProps,
   WelcomeScreenProps,
   AuthScreenProps,
-  SportSelectionScreenProps,
+  RegisterScreenProps,
   MapScreenProps,
   ChatScreenProps,
   EventsScreenProps,
@@ -48,7 +48,6 @@ export {
 export {
   useAppNavigation,
   useAppRoute,
-  useTabRoute,
   useNavigationUtils,
   useBackHandler,
   usePreventBackNavigation,

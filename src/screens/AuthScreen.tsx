@@ -15,13 +15,12 @@ export default function AuthScreen() {
     }
 
     // Here you would typically handle authentication
-    // For now, just navigate to sport selection
-    navigation.navigate('SportSelection');
+    // For now, just navigate to map
+    navigation.navigate('Map');
   };
 
   const handleRegister = () => {
-    // Navigate to registration or handle registration
-    Alert.alert('Register', 'Registration functionality would be implemented here');
+    navigation.navigate('Register');
   };
 
   const handleForgotPassword = () => {

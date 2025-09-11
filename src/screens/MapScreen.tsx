@@ -207,7 +207,7 @@ export default function MapScreen() {
                 onCreateEvent={() => {}}
             />
       <BottomNavBar 
-        activeTab="Map"
+        activeTab="Home"
                 onAddPress={() => setShowEventModal(true)}
             />
     </SafeAreaView>

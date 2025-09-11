@@ -4,7 +4,6 @@ import { useAppNavigation } from '../navigation';
 
 export default function WelcomeScreen() {
   const navigation = useAppNavigation();
-  const buttonScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
@@ -24,25 +23,18 @@ export default function WelcomeScreen() {
     ]).start();
   }, []);
 
-  const handleButtonPress = () => {
-    // Button press animation with scale effect
-    Animated.sequence([
-      // Scale down
-      Animated.timing(buttonScale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      // Scale back up
-      Animated.timing(buttonScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // Navigate after animation completes
-      navigation.navigate('Auth');
-    });
+  const handleGoogleAuth = () => {
+    // TODO: Implement Google authentication
+    navigation.navigate('Auth');
+  };
+
+  const handleAppleAuth = () => {
+    // TODO: Implement Apple authentication
+    navigation.navigate('Auth');
+  };
+
+  const handleEmailAuth = () => {
+    navigation.navigate('Auth');
   };
 
 
@@ -50,20 +42,7 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={true}
-      >
-        {/* Header with Language Selector */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.languageButton}>
-            <Text style={styles.languageIcon}>🌐</Text>
-            <Text style={styles.languageText}>English</Text>
-          </TouchableOpacity>
-        </View>
-
+      <View style={styles.content}>
         {/* Main Content */}
         <Animated.View 
           style={[
@@ -74,38 +53,58 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          {/* Logo Icon */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoIcon}>⚽</Text>
-            </View>
+          {/* Location Icon */}
+          <View style={styles.iconContainer}>
+            <Text style={styles.locationIcon}>📍</Text>
           </View>
 
           {/* Title and Subtitle */}
-          <Text style={styles.title}>SportMap</Text>
-          <Text style={styles.subtitle}>Find your next game or training partner</Text>
+          <Text style={styles.title}>Sportsmap</Text>
+          <Text style={styles.subtitle}>Find games and players nearby</Text>
         </Animated.View>
 
-        {/* Footer with Get Started Button */}
-        <View style={styles.footer}>
-          <Animated.View
-            style={[
-              styles.buttonContainer,
-              {
-                transform: [{ scale: buttonScale }],
-              },
-            ]}
-          >
+        {/* Authentication Buttons */}
+        <View style={styles.authSection}>
+          <View style={styles.buttonContainer}>
+            {/* Google Button */}
             <TouchableOpacity 
-              style={styles.getStartedButton}
-              onPress={handleButtonPress}
+              style={styles.googleButton}
+              onPress={handleGoogleAuth}
               activeOpacity={0.8}
             >
-              <Text style={styles.getStartedText}>Get Started</Text>
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
-          </Animated.View>
+
+            {/* Apple Button */}
+            <TouchableOpacity 
+              style={styles.appleButton}
+              onPress={handleAppleAuth}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.appleIcon}>🍎</Text>
+              <Text style={styles.appleButtonText}>Continue with Apple</Text>
+            </TouchableOpacity>
+
+            {/* Email Button */}
+            <TouchableOpacity 
+              style={styles.emailButton}
+              onPress={handleEmailAuth}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.emailIcon}>✉️</Text>
+              <Text style={styles.emailButtonText}>Continue with Email</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Terms and Privacy */}
+          <Text style={styles.termsText}>
+            By continuing, you agree to our{' '}
+            <Text style={styles.linkText}>Terms of Service</Text> and{' '}
+            <Text style={styles.linkText}>Privacy Policy</Text>.
+          </Text>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -113,106 +112,123 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff', // --bg-white
+    backgroundColor: '#ffffff',
   },
-  scrollView: {
+  content: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    minHeight: '100%',
-  },
-  header: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    padding: 24,
-    zIndex: 10,
-  },
-  languageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  languageIcon: {
-    fontSize: 20,
-  },
-  languageText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#181711', // --text-primary
+    justifyContent: 'space-between',
+    paddingTop: 64,
+    paddingBottom: 32,
   },
   main: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 20,
   },
-  logoContainer: {
+  iconContainer: {
     marginBottom: 16,
   },
-  logoCircle: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
-    backgroundColor: '#f9d006', // --primary-color
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  logoIcon: {
-    fontSize: 48,
-    color: '#ffffff',
+  locationIcon: {
+    fontSize: 64,
+    color: '#f9bc06',
   },
   title: {
     fontSize: 36,
-    fontWeight: '900',
-    color: '#181711', // --text-primary
+    fontWeight: 'bold',
+    color: '#181611',
     textAlign: 'center',
     letterSpacing: -0.5,
+    lineHeight: 40,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#575757', // --text-secondary
+    fontWeight: 'normal',
+    color: '#575757',
     textAlign: 'center',
     lineHeight: 24,
   },
-  footer: {
-    paddingHorizontal: 32,
-    paddingTop: 8,
-    paddingBottom: 32,
+  authSection: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
   },
   buttonContainer: {
     width: '100%',
+    maxWidth: 384,
+    gap: 16,
   },
-  getStartedButton: {
-    width: '100%',
-    backgroundColor: '#f9d006', // --primary-color
-    paddingVertical: 16,
-    borderRadius: 50,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    height: 56,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e4e4e7',
+    borderRadius: 28,
+    paddingHorizontal: 20,
   },
-  getStartedText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#181711', // --text-primary
+  googleIcon: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#4285f4',
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#575757',
+    letterSpacing: 0.24,
+  },
+  appleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    height: 56,
+    backgroundColor: '#000000',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+  },
+  appleIcon: {
+    fontSize: 20,
+  },
+  appleButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#ffffff',
+    letterSpacing: 0.24,
+  },
+  emailButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    height: 56,
+    backgroundColor: '#f9bc06',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+  },
+  emailIcon: {
+    fontSize: 20,
+  },
+  emailButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#181611',
+    letterSpacing: 0.24,
+  },
+  termsText: {
+    fontSize: 12,
+    color: '#71717a',
     textAlign: 'center',
+    marginTop: 16,
+    maxWidth: 320,
+    lineHeight: 16,
+  },
+  linkText: {
+    textDecorationLine: 'underline',
   },
 });
 

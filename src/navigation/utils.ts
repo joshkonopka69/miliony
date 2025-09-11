@@ -63,18 +63,16 @@ export const RouteValidation = {
       return ROUTES.WELCOME;
     }
     if (!hasCompletedOnboarding) {
-      return ROUTES.SPORT_SELECTION;
+      return ROUTES.REGISTER;
     }
-    return ROUTES.MAIN_APP;
+    return ROUTES.MAP;
   },
 
   // Validate navigation parameters
   validateParams: (routeName: string, params: any) => {
     // Add validation logic for specific routes
     switch (routeName) {
-      case ROUTES.PROFILE_CREATION:
-        return params && typeof params.sport === 'string';
-      case ROUTES.SPORT_SELECTION:
+      case ROUTES.REGISTER:
         return true; // No specific params required
       default:
         return true;
@@ -158,7 +156,7 @@ export const TransitionUtils = {
           ...commonOptions,
           animationTypeForReplace: 'push' as const,
         };
-      case ROUTES.MAIN_APP:
+      case ROUTES.MAP:
         return {
           ...commonOptions,
           animationTypeForReplace: 'pop' as const,

@@ -1,27 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Alert, SafeAreaView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BottomNavBar } from '../components';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, SafeAreaView } from 'react-native';
+import { useAppNavigation } from '../navigation';
+import { ROUTES } from '../navigation/types';
 
-interface SettingsScreenProps {
-  navigation: any;
-}
+export default function SettingsScreen() {
+  const navigation = useAppNavigation();
 
-export default function SettingsScreen({ navigation }: SettingsScreenProps) {
-  const [notifications, setNotifications] = useState(true);
-  const [locationServices, setLocationServices] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [autoSync, setAutoSync] = useState(true);
-  const insets = useSafeAreaInsets();
+  const handleBack = () => {
+    navigation.goBack();
+  };
 
   const handleLogout = () => {
     Alert.alert(
-      'Wyloguj się',
-      'Czy na pewno chcesz się wylogować?',
+      'Log Out',
+      'Are you sure you want to log out?',
       [
-        { text: 'Anuluj', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Wyloguj', 
+          text: 'Log Out', 
           style: 'destructive',
           onPress: () => navigation.navigate('Welcome')
         }
@@ -29,247 +25,242 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     );
   };
 
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This action cannot be undone. Are you sure you want to delete your account?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('Account Deleted', 'Your account has been deleted.');
+            navigation.navigate('Welcome');
+          }
+        }
+      ]
+    );
+  };
+
   const renderSettingItem = (
     title: string,
-    subtitle: string,
-    icon: string,
     onPress?: () => void,
-    rightComponent?: React.ReactNode
+    rightComponent?: React.ReactNode,
+    showDivider: boolean = true
   ) => (
     <TouchableOpacity 
-      style={styles.settingItem}
+      style={[styles.settingItem, showDivider && styles.settingItemWithDivider]}
       onPress={onPress}
-      disabled={!onPress}
+      activeOpacity={0.7}
     >
-      <View style={styles.settingLeft}>
-        <Text style={styles.settingIcon}>{icon}</Text>
-        <View style={styles.settingText}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          <Text style={styles.settingSubtitle}>{subtitle}</Text>
-        </View>
-      </View>
-      {rightComponent || <Text style={styles.settingArrow}>›</Text>}
+      <Text style={styles.settingTitle}>{title}</Text>
+      {rightComponent || <Text style={styles.chevronIcon}>›</Text>}
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={{ paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      >
-      <Text style={styles.header}>Ustawienia</Text>
-      
-      {/* Profile Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Profil</Text>
-        {renderSettingItem(
-          'Moje sporty',
-          'Zarządzaj wybranymi sportami',
-          '⚽',
-          () => navigation.navigate('SportSelection')
-        )}
-        {renderSettingItem(
-          'Moje wydarzenia',
-          'Zobacz swoje wydarzenia',
-          '📅',
-          () => navigation.navigate('Events')
-        )}
-      </View>
-
-      {/* Preferences Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Preferencje</Text>
-        {renderSettingItem(
-          'Powiadomienia',
-          'Zarządzaj powiadomieniami',
-          '🔔',
-          undefined,
-          <Switch
-            value={notifications}
-            onValueChange={setNotifications}
-            trackColor={{ false: '#ddd', true: '#4CAF50' }}
-            thumbColor={notifications ? '#fff' : '#f4f3f4'}
-          />
-        )}
-        {renderSettingItem(
-          'Usługi lokalizacji',
-          'Dostęp do lokalizacji',
-          '📍',
-          undefined,
-          <Switch
-            value={locationServices}
-            onValueChange={setLocationServices}
-            trackColor={{ false: '#ddd', true: '#4CAF50' }}
-            thumbColor={locationServices ? '#fff' : '#f4f3f4'}
-          />
-        )}
-        {renderSettingItem(
-          'Tryb ciemny',
-          'Ciemny motyw aplikacji',
-          '🌙',
-          undefined,
-          <Switch
-            value={darkMode}
-            onValueChange={setDarkMode}
-            trackColor={{ false: '#ddd', true: '#4CAF50' }}
-            thumbColor={darkMode ? '#fff' : '#f4f3f4'}
-          />
-        )}
-        {renderSettingItem(
-          'Automatyczna synchronizacja',
-          'Sync danych w tle',
-          '🔄',
-          undefined,
-          <Switch
-            value={autoSync}
-            onValueChange={setAutoSync}
-            trackColor={{ false: '#ddd', true: '#4CAF50' }}
-            thumbColor={autoSync ? '#fff' : '#f4f3f4'}
-          />
-        )}
-      </View>
-
-      {/* App Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Aplikacja</Text>
-        {renderSettingItem(
-          'O aplikacji',
-          'Wersja 1.0.0',
-          'ℹ️'
-        )}
-        {renderSettingItem(
-          'Pomoc i wsparcie',
-          'Centrum pomocy',
-          '❓'
-        )}
-        {renderSettingItem(
-          'Polityka prywatności',
-          'Regulamin i prywatność',
-          '🔒'
-        )}
-        {renderSettingItem(
-          'Warunki użytkowania',
-          'Regulamin aplikacji',
-          '📋'
-        )}
-      </View>
-
-      {/* Logout Section */}
-      <View style={styles.section}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>🚪 Wyloguj się</Text>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Settings</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>SportMap v1.0.0</Text>
-          <Text style={styles.footerText}>© 2024 Wszystkie prawa zastrzeżone</Text>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {/* Account Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            <View style={styles.sectionContainer}>
+              {renderSettingItem(
+                'Edit Profile',
+                () => navigation.navigate(ROUTES.PROFILE)
+              )}
+              {renderSettingItem(
+                'Favorite Sports',
+                () => console.log('Favorite Sports pressed')
+              )}
+            </View>
+          </View>
+
+          {/* Preferences Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Preferences</Text>
+            <View style={styles.sectionContainer}>
+              {renderSettingItem(
+                'Language',
+                () => navigation.navigate(ROUTES.LANGUAGE),
+                <View style={styles.languageContainer}>
+                  <Text style={styles.languageText}>English</Text>
+                  <Text style={styles.chevronIcon}>›</Text>
+                </View>,
+                false
+              )}
+            </View>
+          </View>
+
+          {/* Legal Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Legal</Text>
+            <View style={styles.sectionContainer}>
+              {renderSettingItem(
+                'Terms of Service',
+                () => navigation.navigate(ROUTES.TERMS_OF_SERVICE)
+              )}
+              {renderSettingItem(
+                'Privacy Policy',
+                () => navigation.navigate(ROUTES.PRIVACY_POLICY)
+              )}
+            </View>
+          </View>
+
+          {/* Danger Zone Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, styles.dangerTitle]}>Danger Zone</Text>
+            <View style={styles.dangerContainer}>
+              {renderSettingItem(
+                'Delete Account',
+                handleDeleteAccount,
+                <Text style={styles.dangerChevron}>›</Text>,
+                false
+              )}
+            </View>
+          </View>
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <BottomNavBar 
-        activeTab="Map"
-        onAddPress={() => {
-          console.log('Add button pressed from Settings screen');
-          // You can add functionality here
-        }}
-      />
+      {/* Logout Button */}
+      <View style={styles.logoutContainer}>
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.logoutButtonText}>Log Out</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
   },
   header: {
-    fontSize: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  backButton: {
+    padding: 8,
+  },
+  backIcon: {
+    fontSize: 20,
+    color: '#181611',
     fontWeight: 'bold',
+  },
+  headerTitle: {
+    flex: 1,
     textAlign: 'center',
-    marginVertical: 20,
-    color: '#333',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#181611',
+    letterSpacing: -0.5,
+  },
+  headerSpacer: {
+    width: 24,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 16,
+    gap: 24,
   },
   section: {
-    backgroundColor: 'white',
-    marginHorizontal: 15,
-    marginBottom: 20,
-    borderRadius: 15,
-    overflow: 'hidden',
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#666',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
+    fontWeight: 'bold',
+    color: '#181611',
+    letterSpacing: -0.015,
+    paddingBottom: 8,
+  },
+  dangerTitle: {
+    color: '#dc2626', // text-red-600
+  },
+  sectionContainer: {
+    backgroundColor: '#f9fafb', // bg-gray-50
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  dangerContainer: {
+    backgroundColor: '#fef2f2', // bg-red-50
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    minHeight: 56,
+  },
+  settingItemWithDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  settingIcon: {
-    fontSize: 24,
-    marginRight: 15,
-    width: 30,
-    textAlign: 'center',
-  },
-  settingText: {
-    flex: 1,
+    borderBottomColor: '#f3f4f6', // divide-gray-100
   },
   settingTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 2,
+    fontWeight: 'normal',
+    color: '#181611',
   },
-  settingSubtitle: {
-    fontSize: 14,
-    color: '#999',
-  },
-  settingArrow: {
+  chevronIcon: {
     fontSize: 20,
-    color: '#ccc',
-    fontWeight: 'bold',
+    color: '#9ca3af', // text-gray-400
+  },
+  languageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  languageText: {
+    fontSize: 16,
+    fontWeight: 'normal',
+    color: '#6b7280', // text-gray-500
+  },
+  dangerChevron: {
+    fontSize: 20,
+    color: '#ef4444', // text-red-500
+  },
+  logoutContainer: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
   },
   logoutButton: {
-    backgroundColor: '#ff4444',
-    margin: 15,
-    paddingVertical: 15,
-    borderRadius: 10,
+    backgroundColor: '#ef4444',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
   },
   logoutButtonText: {
-    color: 'white',
-    fontSize: 18,
+    color: '#ffffff',
+    fontSize: 16,
     fontWeight: '600',
-  },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: 30,
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 5,
   },
 });
 

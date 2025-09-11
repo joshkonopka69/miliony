@@ -3,9 +3,7 @@ import { useCallback, useRef, useEffect } from 'react';
 import { BackHandler } from 'react-native';
 import { 
   RootStackParamList, 
-  MainTabParamList, 
-  RootStackScreenProps, 
-  MainTabScreenProps 
+  RootStackScreenProps
 } from './types';
 import { NavigationUtils } from './utils';
 
@@ -16,10 +14,6 @@ export const useAppNavigation = () => {
 
 export const useAppRoute = <T extends keyof RootStackParamList>() => {
   return useRoute<RootStackScreenProps<T>['route']>();
-};
-
-export const useTabRoute = <T extends keyof MainTabParamList>() => {
-  return useRoute<MainTabScreenProps<T>['route']>();
 };
 
 // Custom navigation hooks
@@ -208,7 +202,7 @@ export const useNavigationValidation = () => {
   ) => {
     // Add validation logic for specific routes
     switch (routeName) {
-      case 'SportSelection':
+      case 'Register':
         return true; // No specific params required
       default:
         return true;

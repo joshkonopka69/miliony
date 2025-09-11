@@ -33,8 +33,8 @@ export const ROUTE_CONFIG = {
     gestureEnabled: true,
     animationTypeForReplace: 'push' as const,
   },
-  [ROUTES.SPORT_SELECTION]: {
-    title: 'Wybierz Sport',
+  [ROUTES.REGISTER]: {
+    title: 'Rejestracja',
     headerShown: false,
     gestureEnabled: true,
     animationTypeForReplace: 'push' as const,
@@ -65,6 +65,30 @@ export const ROUTE_CONFIG = {
   },
   [ROUTES.PROFILE]: {
     title: 'Profil',
+    headerShown: false,
+    gestureEnabled: true,
+    animationTypeForReplace: 'push' as const,
+  },
+  [ROUTES.ADD_FRIEND]: {
+    title: 'Add Friend',
+    headerShown: false,
+    gestureEnabled: true,
+    animationTypeForReplace: 'push' as const,
+  },
+  [ROUTES.CREATE_GROUP]: {
+    title: 'Create Group',
+    headerShown: false,
+    gestureEnabled: true,
+    animationTypeForReplace: 'push' as const,
+  },
+  [ROUTES.MY_GROUPS]: {
+    title: 'My Groups',
+    headerShown: false,
+    gestureEnabled: true,
+    animationTypeForReplace: 'push' as const,
+  },
+  [ROUTES.LANGUAGE]: {
+    title: 'Language',
     headerShown: false,
     gestureEnabled: true,
     animationTypeForReplace: 'push' as const,
@@ -109,7 +133,7 @@ export const NAVIGATION_FLOWS = {
   ONBOARDING: [
     ROUTES.WELCOME,
     ROUTES.AUTH,
-    ROUTES.SPORT_SELECTION,
+    ROUTES.REGISTER,
   ],
   
   // Main app flow
@@ -128,7 +152,7 @@ export const NAVIGATION_FLOWS = {
   
   // Profile setup flow
   PROFILE_SETUP: [
-    ROUTES.SPORT_SELECTION,
+    ROUTES.REGISTER,
   ],
 } as const;
 
@@ -144,7 +168,7 @@ export const DEEP_LINK_CONFIG = {
   ROUTE_MAPPINGS: {
     'welcome': ROUTES.WELCOME,
     'auth': ROUTES.AUTH,
-    'sport-selection': ROUTES.SPORT_SELECTION,
+    'register': ROUTES.REGISTER,
     'map': ROUTES.MAP,
     'chat': ROUTES.CHAT,
     'events': ROUTES.EVENTS,

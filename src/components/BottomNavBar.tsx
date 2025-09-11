@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-na
 import { useAppNavigation } from '../navigation';
 
 interface BottomNavBarProps {
-  activeTab: 'Map' | 'MyGames';
+  activeTab: 'Home' | 'MyGames';
   onAddPress?: () => void;
 }
 
@@ -13,7 +13,7 @@ export default function BottomNavBar({ activeTab, onAddPress }: BottomNavBarProp
   const handleNavigation = (screen: string) => {
     // Navigate to the appropriate screen
     switch (screen) {
-      case 'Map':
+      case 'Home':
         navigation.navigate('Map');
         break;
       case 'MyGames':
@@ -40,27 +40,27 @@ export default function BottomNavBar({ activeTab, onAddPress }: BottomNavBarProp
       <View style={styles.container}>
         <View style={styles.navBar}>
           <View style={styles.navContent}>
-            {/* Map Tab */}
+            {/* Home Tab */}
             <TouchableOpacity
               style={styles.navItem}
-              onPress={() => handleNavigation('Map')}
+              onPress={() => handleNavigation('Home')}
               activeOpacity={0.7}
             >
               <Text style={[
                 styles.navIcon,
-                activeTab === 'Map' && styles.activeIcon
+                activeTab === 'Home' && styles.activeIcon
               ]}>
-                🗺️
+                🏠
               </Text>
               <Text style={[
                 styles.navLabel,
-                activeTab === 'Map' && styles.activeLabel
+                activeTab === 'Home' && styles.activeLabel
               ]}>
-                Maps
+                Home
               </Text>
             </TouchableOpacity>
 
-            {/* Green Add Button */}
+            {/* Elevated Add Button */}
             <TouchableOpacity
               style={styles.addButton}
               onPress={handleAddPress}
@@ -79,7 +79,7 @@ export default function BottomNavBar({ activeTab, onAddPress }: BottomNavBarProp
                 styles.navIcon,
                 activeTab === 'MyGames' && styles.activeIcon
               ]}>
-                🎮
+                🏐
               </Text>
               <Text style={[
                 styles.navLabel,
@@ -104,58 +104,52 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    zIndex: 1000,
+    zIndex: 20,
   },
   navBar: {
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb', // border-gray-200
+    paddingHorizontal: 8,
     paddingTop: 8,
-    paddingBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 8,
+    paddingBottom: 8,
   },
   navContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
+    height: 80, // h-20 equivalent
     position: 'relative',
   },
   navItem: {
-    flex: 1,
+    width: 96, // w-24 equivalent
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
-    gap: 4,
+    padding: 8, // p-2 equivalent
+    gap: 4, // gap-1 equivalent
   },
   navIcon: {
-    fontSize: 22,
-    color: '#6B7280', // gray-500
+    fontSize: 24,
+    color: '#8C805F', // text-[#8C805F]
   },
   activeIcon: {
-    color: '#000000',
+    color: '#f9bc06', // text-[var(--primary-color)]
   },
   navLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#6B7280', // gray-500
+    color: '#8C805F', // text-[#8C805F]
+    textAlign: 'center',
   },
   activeLabel: {
-    fontWeight: '700',
-    color: '#181710', // --secondary-color
+    fontWeight: '500',
+    color: '#f9bc06', // text-[var(--primary-color)]
   },
   addButton: {
-    backgroundColor: '#ffd400', // yellow (primary color)
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    backgroundColor: '#f9bc06', // bg-[var(--primary-color)]
+    width: 64, // w-16 equivalent
+    height: 64, // h-16 equivalent
+    borderRadius: 32, // rounded-full
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -163,15 +157,14 @@ const styles = StyleSheet.create({
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
-    marginHorizontal: 20,
+    marginTop: -24, // -top-6 equivalent to elevate above nav bar
   },
   addButtonIcon: {
-    fontSize: 28,
+    fontSize: 32, // text-3xl equivalent
     fontWeight: 'bold',
-    color: '#181710', // dark color for better contrast on yellow
-    lineHeight: 28,
+    color: '#181611', // text-[#181611]
   },
 });
