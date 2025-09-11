@@ -14,6 +14,9 @@
       "supportsTablet": true,
       "config": {
         "googleMapsApiKey": "AIzaSyAc8dM1yogG1P4TzKr_xUn9ycs9BfrXA4g"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show nearby sports facilities and your current position on the map."
       }
     },
     "android": {
@@ -25,7 +28,11 @@
         "googleMaps": {
           "apiKey": "AIzaSyAc8dM1yogG1P4TzKr_xUn9ycs9BfrXA4g"
         }
-      }
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {},
     "updates": {

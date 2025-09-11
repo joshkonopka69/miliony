@@ -5,7 +5,7 @@
 ### 1. Install Required Packages
 ```bash
 npm install react-native-maps
-npm install react-native-geolocation-service
+npx expo install expo-location
 npm install @react-native-async-storage/async-storage
 
 # For iOS (if targeting iOS)

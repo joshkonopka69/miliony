@@ -6,7 +6,7 @@ echo ""
 
 echo "✅ Step 1: Packages already installed!"
 echo "   - react-native-maps"
-echo "   - react-native-geolocation-service"
+echo "   - expo-location"
 echo "   - @react-native-async-storage/async-storage"
 echo ""
 

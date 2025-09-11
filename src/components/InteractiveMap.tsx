@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Alert, PermissionsAndroid, Platform } from 'react-native';
+import { View, Text, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region, Callout } from 'react-native-maps';
-import Geolocation from 'react-native-geolocation-service';
+import * as Location from 'expo-location';
 
 interface SportLocation {
   id: string;
@@ -24,6 +24,7 @@ interface InteractiveMapProps {
   onLocationSelect?: (location: SportLocation) => void;
   searchQuery?: string;
   onMapReady?: (mapRef: React.RefObject<MapView>) => void;
+  onLocationPermissionGranted?: () => void;
 }
 
 // Enhanced sports locations data
@@ -108,7 +109,7 @@ const sportsLocations: SportLocation[] = [
   },
 ];
 
-export default function InteractiveMap({ onLocationSelect, searchQuery, onMapReady }: InteractiveMapProps) {
+export default function InteractiveMap({ onLocationSelect, searchQuery, onMapReady, onLocationPermissionGranted }: InteractiveMapProps) {
   const [sportsLocationsData, setSportsLocationsData] = useState<SportLocation[]>(sportsLocations);
   const [userLocation, setUserLocation] = useState<Region | null>(null);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
@@ -123,8 +124,26 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
   };
 
   useEffect(() => {
-    requestLocationPermission();
+    // Check if we already have permission
+    checkExistingPermission();
   }, []);
+
+  const checkExistingPermission = async () => {
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      console.log('🔍 Existing permission status:', status);
+      
+      if (status === 'granted') {
+        console.log('✅ Location permission already granted');
+        setHasLocationPermission(true);
+        getCurrentLocation();
+      } else {
+        console.log('❌ No location permission, will request when needed');
+      }
+    } catch (err) {
+      console.warn('Permission check error:', err);
+    }
+  };
 
   useEffect(() => {
     if (onMapReady && mapRef) {
@@ -133,59 +152,60 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
   }, [onMapReady]);
 
   const requestLocationPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Location Permission',
-            message: 'This app needs access to your location to show nearby sports facilities.',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          setHasLocationPermission(true);
-          getCurrentLocation();
+    try {
+      console.log('🔍 Requesting location permission...');
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      console.log('📍 Permission status:', status);
+      
+      if (status === 'granted') {
+        console.log('✅ Location permission granted!');
+        setHasLocationPermission(true);
+        getCurrentLocation();
+        if (onLocationPermissionGranted) {
+          onLocationPermissionGranted();
         }
-      } catch (err) {
-        console.warn(err);
+      } else {
+        console.log('❌ Location permission denied');
+        Alert.alert('Permission denied', 'Location permission is required to show nearby sports facilities.');
       }
-    } else {
-      // iOS
-      Geolocation.requestAuthorization('whenInUse').then((result) => {
-        if (result === 'granted') {
-          setHasLocationPermission(true);
-          getCurrentLocation();
-        }
-      });
+    } catch (err) {
+      console.error('🚨 Location permission error:', err);
+      Alert.alert('Error', `Failed to request location permission: ${err.message}`);
     }
   };
 
-  const getCurrentLocation = () => {
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const newRegion: Region = {
-          latitude,
-          longitude,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-        };
-        setUserLocation(newRegion);
-        
-        // Animate to user location
-        if (mapRef.current) {
-          mapRef.current.animateToRegion(newRegion, 1000);
-        }
-      },
-      (error) => {
-        console.log('Location error:', error);
-        Alert.alert('Location Error', 'Unable to get your current location');
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
+  const getCurrentLocation = async () => {
+    try {
+      console.log('🌍 Getting current location...');
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+        timeout: 10000,
+        maximumAge: 60000,
+      });
+      
+      console.log('📍 Location received:', location.coords);
+      const { latitude, longitude } = location.coords;
+      const newRegion: Region = {
+        latitude,
+        longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      };
+      
+      console.log('🗺️ Setting user location region:', newRegion);
+      setUserLocation(newRegion);
+      
+      // Animate to user location
+      if (mapRef.current) {
+        console.log('🎯 Animating to user location...');
+        mapRef.current.animateToRegion(newRegion, 1000);
+      } else {
+        console.log('⚠️ Map ref not available');
+      }
+    } catch (error) {
+      console.error('🚨 Location error:', error);
+      Alert.alert('Location Error', `Unable to get your current location: ${error.message}`);
+    }
   };
 
   const handleMarkerPress = (location: SportLocation) => {
@@ -226,13 +246,31 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
         style={styles.map}
         provider={PROVIDER_GOOGLE}
         initialRegion={initialRegion}
-        showsUserLocation={hasLocationPermission}
-        showsMyLocationButton={false}
+        showsUserLocation={true}
+        showsMyLocationButton={true}
+        userLocationAnnotationTitle="You are here"
+        followsUserLocation={hasLocationPermission}
+        userLocationPriority="high"
         showsCompass={true}
         showsScale={true}
         onRegionChangeComplete={handleRegionChangeComplete}
         mapType="standard"
       >
+        {/* User Location Marker */}
+        {userLocation && (
+          <Marker
+            coordinate={userLocation}
+            title="You are here"
+            description="Your current location"
+            pinColor="#007AFF"
+          >
+            <View style={styles.userLocationMarker}>
+              <View style={styles.userLocationDot} />
+              <View style={styles.userLocationPulse} />
+            </View>
+          </Marker>
+        )}
+
         {/* Sports Location Markers */}
         {filteredLocations.map((location) => (
           <Marker
@@ -262,9 +300,24 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
       {/* Location Permission Button */}
       {!hasLocationPermission && (
         <View style={styles.permissionContainer}>
+          <Text style={styles.permissionTitle}>📍 Enable Location</Text>
           <Text style={styles.permissionText}>
-            Enable location to find nearby sports facilities
+            Allow location access to find nearby sports facilities and show your current position on the map.
           </Text>
+          <TouchableOpacity 
+            style={styles.permissionButton}
+            onPress={requestLocationPermission}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.permissionButtonText}>Enable Location</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Location Status Indicator */}
+      {hasLocationPermission && userLocation && (
+        <View style={styles.locationStatusContainer}>
+          <Text style={styles.locationStatusText}>📍 Location enabled</Text>
         </View>
       )}
     </View>
@@ -326,13 +379,90 @@ const styles = StyleSheet.create({
     top: 50,
     left: 20,
     right: 20,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    padding: 20,
+    borderRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  permissionTitle: {
+    color: '#1F2937',
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
   permissionText: {
+    color: '#6B7280',
+    textAlign: 'center',
+    fontSize: 14,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  permissionButton: {
+    backgroundColor: '#ffd400',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    alignSelf: 'center',
+  },
+  permissionButtonText: {
+    color: '#1F2937',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  locationStatusContainer: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(76, 175, 80, 0.9)',
+    padding: 12,
+    borderRadius: 10,
+    alignSelf: 'center',
+  },
+  locationStatusText: {
     color: 'white',
     textAlign: 'center',
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  userLocationMarker: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userLocationDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#007AFF',
+    borderWidth: 2,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  userLocationPulse: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 122, 255, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.5)',
   },
 });
