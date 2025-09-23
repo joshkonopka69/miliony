@@ -15,3 +15,4 @@ export { default as LanguageScreen } from './LanguageScreen';
 export { default as GameChatScreen } from './GameChatScreen';
 export { default as TermsOfServiceScreen } from './TermsOfServiceScreen';
 export { default as PrivacyPolicyScreen } from './PrivacyPolicyScreen';
+export { default as PlaceDetailsExampleScreen } from './PlaceDetailsExampleScreen';
