@@ -6,187 +6,264 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
-  Image,
+  SafeAreaView,
+  StatusBar,
   Alert,
+  Image,
 } from 'react-native';
+
+interface Event {
+  id: string;
+  creatorId: string;
+  activity: string;
+  placeName: string;
+  address: string;
+  description: string;
+  maxParticipants: number;
+  participants: string[];
+  time: string;
+  createdAt: string;
+}
 
 interface EventDetailsModalProps {
   visible: boolean;
   onClose: () => void;
-  event: {
-    id: string;
-    title: string;
-    sport: string;
-    sportIcon: string;
-    description: string;
-    image?: string;
-    minPlayers?: number;
-    maxPlayers?: number;
-    isOpen: boolean;
-    currentPlayers: number;
-    maxPlayers?: number;
-    location: string;
-    date: string;
-    time: string;
-    organizer: string;
-    organizerAvatar?: string;
-  } | null;
-  onJoinEvent?: (eventId: string) => void;
+  event: Event | null;
+  currentUserId: string;
+  onJoinEvent: (eventId: string) => void;
+  onLeaveEvent: (eventId: string) => void;
+  onDeleteEvent: (eventId: string) => void;
 }
 
-const SPORT_ICONS: { [key: string]: string } = {
-  'Basketball': '🏀',
-  'Tennis': '🎾',
-  'Running': '🏃',
-  'Football': '⚽',
-  'Volleyball': '🏐',
-  'Badminton': '🏸',
-  'Swimming': '🏊',
-  'Cycling': '🚴',
-  'Gym': '🏋️',
-  'Yoga': '🧘',
-};
-
-export default function EventDetailsModal({ visible, onClose, event, onJoinEvent }: EventDetailsModalProps) {
-  const [isJoining, setIsJoining] = useState(false);
+export default function EventDetailsModal({
+  visible,
+  onClose,
+  event,
+  currentUserId,
+  onJoinEvent,
+  onLeaveEvent,
+  onDeleteEvent,
+}: EventDetailsModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!event) return null;
 
-  const handleJoinEvent = async () => {
-    if (event.isOpen || (event.maxPlayers && event.currentPlayers < event.maxPlayers)) {
-      setIsJoining(true);
-      
-      // Simulate API call
-      setTimeout(() => {
-        setIsJoining(false);
-        Alert.alert('Success', 'You have successfully joined the event!');
-        if (onJoinEvent) {
-          onJoinEvent(event.id);
-        }
-        onClose();
-      }, 1500);
-    } else {
-      Alert.alert('Event Full', 'This event has reached maximum capacity.');
+  const isCreator = event.creatorId === currentUserId;
+  const isParticipant = event.participants.includes(currentUserId);
+  const canJoin = !isParticipant && event.participants.length < event.maxParticipants;
+  const isFull = event.participants.length >= event.maxParticipants;
+
+  const handleJoin = async () => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      await onJoinEvent(event.id);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to join event. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const canJoin = event.isOpen || (event.maxPlayers && event.currentPlayers < event.maxPlayers);
+  const handleLeave = async () => {
+    if (isLoading) return;
+    
+    Alert.alert(
+      'Leave Event',
+      'Are you sure you want to leave this event?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            setIsLoading(true);
+            try {
+              await onLeaveEvent(event.id);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to leave event. Please try again.');
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Event',
+      'Are you sure you want to delete this event? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsLoading(true);
+            try {
+              await onDeleteEvent(event.id);
+              onClose();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete event. Please try again.');
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const formatTime = (timeString: string) => {
+    const date = new Date(timeString);
+    return date.toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getActivityIcon = (activity: string) => {
+    const iconMap: { [key: string]: string } = {
+      'Football': '⚽',
+      'Basketball': '🏀',
+      'Tennis': '🎾',
+      'Swimming': '🏊',
+      'Gym Workout': '💪',
+      'Yoga': '🧘',
+      'Running': '🏃',
+      'Cycling': '🚴',
+      'Volleyball': '🏐',
+      'Badminton': '🏸',
+      'Squash': '🎾',
+      'Boxing': '🥊',
+      'Martial Arts': '🥋',
+      'Dancing': '💃',
+      'Hiking': '🥾',
+      'Rock Climbing': '🧗',
+      'Bouldering': '🧗‍♂️',
+      'Skateboarding': '🛹',
+    };
+    return iconMap[activity] || '🏃';
+  };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>✕</Text>
+            <Text style={styles.closeText}>✕</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Event Details</Text>
-          <View style={styles.placeholder} />
+          {isCreator && (
+            <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+              <Text style={styles.deleteText}>Delete</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Event Image */}
-          {event.image && (
-            <View style={styles.imageContainer}>
-              <Image source={{ uri: event.image }} style={styles.eventImage} />
-              <View style={styles.imageOverlay}>
-                <View style={styles.sportBadge}>
-                  <Text style={styles.sportIcon}>{SPORT_ICONS[event.sport] || '🏃'}</Text>
-                  <Text style={styles.sportName}>{event.sport}</Text>
-                </View>
-              </View>
+          {/* Event Header */}
+          <View style={styles.eventHeader}>
+            <View style={styles.activityContainer}>
+              <Text style={styles.activityIcon}>{getActivityIcon(event.activity)}</Text>
+              <Text style={styles.activityName}>{event.activity}</Text>
             </View>
-          )}
+            <Text style={styles.venueName}>{event.placeName}</Text>
+            <Text style={styles.venueAddress}>{event.address}</Text>
+          </View>
 
           {/* Event Info */}
-          <View style={styles.eventInfo}>
-            <Text style={styles.eventTitle}>{event.title}</Text>
+          <View style={styles.infoSection}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>📅 Date & Time</Text>
+              <Text style={styles.infoValue}>{formatTime(event.time)}</Text>
+            </View>
             
-            {/* Date and Time */}
-            <View style={styles.timeInfo}>
-              <View style={styles.timeItem}>
-                <Text style={styles.timeIcon}>📅</Text>
-                <Text style={styles.timeText}>{event.date}</Text>
-              </View>
-              <View style={styles.timeItem}>
-                <Text style={styles.timeIcon}>🕐</Text>
-                <Text style={styles.timeText}>{event.time}</Text>
-              </View>
-              <View style={styles.timeItem}>
-                <Text style={styles.timeIcon}>📍</Text>
-                <Text style={styles.timeText}>{event.location}</Text>
-              </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>👥 Participants</Text>
+              <Text style={styles.infoValue}>
+                {event.participants.length}/{event.maxParticipants}
+              </Text>
             </View>
 
-            {/* Description */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Description</Text>
-              <Text style={styles.description}>{event.description}</Text>
-            </View>
+            {event.description && (
+              <View style={styles.descriptionContainer}>
+                <Text style={styles.descriptionLabel}>📝 Description</Text>
+                <Text style={styles.descriptionText}>{event.description}</Text>
+              </View>
+            )}
+          </View>
 
-            {/* Player Info */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Players</Text>
-              <View style={styles.playerInfo}>
-                <View style={styles.playerCount}>
-                  <Text style={styles.playerCountText}>
-                    {event.currentPlayers} {event.isOpen ? 'joined' : `of ${event.maxPlayers} players`}
-                  </Text>
-                  {!event.isOpen && (
-                    <View style={styles.progressBar}>
-                      <View 
-                        style={[
-                          styles.progressFill, 
-                          { width: `${(event.currentPlayers / event.maxPlayers!) * 100}%` }
-                        ]} 
-                      />
-                    </View>
-                  )}
-                </View>
-                {event.isOpen && (
-                  <View style={styles.openBadge}>
-                    <Text style={styles.openBadgeText}>Open Event</Text>
+          {/* Participants List */}
+          <View style={styles.participantsSection}>
+            <Text style={styles.participantsTitle}>
+              Participants ({event.participants.length})
+            </Text>
+            <View style={styles.participantsList}>
+              {event.participants.map((participantId, index) => (
+                <View key={participantId} style={styles.participantItem}>
+                  <View style={styles.participantAvatar}>
+                    <Text style={styles.participantInitial}>
+                      {participantId.charAt(0).toUpperCase()}
+                    </Text>
                   </View>
-                )}
-              </View>
-            </View>
-
-            {/* Organizer */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Organizer</Text>
-              <View style={styles.organizerInfo}>
-                {event.organizerAvatar && (
-                  <Image source={{ uri: event.organizerAvatar }} style={styles.organizerAvatar} />
-                )}
-                <Text style={styles.organizerName}>{event.organizer}</Text>
-              </View>
+                  <View style={styles.participantInfo}>
+                    <Text style={styles.participantName}>
+                      {participantId === event.creatorId ? 'You (Creator)' : `User ${index + 1}`}
+                    </Text>
+                    {participantId === event.creatorId && (
+                      <Text style={styles.creatorBadge}>Event Creator</Text>
+                    )}
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
         </ScrollView>
 
-        {/* Join Button */}
+        {/* Footer Actions */}
         <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[
-              styles.joinButton, 
-              !canJoin && styles.joinButtonDisabled
-            ]} 
-            onPress={handleJoinEvent}
-            disabled={!canJoin || isJoining}
-          >
-            <Text style={[
-              styles.joinButtonText,
-              !canJoin && styles.joinButtonTextDisabled
-            ]}>
-              {isJoining ? 'Joining...' : canJoin ? 'Join Event' : 'Event Full'}
-            </Text>
-          </TouchableOpacity>
+          {isCreator ? (
+            <View style={styles.creatorActions}>
+              <Text style={styles.creatorText}>You created this event</Text>
+            </View>
+          ) : isParticipant ? (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.leaveButton]}
+              onPress={handleLeave}
+              disabled={isLoading}
+            >
+              <Text style={styles.leaveButtonText}>
+                {isLoading ? 'Leaving...' : 'Leave Event'}
+              </Text>
+            </TouchableOpacity>
+          ) : canJoin ? (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.joinButton]}
+              onPress={handleJoin}
+              disabled={isLoading}
+            >
+              <Text style={styles.joinButtonText}>
+                {isLoading ? 'Joining...' : 'Join Event'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.fullEvent}>
+              <Text style={styles.fullEventText}>Event is full</Text>
+            </View>
+          )}
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -201,187 +278,209 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#e5e7eb',
   },
   closeButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  closeButtonText: {
-    fontSize: 18,
-    color: '#6B7280',
-    fontWeight: 'bold',
+  closeText: {
+    fontSize: 16,
+    color: '#6b7280',
+    fontWeight: '600',
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: '600',
+    color: '#111827',
   },
-  placeholder: {
-    width: 32,
+  deleteButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  deleteText: {
+    fontSize: 16,
+    color: '#ef4444',
+    fontWeight: '500',
   },
   content: {
     flex: 1,
+    paddingHorizontal: 20,
   },
-  imageContainer: {
-    position: 'relative',
-    height: 200,
+  eventHeader: {
+    paddingVertical: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
-  eventImage: {
-    width: '100%',
-    height: '100%',
-  },
-  imageOverlay: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-  },
-  sportBadge: {
+  activityContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    marginBottom: 12,
   },
-  sportIcon: {
-    fontSize: 16,
-    marginRight: 6,
+  activityIcon: {
+    fontSize: 24,
+    marginRight: 12,
   },
-  sportName: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  eventInfo: {
-    padding: 20,
-  },
-  eventTitle: {
+  activityName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 16,
+    color: '#111827',
   },
-  timeInfo: {
-    marginBottom: 24,
+  venueName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
   },
-  timeItem: {
+  venueAddress: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  infoSection: {
+    paddingVertical: 20,
+  },
+  infoRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
-  timeIcon: {
-    fontSize: 16,
-    marginRight: 12,
-    width: 20,
-  },
-  timeText: {
+  infoLabel: {
     fontSize: 16,
     color: '#374151',
     fontWeight: '500',
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
+  infoValue: {
     fontSize: 16,
+    color: '#111827',
     fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
   },
-  description: {
+  descriptionContainer: {
+    marginTop: 16,
+  },
+  descriptionLabel: {
     fontSize: 16,
     color: '#374151',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  descriptionText: {
+    fontSize: 16,
+    color: '#111827',
     lineHeight: 24,
   },
-  playerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  participantsSection: {
+    paddingVertical: 20,
   },
-  playerCount: {
-    flex: 1,
-  },
-  playerCountText: {
-    fontSize: 16,
-    color: '#374151',
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#10B981',
-    borderRadius: 3,
-  },
-  openBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  openBadgeText: {
-    fontSize: 12,
+  participantsTitle: {
+    fontSize: 18,
     fontWeight: '600',
-    color: '#92400E',
+    color: '#111827',
+    marginBottom: 16,
   },
-  organizerInfo: {
+  participantsList: {
+    gap: 12,
+  },
+  participantItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 8,
   },
-  organizerAvatar: {
+  participantAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: '#3b82f6',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
-  organizerName: {
+  participantInitial: {
     fontSize: 16,
-    color: '#374151',
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  participantInfo: {
+    flex: 1,
+  },
+  participantName: {
+    fontSize: 16,
     fontWeight: '500',
+    color: '#111827',
+  },
+  creatorBadge: {
+    fontSize: 12,
+    color: '#3b82f6',
+    fontWeight: '500',
+    marginTop: 2,
   },
   footer: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#e5e7eb',
+  },
+  actionButton: {
+    height: 56,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   joinButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
+    backgroundColor: '#3b82f6',
+    shadowColor: '#3b82f6',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
-  },
-  joinButtonDisabled: {
-    backgroundColor: '#E5E7EB',
-    shadowOpacity: 0,
-    elevation: 0,
+    elevation: 6,
   },
   joinButtonText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#ffffff',
   },
-  joinButtonTextDisabled: {
-    color: '#9CA3AF',
+  leaveButton: {
+    backgroundColor: '#ef4444',
+    shadowColor: '#ef4444',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  leaveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  creatorActions: {
+    alignItems: 'center',
+  },
+  creatorText: {
+    fontSize: 16,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  fullEvent: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  fullEventText: {
+    fontSize: 16,
+    color: '#6b7280',
+    fontWeight: '500',
   },
 });
-
-
-

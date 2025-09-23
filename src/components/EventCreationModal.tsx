@@ -4,132 +4,127 @@ import {
   Text,
   StyleSheet,
   Modal,
-  TextInput,
   TouchableOpacity,
   ScrollView,
+  TextInput,
+  SafeAreaView,
+  StatusBar,
   Alert,
-  Image,
 } from 'react-native';
+
+interface EventData {
+  activity: string;
+  description: string;
+  maxParticipants: number;
+  date: Date;
+  time: Date;
+}
 
 interface EventCreationModalProps {
   visible: boolean;
   onClose: () => void;
-  onCreateEvent: (eventData: any) => void;
+  onCreateEvent: (eventData: EventData) => void;
+  venueName: string;
+  venueAddress: string;
+  placeId?: string;
+  coordinates?: { lat: number; lng: number };
 }
 
-const SPORTS = [
-  { id: 'football', name: 'Football', icon: '⚽' },
-  { id: 'basketball', name: 'Basketball', icon: '🏀' },
-  { id: 'tennis', name: 'Tennis', icon: '🎾' },
-  { id: 'volleyball', name: 'Volleyball', icon: '🏐' },
-  { id: 'badminton', name: 'Badminton', icon: '🏸' },
-  { id: 'swimming', name: 'Swimming', icon: '🏊' },
-  { id: 'running', name: 'Running', icon: '🏃' },
-  { id: 'cycling', name: 'Cycling', icon: '🚴' },
-  { id: 'gym', name: 'Gym', icon: '🏋️' },
-  { id: 'yoga', name: 'Yoga', icon: '🧘' },
+const ACTIVITIES = [
+  'Football', 'Basketball', 'Tennis', 'Swimming', 'Gym Workout',
+  'Yoga', 'Running', 'Cycling', 'Volleyball', 'Badminton',
+  'Squash', 'Boxing', 'Martial Arts', 'Dancing', 'Hiking',
+  'Rock Climbing', 'Bouldering', 'Skateboarding', 'Other'
 ];
 
-export default function EventCreationModal({ visible, onClose, onCreateEvent }: EventCreationModalProps) {
-  const [selectedSport, setSelectedSport] = useState<string>('');
+const MAX_PARTICIPANTS_OPTIONS = [2, 4, 6, 8, 10, 12, 16, 20, 30, 50];
+
+export default function EventCreationModal({
+  visible,
+  onClose,
+  onCreateEvent,
+  venueName,
+  venueAddress,
+  placeId,
+  coordinates,
+}: EventCreationModalProps) {
+  const [activity, setActivity] = useState('');
   const [description, setDescription] = useState('');
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [minPlayers, setMinPlayers] = useState('');
-  const [maxPlayers, setMaxPlayers] = useState('');
-  const [isOpenEvent, setIsOpenEvent] = useState(false);
+  const [maxParticipants, setMaxParticipants] = useState(8);
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
 
-  const handleCreateEvent = () => {
-    // Validation
-    if (!selectedSport) {
-      Alert.alert('Error', 'Please select a sport');
+  const handleCreate = () => {
+    if (!activity.trim()) {
+      Alert.alert('Error', 'Please select an activity');
       return;
     }
-    if (!description.trim()) {
-      Alert.alert('Error', 'Please enter a description');
+
+    if (description.trim().length < 10) {
+      Alert.alert('Error', 'Please provide a description (at least 10 characters)');
       return;
     }
-    if (!isOpenEvent) {
-      if (!minPlayers || !maxPlayers) {
-        Alert.alert('Error', 'Please enter minimum and maximum number of players');
-        return;
-      }
-      if (parseInt(minPlayers) > parseInt(maxPlayers)) {
-        Alert.alert('Error', 'Minimum players cannot be greater than maximum players');
-        return;
-      }
+
+    if (!date.trim() || !time.trim()) {
+      Alert.alert('Error', 'Please enter both date and time');
+      return;
     }
 
-    const eventData = {
-      sport: selectedSport,
+    const eventData: EventData = {
+      activity: activity.trim(),
       description: description.trim(),
-      photo: photoUri,
-      minPlayers: isOpenEvent ? null : parseInt(minPlayers),
-      maxPlayers: isOpenEvent ? null : parseInt(maxPlayers),
-      isOpen: isOpenEvent,
-      createdAt: new Date().toISOString(),
+      maxParticipants,
+      date: new Date(`${date} ${time}`),
+      time: new Date(`${date} ${time}`),
     };
 
     onCreateEvent(eventData);
-    handleClose();
-  };
-
-  const handleClose = () => {
-    // Reset form
-    setSelectedSport('');
-    setDescription('');
-    setPhotoUri(null);
-    setMinPlayers('');
-    setMaxPlayers('');
-    setIsOpenEvent(false);
     onClose();
   };
 
-  const handlePhotoSelect = () => {
-    // For now, we'll just simulate photo selection
-    // In a real app, you would use react-native-image-picker or similar
-    Alert.alert(
-      'Photo Selection',
-      'Photo selection functionality would be implemented here using react-native-image-picker',
-      [{ text: 'OK' }]
-    );
-  };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleClose}
-    >
-      <View style={styles.container}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>✕</Text>
+          <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
+            <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Create Sport Event</Text>
-          <View style={styles.placeholder} />
+          <Text style={styles.title}>Create Event</Text>
+          <TouchableOpacity onPress={handleCreate} style={styles.createButton}>
+            <Text style={styles.createText}>Create</Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Sport Selection */}
+          {/* Venue Info */}
+          <View style={styles.venueSection}>
+            <Text style={styles.venueName}>{venueName}</Text>
+            <Text style={styles.venueAddress}>{venueAddress}</Text>
+          </View>
+
+          {/* Activity Selection */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Choose Sport</Text>
-            <View style={styles.sportsGrid}>
-              {SPORTS.map((sport) => (
+            <Text style={styles.sectionTitle}>Activity *</Text>
+            <View style={styles.activitiesGrid}>
+              {ACTIVITIES.map((act) => (
                 <TouchableOpacity
-                  key={sport.id}
+                  key={act}
                   style={[
-                    styles.sportButton,
-                    selectedSport === sport.id && styles.selectedSportButton,
+                    styles.activityChip,
+                    activity === act && styles.activityChipSelected
                   ]}
-                  onPress={() => setSelectedSport(sport.id)}
+                  onPress={() => setActivity(act)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.sportIcon}>{sport.icon}</Text>
                   <Text style={[
-                    styles.sportName,
-                    selectedSport === sport.id && styles.selectedSportName,
+                    styles.activityLabel,
+                    activity === act && styles.activityLabelSelected
                   ]}>
-                    {sport.name}
+                    {act}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -138,85 +133,73 @@ export default function EventCreationModal({ visible, onClose, onCreateEvent }: 
 
           {/* Description */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Description</Text>
+            <Text style={styles.sectionTitle}>Description *</Text>
             <TextInput
               style={styles.descriptionInput}
-              placeholder="Describe your sport event..."
               value={description}
               onChangeText={setDescription}
+              placeholder="Describe your event, what to bring, skill level, etc."
+              placeholderTextColor="#9ca3af"
               multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              placeholderTextColor="#9CA3AF"
+              maxLength={500}
             />
+            <Text style={styles.characterCount}>{description.length}/500</Text>
           </View>
 
-          {/* Photo */}
+          {/* Date and Time */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Photo (Optional)</Text>
-            <TouchableOpacity style={styles.photoButton} onPress={handlePhotoSelect}>
-              {photoUri ? (
-                <Image source={{ uri: photoUri }} style={styles.photoPreview} />
-              ) : (
-                <View style={styles.photoPlaceholder}>
-                  <Text style={styles.photoIcon}>📷</Text>
-                  <Text style={styles.photoText}>Add Photo</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            <Text style={styles.sectionTitle}>Date & Time *</Text>
+            <View style={styles.dateTimeContainer}>
+              <View style={styles.dateTimeInputContainer}>
+                <Text style={styles.dateTimeLabel}>Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.dateTimeInput}
+                  value={date}
+                  onChangeText={setDate}
+                  placeholder="2024-01-15"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+              
+              <View style={styles.dateTimeInputContainer}>
+                <Text style={styles.dateTimeLabel}>Time (HH:MM)</Text>
+                <TextInput
+                  style={styles.dateTimeInput}
+                  value={time}
+                  onChangeText={setTime}
+                  placeholder="14:30"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+            </View>
           </View>
 
-          {/* Player Limits */}
+          {/* Max Participants */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Number of Players</Text>
-            
-            {/* Open Event Toggle */}
-            <TouchableOpacity
-              style={styles.openEventToggle}
-              onPress={() => setIsOpenEvent(!isOpenEvent)}
-            >
-              <View style={[styles.toggle, isOpenEvent && styles.toggleActive]}>
-                <View style={[styles.toggleThumb, isOpenEvent && styles.toggleThumbActive]} />
-              </View>
-              <Text style={styles.toggleLabel}>Open event (no player limit)</Text>
-            </TouchableOpacity>
-
-            {!isOpenEvent && (
-              <View style={styles.playerInputs}>
-                <View style={styles.playerInputContainer}>
-                  <Text style={styles.playerInputLabel}>Min Players</Text>
-                  <TextInput
-                    style={styles.playerInput}
-                    placeholder="2"
-                    value={minPlayers}
-                    onChangeText={setMinPlayers}
-                    keyboardType="numeric"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-                <View style={styles.playerInputContainer}>
-                  <Text style={styles.playerInputLabel}>Max Players</Text>
-                  <TextInput
-                    style={styles.playerInput}
-                    placeholder="10"
-                    value={maxPlayers}
-                    onChangeText={setMaxPlayers}
-                    keyboardType="numeric"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-              </View>
-            )}
+            <Text style={styles.sectionTitle}>Max Participants</Text>
+            <View style={styles.participantsContainer}>
+              {MAX_PARTICIPANTS_OPTIONS.map((count) => (
+                <TouchableOpacity
+                  key={count}
+                  style={[
+                    styles.participantChip,
+                    maxParticipants === count && styles.participantChipSelected
+                  ]}
+                  onPress={() => setMaxParticipants(count)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.participantLabel,
+                    maxParticipants === count && styles.participantLabelSelected
+                  ]}>
+                    {count}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </ScrollView>
-
-        {/* Create Button */}
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.createButton} onPress={handleCreateEvent}>
-            <Text style={styles.createButtonText}>Create Event</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -231,35 +214,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#e5e7eb',
   },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
+  cancelButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
-  closeButtonText: {
-    fontSize: 18,
-    color: '#6B7280',
-    fontWeight: 'bold',
+  cancelText: {
+    fontSize: 16,
+    color: '#6b7280',
+    fontWeight: '500',
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: '600',
+    color: '#111827',
   },
-  placeholder: {
-    width: 32,
+  createButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  createText: {
+    fontSize: 16,
+    color: '#3b82f6',
+    fontWeight: '600',
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  venueSection: {
+    backgroundColor: '#f8fafc',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  venueName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  venueAddress: {
+    fontSize: 14,
+    color: '#6b7280',
   },
   section: {
     marginTop: 24,
@@ -267,159 +268,100 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#111827',
     marginBottom: 12,
   },
-  sportsGrid: {
+  activitiesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
-  sportButton: {
-    width: '30%',
-    aspectRatio: 1,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+  activityChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
   },
-  selectedSportButton: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#F59E0B',
+  activityChipSelected: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
   },
-  sportIcon: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  sportName: {
-    fontSize: 12,
+  activityLabel: {
+    fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
-    textAlign: 'center',
+    color: '#374151',
   },
-  selectedSportName: {
-    color: '#92400E',
-    fontWeight: '600',
+  activityLabelSelected: {
+    color: '#ffffff',
   },
   descriptionInput: {
-    backgroundColor: '#F9FAFB',
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
     borderRadius: 12,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
-    color: '#1F2937',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    minHeight: 100,
-  },
-  photoButton: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  photoPlaceholder: {
-    alignItems: 'center',
-  },
-  photoIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  photoText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  photoPreview: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 12,
-  },
-  openEventToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  toggle: {
-    width: 48,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#E5E7EB',
-    justifyContent: 'center',
-    paddingHorizontal: 2,
-    marginRight: 12,
-  },
-  toggleActive: {
-    backgroundColor: '#10B981',
-  },
-  toggleThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    color: '#111827',
     backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
-  toggleThumbActive: {
-    transform: [{ translateX: 20 }],
+  characterCount: {
+    fontSize: 12,
+    color: '#9ca3af',
+    textAlign: 'right',
+    marginTop: 4,
   },
-  toggleLabel: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  playerInputs: {
+  dateTimeContainer: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
   },
-  playerInputContainer: {
+  dateTimeInputContainer: {
     flex: 1,
   },
-  playerInputLabel: {
+  dateTimeLabel: {
     fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
+    color: '#6b7280',
     marginBottom: 8,
+    fontWeight: '500',
   },
-  playerInput: {
-    backgroundColor: '#F9FAFB',
+  dateTimeInput: {
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
     borderRadius: 12,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
-    color: '#1F2937',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    color: '#111827',
+    backgroundColor: '#ffffff',
   },
-  footer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+  participantsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  createButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
-    paddingVertical: 16,
+  participantChip: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+    minWidth: 50,
     alignItems: 'center',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
-  createButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  participantChipSelected: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  participantLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  participantLabelSelected: {
     color: '#ffffff',
   },
 });
-
-
-
