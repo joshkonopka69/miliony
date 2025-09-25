@@ -18,3 +18,4 @@ echo "2. Select your project"
 echo "3. Go to Settings > API"
 echo "4. Copy the Project URL and anon key"
 echo "5. Replace the placeholder values in .env"
+

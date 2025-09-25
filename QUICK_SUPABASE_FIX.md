@@ -70,3 +70,4 @@ After adding keys, your app should load without the Supabase error!
 
 🎯 **Your app will work with Firebase features even without Supabase keys, but you'll need them for the full database functionality.**
 
+
