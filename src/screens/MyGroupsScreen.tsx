@@ -1,4 +1,5 @@
- import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, SafeAreaView } from 'react-native';
 import { useAppNavigation } from '../navigation';
 
@@ -63,33 +64,41 @@ export default function MyGroupsScreen() {
     );
   };
 
-  const renderGroupItem = (group: Group) => (
-    <View key={group.id} style={styles.groupItem}>
-      <View style={styles.groupAvatar}>
-        <Text style={styles.groupAvatarText}>
-          {group.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-        </Text>
+  const renderGroupItem = (group: Group) => {
+    return (
+      <View key={group.id} style={styles.groupItem}>
+        <View style={styles.groupAvatar}>
+          <Text style={styles.groupAvatarText}>
+            {group.name
+              .split(' ')
+              .filter(Boolean)
+              .map(n => n[0])
+              .join('')
+              .slice(0, 2)
+            }
+          </Text>
+        </View>
+        <View style={styles.groupInfo}>
+          <Text style={styles.groupName}>{group.name}</Text>
+          <Text style={styles.memberCount}>{group.memberCount} members</Text>
+        </View>
+        <View style={styles.groupActions}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => handleEditGroup(group)}
+          >
+            <Text style={styles.actionIcon}>✏️</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => handleDeleteGroup(group)}
+          >
+            <Text style={styles.actionIcon}>🗑️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.groupInfo}>
-        <Text style={styles.groupName}>{group.name}</Text>
-        <Text style={styles.memberCount}>{group.memberCount} members</Text>
-      </View>
-      <View style={styles.groupActions}>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => handleEditGroup(group)}
-        >
-          <Text style={styles.actionIcon}>✏️</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => handleDeleteGroup(group)}
-        >
-          <Text style={styles.actionIcon}>🗑️</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>

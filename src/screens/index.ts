@@ -17,3 +17,4 @@ export { default as GameChatScreen } from './GameChatScreen';
 export { default as TermsOfServiceScreen } from './TermsOfServiceScreen';
 export { default as PrivacyPolicyScreen } from './PrivacyPolicyScreen';
 export { default as PlaceDetailsExampleScreen } from './PlaceDetailsExampleScreen';
+export { default as EventTestScreen } from './EventTestScreen';

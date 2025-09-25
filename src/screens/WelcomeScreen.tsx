@@ -81,6 +81,7 @@ export default function WelcomeScreen() {
     navigation.navigate('Auth');
   };
 
+<<<<<<< HEAD
   const handleLanguageSelect = (selectedLanguage: Language) => {
     setLanguage(selectedLanguage);
     setShowLanguageModal(false);
@@ -90,6 +91,12 @@ export default function WelcomeScreen() {
     const currentLang = availableLanguages.find(lang => lang.code === language);
     return currentLang?.name || 'English';
   };
+=======
+  const handleTestScreen = () => {
+    navigation.navigate('EventTest');
+  };
+
+>>>>>>> e8c0124cd79c66d28c3d92ee223bfde032a745b5
 
   return (
     <SafeAreaView style={styles.container}>
@@ -161,6 +168,16 @@ export default function WelcomeScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.emailButtonText}>{t.welcome.signUpWithEmail}</Text>
+            </TouchableOpacity>
+
+            {/* Test Button */}
+            <TouchableOpacity 
+              style={styles.testButton}
+              onPress={handleTestScreen}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.testIcon}>🧪</Text>
+              <Text style={styles.testButtonText}>Test Events & Chat</Text>
             </TouchableOpacity>
           </View>
 
@@ -428,6 +445,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     letterSpacing: 0.2,
+  },
+  testButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    height: 56,
+    backgroundColor: '#6c757d',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+  },
+  testIcon: {
+    fontSize: 20,
+  },
+  testButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    letterSpacing: 0.24,
   },
   termsText: {
     fontSize: 12,

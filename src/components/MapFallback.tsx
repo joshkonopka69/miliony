@@ -16,7 +16,6 @@ export default function MapFallback() {
           longitudeDelta: 0.0421,
         }}
         onMapReady={() => console.log('✅ Fallback map ready!')}
-        onError={(error) => console.error('❌ Fallback map error:', error)}
       />
       <View style={styles.status}>
         <Text style={styles.statusText}>Testing map without Google provider</Text>
