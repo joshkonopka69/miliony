@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,15 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+
+// Custom SM Logo Component
+const SMLogo = ({ size = 30 }: { size?: number }) => (
+  <View style={[styles.logoContainer, { width: size, height: size }]}>
+    <View style={styles.logoBackground}>
+      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
+    </View>
+  </View>
+);
 
 interface ActivityFilter {
   types: string[];
@@ -55,6 +64,13 @@ export default function ActivityFilterModal({
   const [keywords, setKeywords] = useState(currentFilters.keywords.join(', '));
   const [radius, setRadius] = useState(currentFilters.radius);
 
+  // Update local state when currentFilters prop changes
+  useEffect(() => {
+    setSelectedTypes(currentFilters.types);
+    setKeywords(currentFilters.keywords.join(', '));
+    setRadius(currentFilters.radius);
+  }, [currentFilters]);
+
   const handleTypeToggle = (typeId: string) => {
     setSelectedTypes(prev =>
       prev.includes(typeId)
@@ -69,6 +85,12 @@ export default function ActivityFilterModal({
       keywords: keywords.split(',').map(k => k.trim()).filter(k => k.length > 0),
       radius: radius,
     };
+    
+    console.log('ActivityFilterModal: Applying filters:', filters);
+    console.log('ActivityFilterModal: Selected types:', selectedTypes);
+    console.log('ActivityFilterModal: Keywords:', keywords);
+    console.log('ActivityFilterModal: Radius:', radius);
+    
     onApplyFilters(filters);
     onClose();
   };
@@ -89,10 +111,8 @@ export default function ActivityFilterModal({
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Filter Activities</Text>
-          <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
-            <Text style={styles.resetText}>Reset</Text>
-          </TouchableOpacity>
+          <Text style={styles.title}>Activities</Text>
+          <SMLogo size={30} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -207,14 +227,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
   },
-  resetButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  resetText: {
-    fontSize: 16,
-    color: '#3b82f6',
-    fontWeight: '500',
+  logoBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fbbf24',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logoText: {
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 1,
   },
   content: {
     flex: 1,
@@ -252,8 +288,8 @@ const styles = StyleSheet.create({
     minWidth: 120,
   },
   typeChipSelected: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: '#f9bc06',
+    borderColor: '#f9bc06',
   },
   typeIcon: {
     fontSize: 16,
@@ -293,8 +329,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   radiusChipSelected: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: '#f9bc06',
+    borderColor: '#f9bc06',
   },
   radiusLabel: {
     fontSize: 14,
@@ -312,11 +348,11 @@ const styles = StyleSheet.create({
   },
   applyButton: {
     height: 56,
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#f9bc06',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#3b82f6',
+    shadowColor: '#f9bc06',
     shadowOffset: {
       width: 0,
       height: 4,

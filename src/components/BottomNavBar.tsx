@@ -1,13 +1,51 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
 import { useAppNavigation } from '../navigation';
 
+// Custom Map Icon Component - Using your map-pin.png image
+const MapIcon = ({ size = 24 }: { size?: number }) => (
+  <View style={[styles.iconContainer, { width: size, height: size }]}>
+    <Image 
+      source={require('../../assets/map-pin.png')}
+      style={{
+        width: size * 1.0,
+        height: size * 1.0,
+      }}
+      resizeMode="contain"
+    />
+  </View>
+);
+
+// Custom Games Icon Component - Using your sports.png image (30% bigger)
+const GamesIcon = ({ size = 24 }: { size?: number }) => (
+  <View style={[styles.iconContainer, { width: size, height: size }]}>
+    <Image 
+      source={require('../../assets/sports.png')}
+      style={{
+        width: size * 1.3,
+        height: size * 1.3,
+      }}
+      resizeMode="contain"
+    />
+  </View>
+);
+
+// Custom Profile Icon Component - Black color
+const ProfileIcon = ({ size = 24 }: { size?: number }) => (
+  <View style={[styles.iconContainer, { width: size, height: size }]}>
+    <View style={styles.profileIcon}>
+      <View style={[styles.profileHead, { backgroundColor: '#000000' }]} />
+      <View style={[styles.profileBody, { backgroundColor: '#000000' }]} />
+    </View>
+  </View>
+);
+
 interface BottomNavBarProps {
-  activeTab: 'Home' | 'MyGames';
-  onAddPress?: () => void;
+  activeTab: 'Home' | 'MyGames' | 'MyProfile';
+  onProfilePress?: () => void;
 }
 
-export default function BottomNavBar({ activeTab, onAddPress }: BottomNavBarProps) {
+export default function BottomNavBar({ activeTab, onProfilePress }: BottomNavBarProps) {
   const navigation = useAppNavigation();
 
   const handleNavigation = (screen: string) => {
@@ -22,15 +60,16 @@ export default function BottomNavBar({ activeTab, onAddPress }: BottomNavBarProp
     }
   };
 
-  const handleAddPress = () => {
-    console.log('🟡 BottomNavBar: Add button pressed!');
-    console.log('🟡 onAddPress function exists:', !!onAddPress);
-    if (onAddPress) {
-      console.log('🟡 Calling onAddPress function...');
-      onAddPress();
+  const handleProfilePress = () => {
+    console.log('🟡 BottomNavBar: Profile button pressed!');
+    console.log('🟡 onProfilePress function exists:', !!onProfilePress);
+    if (onProfilePress) {
+      console.log('🟡 Calling onProfilePress function...');
+      onProfilePress();
     } else {
-      // Default action - you can customize this
-      console.log('🟡 No onAddPress function provided');
+      // Default action - navigate to Profile screen
+      console.log('🟡 No onProfilePress function provided, navigating to Profile');
+      navigation.navigate('Profile');
     }
   };
 
@@ -40,52 +79,57 @@ export default function BottomNavBar({ activeTab, onAddPress }: BottomNavBarProp
       <View style={styles.container}>
         <View style={styles.navBar}>
           <View style={styles.navContent}>
-            {/* Home Tab */}
+            {/* Map Tab */}
             <TouchableOpacity
-              style={styles.navItem}
+              style={[
+                styles.navItem,
+                activeTab === 'Home' && styles.activeNavItem
+              ]}
               onPress={() => handleNavigation('Home')}
               activeOpacity={0.7}
             >
-              <Text style={[
-                styles.navIcon,
-                activeTab === 'Home' && styles.activeIcon
-              ]}>
-                🏠
-              </Text>
+              <MapIcon size={24} />
               <Text style={[
                 styles.navLabel,
                 activeTab === 'Home' && styles.activeLabel
               ]}>
-                Home
+                Map
               </Text>
-            </TouchableOpacity>
-
-            {/* Elevated Add Button */}
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={handleAddPress}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.addButtonIcon}>+</Text>
             </TouchableOpacity>
 
             {/* My Games Tab */}
             <TouchableOpacity
-              style={styles.navItem}
+              style={[
+                styles.navItem,
+                activeTab === 'MyGames' && styles.activeNavItem
+              ]}
               onPress={() => handleNavigation('MyGames')}
               activeOpacity={0.7}
             >
-              <Text style={[
-                styles.navIcon,
-                activeTab === 'MyGames' && styles.activeIcon
-              ]}>
-                🏐
-              </Text>
+              <GamesIcon size={24} />
               <Text style={[
                 styles.navLabel,
                 activeTab === 'MyGames' && styles.activeLabel
               ]}>
                 My Games
+              </Text>
+            </TouchableOpacity>
+
+            {/* Profile Tab */}
+            <TouchableOpacity
+              style={[
+                styles.navItem,
+                activeTab === 'MyProfile' && styles.activeNavItem
+              ]}
+              onPress={handleProfilePress}
+              activeOpacity={0.7}
+            >
+              <ProfileIcon size={24} />
+              <Text style={[
+                styles.navLabel,
+                activeTab === 'MyProfile' && styles.activeLabel
+              ]}>
+                My Profile
               </Text>
             </TouchableOpacity>
           </View>
@@ -128,12 +172,32 @@ const styles = StyleSheet.create({
     padding: 8, // p-2 equivalent
     gap: 4, // gap-1 equivalent
   },
-  navIcon: {
-    fontSize: 24,
-    color: '#8C805F', // text-[#8C805F]
+  activeNavItem: {
+    backgroundColor: '#f9bc06', // bg-[var(--primary-color)]
+    borderRadius: 12,
   },
-  activeIcon: {
-    color: '#f9bc06', // text-[var(--primary-color)]
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Profile Icon Styles
+  profileIcon: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileHead: {
+    width: 10,
+    height: 10,
+    backgroundColor: '#000000',
+    borderRadius: 5,
+    marginBottom: 2,
+  },
+  profileBody: {
+    width: 12,
+    height: 8,
+    backgroundColor: '#000000',
+    borderRadius: 2,
   },
   navLabel: {
     fontSize: 12,
@@ -142,29 +206,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   activeLabel: {
-    fontWeight: '500',
-    color: '#f9bc06', // text-[var(--primary-color)]
-  },
-  addButton: {
-    backgroundColor: '#f9bc06', // bg-[var(--primary-color)]
-    width: 64, // w-16 equivalent
-    height: 64, // h-16 equivalent
-    borderRadius: 32, // rounded-full
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-    marginTop: -24, // -top-6 equivalent to elevate above nav bar
-  },
-  addButtonIcon: {
-    fontSize: 32, // text-3xl equivalent
-    fontWeight: 'bold',
-    color: '#181611', // text-[#181611]
+    fontWeight: '600',
+    color: '#000000', // Black text for better contrast on yellow background
   },
 });

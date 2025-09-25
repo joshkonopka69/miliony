@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, SafeAreaView, FlatList } from 'react-native';
 import { useAppNavigation } from '../navigation';
 
+// Custom SM Logo Component
+const SMLogo = ({ size = 30 }: { size?: number }) => (
+  <View style={[styles.logoContainer, { width: size, height: size }]}>
+    <View style={styles.logoBackground}>
+      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
+    </View>
+  </View>
+);
+
 interface User {
   id: string;
   name: string;
@@ -169,7 +178,7 @@ export default function AddFriendScreen() {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Friend</Text>
-        <View style={styles.headerSpacer} />
+        <SMLogo size={30} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -261,7 +270,7 @@ export default function AddFriendScreen() {
             </View>
             <View style={styles.quickActionInfo}>
               <Text style={styles.quickActionTitle}>Find Nearby Users</Text>
-              <Text style={styles.quickActionSubtitle}>Discover friends in your area</Text>
+              <Text style={styles.quickActionSubtitle}>Discover people in your area</Text>
             </View>
             <Text style={styles.quickActionArrow}>›</Text>
           </TouchableOpacity>
@@ -283,171 +292,191 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6', // border-gray-100
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: '#f9fafb',
     justifyContent: 'center',
     alignItems: 'center',
   },
   backIcon: {
-    fontSize: 20,
-    color: '#27272a', // text-zinc-800
+    fontSize: 24,
+    color: '#374151', // text-gray-700
+    fontWeight: 'bold',
   },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#18181b', // text-zinc-900
-    letterSpacing: -0.015,
-    paddingRight: 40,
+    color: '#111827', // text-gray-900
+    textAlign: 'center',
+    flex: 1,
+    marginRight: 40, // pr-10 equivalent
   },
-  headerSpacer: {
-    width: 40,
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fbbf24',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logoText: {
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 1,
   },
   scrollView: {
     flex: 1,
   },
   searchSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    padding: 16,
     backgroundColor: '#ffffff',
     marginBottom: 8,
   },
   searchTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#18181b',
-    marginBottom: 4,
+    color: '#111827', // text-gray-900
+    marginBottom: 8,
   },
   searchSubtitle: {
-    fontSize: 14,
-    color: '#71717a',
+    fontSize: 16,
+    color: '#6b7280', // text-gray-500
     marginBottom: 16,
+    lineHeight: 24,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f9fafb', // bg-gray-50
     borderRadius: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb', // border-gray-200
   },
   searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
-    color: '#71717a',
+    fontSize: 18,
+    color: '#9ca3af', // text-gray-400
+    marginRight: 12,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#18181b',
+    color: '#111827', // text-gray-900
   },
   clearButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#d1d5db',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
+    padding: 4,
   },
   clearIcon: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: 16,
+    color: '#9ca3af', // text-gray-400
   },
   resultsSection: {
+    padding: 16,
     backgroundColor: '#ffffff',
     marginBottom: 8,
   },
   resultsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#18181b',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827', // text-gray-900
+    marginBottom: 16,
   },
   loadingContainer: {
-    padding: 20,
     alignItems: 'center',
+    paddingVertical: 40,
   },
   loadingText: {
     fontSize: 16,
-    color: '#71717a',
+    color: '#6b7280', // text-gray-500
   },
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    backgroundColor: '#f9fafb', // bg-gray-50
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb', // border-gray-200
   },
   userAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#f9bc06',
-    justifyContent: 'center',
+    backgroundColor: '#e5e7eb', // bg-gray-200
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
   userAvatarText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#18181b',
+    color: '#374151', // text-gray-700
   },
   userInfo: {
     flex: 1,
   },
   userName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#18181b',
+    fontWeight: 'bold',
+    color: '#111827', // text-gray-900
     marginBottom: 2,
   },
   userUsername: {
     fontSize: 14,
-    color: '#71717a',
+    color: '#6b7280', // text-gray-500
     marginBottom: 2,
   },
   mutualFriends: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#9ca3af', // text-gray-400
   },
   actionButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    minWidth: 70,
-    alignItems: 'center',
+    borderWidth: 1,
   },
   addButton: {
-    backgroundColor: '#f9bc06',
+    backgroundColor: '#10b981', // bg-emerald-500
+    borderColor: '#10b981',
   },
   removeButton: {
-    backgroundColor: '#f3f4f6',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
+    backgroundColor: '#ffffff',
+    borderColor: '#ef4444', // border-red-500
   },
   actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
   },
   addButtonText: {
-    color: '#18181b',
+    color: '#ffffff',
   },
   removeButtonText: {
-    color: '#6b7280',
+    color: '#ef4444', // text-red-500
   },
   emptyState: {
-    padding: 40,
     alignItems: 'center',
+    paddingVertical: 40,
   },
   emptyStateIcon: {
     fontSize: 48,
@@ -455,64 +484,63 @@ const styles = StyleSheet.create({
   },
   emptyStateTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#18181b',
+    fontWeight: 'bold',
+    color: '#111827', // text-gray-900
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 14,
-    color: '#71717a',
+    color: '#6b7280', // text-gray-500
     textAlign: 'center',
     lineHeight: 20,
   },
   quickActionsSection: {
+    padding: 16,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 20,
   },
   quickActionsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#18181b',
+    color: '#111827', // text-gray-900
     marginBottom: 16,
   },
   quickActionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    backgroundColor: '#f9fafb', // bg-gray-50
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb', // border-gray-200
   },
   quickActionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#e5e7eb', // bg-gray-200
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
   quickActionIconText: {
-    fontSize: 18,
+    fontSize: 20,
   },
   quickActionInfo: {
     flex: 1,
   },
   quickActionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#18181b',
+    fontWeight: 'bold',
+    color: '#111827', // text-gray-900
     marginBottom: 2,
   },
   quickActionSubtitle: {
     fontSize: 14,
-    color: '#71717a',
+    color: '#6b7280', // text-gray-500
   },
   quickActionArrow: {
-    fontSize: 18,
-    color: '#d1d5db',
+    fontSize: 20,
+    color: '#9ca3af', // text-gray-400
   },
 });
-
-
-

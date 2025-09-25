@@ -7,7 +7,8 @@ import {
   Platform, 
   TouchableOpacity,
   Modal,
-  Dimensions 
+  Dimensions,
+  TextInput
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -19,6 +20,8 @@ import {
 } from './index';
 import { placesApiService, Place, ActivityFilter } from '../services/placesApi';
 import { firestoreService, Event } from '../services/firestore';
+import { useAppNavigation } from '../navigation';
+import { ROUTES } from '../navigation/types';
 
 interface EnhancedInteractiveMapProps {
   onLocationSelect?: (location: any) => void;
@@ -35,6 +38,7 @@ export default function EnhancedInteractiveMap({
   onMapReady,
   onLocationPermissionGranted,
 }: EnhancedInteractiveMapProps) {
+  const navigation = useAppNavigation();
   const mapRef = useRef<MapView>(null);
   const [region, setRegion] = useState<Region>({
     latitude: 40.7829,
@@ -45,6 +49,7 @@ export default function EnhancedInteractiveMap({
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -57,6 +62,7 @@ export default function EnhancedInteractiveMap({
     radius: 3000,
   });
   const [loading, setLoading] = useState(false);
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery || '');
 
   useEffect(() => {
     requestLocationPermission();
@@ -64,10 +70,37 @@ export default function EnhancedInteractiveMap({
   }, []);
 
   useEffect(() => {
+    setLocalSearchQuery(searchQuery || '');
+  }, [searchQuery]);
+
+  useEffect(() => {
     if (userLocation) {
       searchPlaces();
     }
   }, [userLocation, currentFilters]);
+
+  useEffect(() => {
+    // Filter events based on search query
+    if (localSearchQuery.length > 0) {
+      const filteredEvents = allEvents.filter(event =>
+        event.activity.toLowerCase().includes(localSearchQuery.toLowerCase()) ||
+        event.description?.toLowerCase().includes(localSearchQuery.toLowerCase()) ||
+        event.placeName.toLowerCase().includes(localSearchQuery.toLowerCase())
+      );
+      setEvents(filteredEvents);
+      
+      // Navigate to search results screen if there are results
+      if (filteredEvents.length > 0) {
+        navigation.navigate(ROUTES.EVENT_SEARCH_RESULTS, {
+          searchQuery: localSearchQuery,
+          events: filteredEvents
+        });
+      }
+    } else {
+      // Show all events when search is cleared
+      setEvents(allEvents);
+    }
+  }, [localSearchQuery, allEvents, navigation]);
 
   const requestLocationPermission = async () => {
     try {
@@ -106,9 +139,13 @@ export default function EnhancedInteractiveMap({
   const searchPlaces = async () => {
     if (!userLocation) return;
 
+    console.log('EnhancedInteractiveMap: searchPlaces called with filters:', currentFilters);
+    console.log('EnhancedInteractiveMap: userLocation:', userLocation);
+    
     setLoading(true);
     try {
       const placesData = await placesApiService.searchNearby(userLocation, currentFilters);
+      console.log('EnhancedInteractiveMap: Received places data:', placesData.length, 'places');
       setPlaces(placesData);
 
       // Load events in the current region
@@ -122,18 +159,38 @@ export default function EnhancedInteractiveMap({
           lng: region.longitude - region.longitudeDelta / 2,
         }
       );
+      setAllEvents(eventsData);
       setEvents(eventsData);
     } catch (error) {
       console.error('Error searching places:', error);
-      Alert.alert('Error', 'Failed to load venues');
+      
+      // Show more specific error messages based on error type
+      let errorMessage = 'Failed to load venues';
+      if (error instanceof Error) {
+        if (error.message.includes('HTTP error')) {
+          errorMessage = 'Network error. Please check your internet connection.';
+        } else if (error.message.includes('Google Places API error')) {
+          errorMessage = 'Google Places API error. Please try again later.';
+        } else if (error.message.includes('Failed to search nearby places')) {
+          errorMessage = 'Unable to find venues in this area. Try adjusting your filters.';
+        }
+      }
+      
+      Alert.alert('Error', errorMessage);
+      
+      // Set empty results to clear the map
+      setPlaces([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleFilterApply = (filters: ActivityFilter) => {
+    console.log('EnhancedInteractiveMap: Received filters:', filters);
+    console.log('EnhancedInteractiveMap: Previous filters:', currentFilters);
     setCurrentFilters(filters);
     setShowFilterModal(false);
+    console.log('EnhancedInteractiveMap: Filters updated, will trigger searchPlaces');
   };
 
   const handlePlacePress = (place: Place) => {
@@ -249,6 +306,17 @@ export default function EnhancedInteractiveMap({
         showsUserLocation={true}
         showsMyLocationButton={true}
         onMapReady={() => onMapReady?.(mapRef)}
+        scrollEnabled={true}
+        zoomEnabled={true}
+        pitchEnabled={true}
+        rotateEnabled={true}
+        moveOnMarkerPress={false}
+        showsCompass={false}
+        showsScale={false}
+        showsBuildings={false}
+        showsIndoors={false}
+        showsTraffic={false}
+        showsPointsOfInterest={false}
       >
         {/* Place Markers */}
         {places.map((place) => (
@@ -283,19 +351,60 @@ export default function EnhancedInteractiveMap({
         ))}
       </MapView>
 
-      {/* Filter Button */}
-      <TouchableOpacity
-        style={styles.filterButton}
-        onPress={() => setShowFilterModal(true)}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.filterButtonText}>🔍 Filter</Text>
-      </TouchableOpacity>
+      {/* Search and Filter Container */}
+      <View style={styles.searchFilterContainer} pointerEvents="box-none">
+        {/* Search Field */}
+        <View style={styles.searchContainer} pointerEvents="auto">
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search events..."
+            placeholderTextColor="#9ca3af"
+            value={localSearchQuery}
+            onChangeText={setLocalSearchQuery}
+          />
+          {localSearchQuery.length > 0 && (
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={() => setLocalSearchQuery('')}
+            >
+              <Text style={styles.clearIcon}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Filter Button */}
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            (currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && styles.filterButtonActive
+          ]}
+          onPress={() => setShowFilterModal(true)}
+          activeOpacity={0.8}
+          pointerEvents="auto"
+        >
+          <Text style={[
+            styles.filterButtonText,
+            (currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && styles.filterButtonTextActive
+          ]}>
+            Filter {(currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && '●'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Loading Indicator */}
       {loading && (
-        <View style={styles.loadingContainer}>
+        <View style={styles.loadingContainer} pointerEvents="none">
           <Text style={styles.loadingText}>Loading venues...</Text>
+        </View>
+      )}
+
+      {/* Results Counter */}
+      {!loading && places.length > 0 && (
+        <View style={styles.resultsContainer} pointerEvents="none">
+          <Text style={styles.resultsText}>
+            {places.length} venue{places.length !== 1 ? 's' : ''} found
+          </Text>
         </View>
       )}
 
@@ -350,15 +459,13 @@ export default function EnhancedInteractiveMap({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   map: {
     width: width,
     height: height,
   },
   filterButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
     backgroundColor: '#ffffff',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -372,10 +479,62 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  filterButtonActive: {
+    backgroundColor: '#f9bc06',
+    borderWidth: 2,
+    borderColor: '#d97706',
+  },
   filterButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: '#f9bc06',
+  },
+  filterButtonTextActive: {
+    color: '#ffffff',
+  },
+  searchFilterContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 50,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    zIndex: 1000,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  searchIcon: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+  },
+  clearButton: {
+    padding: 4,
+  },
+  clearIcon: {
+    fontSize: 16,
+    color: '#9ca3af',
   },
   placeMarker: {
     backgroundColor: '#ffffff',
@@ -436,5 +595,27 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#6b7280',
+  },
+  resultsContainer: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  resultsText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
   },
 });

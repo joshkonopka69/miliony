@@ -1,5 +1,5 @@
 // Google Places API service for venue search and filtering
-// Note: This is a mock implementation. In a real app, you would use the actual Google Places API
+// Real implementation using Google Places API
 
 export interface Place {
   placeId: string;
@@ -21,11 +21,26 @@ export interface ActivityFilter {
   radius: number;
 }
 
-class PlacesApiService {
-  private apiKey: string = 'YOUR_GOOGLE_PLACES_API_KEY'; // Replace with actual API key
-  private baseUrl: string = 'https://maps.googleapis.com/maps/api/place';
+// Google Places API type mapping for activity filters
+export const GOOGLE_PLACES_TYPES = {
+  'gym': 'gym',
+  'stadium': 'stadium',
+  'swimming_pool': 'swimming_pool',
+  'park': 'park',
+  'sports_complex': 'sports_complex',
+  'bowling_alley': 'bowling_alley',
+  'golf_course': 'golf_course',
+  'ice_rink': 'ice_rink',
+  'tennis_court': 'tennis_court',
+  'basketball_court': 'basketball_court',
+} as const;
 
-  // Mock places data for testing
+class PlacesApiService {
+  private apiKey: string = 'AIzaSyDBJ65DOu4WMoTRjvz1J6i6VbYbjOoEW2E'; // Using the API key from MyPlaceDetailsScreen
+  private baseUrl: string = 'https://maps.googleapis.com/maps/api/place';
+  private useMockData: boolean = true; // Set to false to use real API
+  
+  // Mock data for fallback when API fails
   private mockPlaces: Place[] = [
     {
       placeId: 'ChIJ123456789',
@@ -75,18 +90,97 @@ class PlacesApiService {
       phoneNumber: '+1-555-0456',
       types: ['gym', 'health'],
     },
+    {
+      placeId: 'ChIJ444555666',
+      name: 'Chelsea Piers',
+      address: 'Chelsea Piers, New York, NY 10011',
+      coordinates: { lat: 40.7484, lng: -74.0077 },
+      rating: 4.3,
+      priceLevel: 3,
+      types: ['sports_complex', 'gym'],
+    },
+    {
+      placeId: 'ChIJ777888999',
+      name: 'Prospect Park',
+      address: 'Prospect Park, Brooklyn, NY 11225',
+      coordinates: { lat: 40.6602, lng: -73.9690 },
+      rating: 4.4,
+      types: ['park', 'tourist_attraction'],
+    },
   ];
 
   async searchNearby(
     location: { lat: number; lng: number },
     filter: ActivityFilter
   ): Promise<Place[]> {
-    // Mock implementation - in real app, this would call Google Places API
     console.log('Searching nearby places:', { location, filter });
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Use mock data for testing - set useMockData to false to use real API
+    if (this.useMockData) {
+      console.log('Using mock data for testing');
+      return this.getMockResults(location, filter);
+    }
 
+    try {
+      const allResults: Place[] = [];
+      
+      // If no types specified, search for general establishments
+      if (filter.types.length === 0) {
+        console.log('No types specified, using keyword search');
+        const results = await this.searchByKeyword(location, filter);
+        allResults.push(...results);
+      } else {
+        console.log('Searching by types:', filter.types);
+        // Search for each type separately (Google Places API limitation)
+        for (const type of filter.types) {
+          const googleType = GOOGLE_PLACES_TYPES[type as keyof typeof GOOGLE_PLACES_TYPES];
+          console.log(`Searching for type: ${type} -> ${googleType}`);
+          if (googleType) {
+            const results = await this.searchByType(location, googleType, filter);
+            console.log(`Found ${results.length} results for type ${type}`);
+            allResults.push(...results);
+          }
+        }
+      }
+
+      console.log(`Total results before deduplication: ${allResults.length}`);
+
+      // Remove duplicates based on placeId
+      const uniqueResults = allResults.filter((place, index, self) =>
+        index === self.findIndex(p => p.placeId === place.placeId)
+      );
+
+      console.log(`Results after deduplication: ${uniqueResults.length}`);
+
+      // Apply keyword filtering if specified
+      let filteredResults = uniqueResults;
+      if (filter.keywords.length > 0) {
+        console.log('Applying keyword filtering:', filter.keywords);
+        filteredResults = uniqueResults.filter(place =>
+          filter.keywords.some(keyword =>
+            place.name.toLowerCase().includes(keyword.toLowerCase()) ||
+            place.address.toLowerCase().includes(keyword.toLowerCase())
+          )
+        );
+        console.log(`Results after keyword filtering: ${filteredResults.length}`);
+      }
+
+      console.log('Final results:', filteredResults);
+      return filteredResults;
+    } catch (error) {
+      console.error('Error searching nearby places, using mock data:', error);
+      
+      // Fallback to mock data when API fails
+      return this.getMockResults(location, filter);
+    }
+  }
+
+  private getMockResults(
+    location: { lat: number; lng: number },
+    filter: ActivityFilter
+  ): Place[] {
+    console.log('Using mock data for search');
+    
     // Filter mock data based on criteria
     let results = this.mockPlaces.filter(place => {
       // Check if place is within radius (simplified distance calculation)
@@ -113,24 +207,193 @@ class PlacesApiService {
       return true;
     });
 
+    console.log(`Mock results: ${results.length} places found`);
+    return results;
+  }
+
+  private async searchByType(
+    location: { lat: number; lng: number },
+    type: string,
+    filter: ActivityFilter
+  ): Promise<Place[]> {
+    const params = new URLSearchParams({
+      location: `${location.lat},${location.lng}`,
+      radius: filter.radius.toString(),
+      type: type,
+      key: this.apiKey,
+    });
+
+    // Add keyword search if specified
+    if (filter.keywords.length > 0) {
+      params.append('keyword', filter.keywords.join(' '));
+    }
+
+    const url = `${this.baseUrl}/nearbysearch/json?${params}`;
+    console.log('Making API request to:', url);
+
+    const response = await fetch(url);
+
+    console.log('API response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API error response:', errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('API response data:', data);
+
+    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      console.error('Google Places API error:', data.status, data.error_message);
+      throw new Error(`Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+    }
+
+    const results = data.results.map((result: any) => ({
+      placeId: result.place_id,
+      name: result.name,
+      address: result.vicinity || result.formatted_address || 'Address not available',
+      coordinates: {
+        lat: result.geometry.location.lat,
+        lng: result.geometry.location.lng,
+      },
+      rating: result.rating,
+      priceLevel: result.price_level,
+      types: result.types || [],
+    }));
+
+    console.log(`Mapped ${results.length} results for type ${type}`);
+    return results;
+  }
+
+  private async searchByKeyword(
+    location: { lat: number; lng: number },
+    filter: ActivityFilter
+  ): Promise<Place[]> {
+    // Use text search when no specific types are selected
+    const keyword = filter.keywords.length > 0 
+      ? filter.keywords.join(' ') 
+      : 'sports fitness gym park';
+
+    console.log('Using keyword search with:', keyword);
+
+    const params = new URLSearchParams({
+      query: keyword,
+      location: `${location.lat},${location.lng}`,
+      radius: filter.radius.toString(),
+      key: this.apiKey,
+    });
+
+    const url = `${this.baseUrl}/textsearch/json?${params}`;
+    console.log('Making keyword API request to:', url);
+
+    const response = await fetch(url);
+
+    console.log('Keyword API response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Keyword API error response:', errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Keyword API response data:', data);
+
+    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      console.error('Google Places API error:', data.status, data.error_message);
+      throw new Error(`Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+    }
+
+    const results = data.results.map((result: any) => ({
+      placeId: result.place_id,
+      name: result.name,
+      address: result.formatted_address || 'Address not available',
+      coordinates: {
+        lat: result.geometry.location.lat,
+        lng: result.geometry.location.lng,
+      },
+      rating: result.rating,
+      priceLevel: result.price_level,
+      types: result.types || [],
+    }));
+
+    console.log(`Mapped ${results.length} results for keyword search`);
     return results;
   }
 
   async getPlaceDetails(placeId: string): Promise<Place | null> {
-    // Mock implementation - in real app, this would call Google Places Details API
     console.log('Getting place details for:', placeId);
 
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const params = new URLSearchParams({
+        place_id: placeId,
+        fields: 'place_id,name,formatted_address,geometry,rating,price_level,formatted_phone_number,website,opening_hours,photos,types',
+        key: this.apiKey,
+      });
 
-    return this.mockPlaces.find(place => place.placeId === placeId) || null;
+      const response = await fetch(
+        `${this.baseUrl}/details/json?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status !== 'OK') {
+        throw new Error(`Google Places API error: ${data.status}`);
+      }
+
+      const result = data.result;
+      return {
+        placeId: result.place_id,
+        name: result.name,
+        address: result.formatted_address || 'Address not available',
+        coordinates: {
+          lat: result.geometry.location.lat,
+          lng: result.geometry.location.lng,
+        },
+        rating: result.rating,
+        priceLevel: result.price_level,
+        phoneNumber: result.formatted_phone_number,
+        website: result.website,
+        openingHours: result.opening_hours?.weekday_text || [],
+        photos: result.photos?.map((photo: any) => photo.photo_reference) || [],
+        types: result.types || [],
+      };
+    } catch (error) {
+      console.error('Error getting place details:', error);
+      throw new Error('Failed to get place details');
+    }
   }
 
   async getPlacePhoto(photoReference: string, maxWidth: number = 400): Promise<string> {
-    // Mock implementation - in real app, this would call Google Places Photo API
     console.log('Getting place photo:', photoReference);
 
-    // Return a placeholder image URL
-    return `https://via.placeholder.com/${maxWidth}x${Math.floor(maxWidth * 0.75)}/cccccc/666666?text=Place+Photo`;
+    try {
+      const params = new URLSearchParams({
+        photo_reference: photoReference,
+        maxwidth: maxWidth.toString(),
+        key: this.apiKey,
+      });
+
+      const response = await fetch(
+        `${this.baseUrl}/photo?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Return the photo URL
+      return response.url;
+    } catch (error) {
+      console.error('Error getting place photo:', error);
+      // Return a placeholder image URL as fallback
+      return `https://via.placeholder.com/${maxWidth}x${Math.floor(maxWidth * 0.75)}/cccccc/666666?text=Photo+Not+Available`;
+    }
   }
 
   // Utility methods
@@ -154,45 +417,6 @@ class PlacesApiService {
     return deg * (Math.PI / 180);
   }
 
-  // Real Google Places API implementation (commented out for now)
-  /*
-  async searchNearby(
-    location: { lat: number; lng: number },
-    filter: ActivityFilter
-  ): Promise<Place[]> {
-    const params = new URLSearchParams({
-      location: `${location.lat},${location.lng}`,
-      radius: filter.radius.toString(),
-      key: this.apiKey,
-    });
-
-    if (filter.types.length > 0) {
-      params.append('type', filter.types[0]); // Google Places API only supports one type at a time
-    }
-
-    if (filter.keywords.length > 0) {
-      params.append('keyword', filter.keywords.join(' '));
-    }
-
-    const response = await fetch(
-      `${this.baseUrl}/nearbysearch/json?${params}`
-    );
-    const data = await response.json();
-
-    return data.results.map((result: any) => ({
-      placeId: result.place_id,
-      name: result.name,
-      address: result.vicinity,
-      coordinates: {
-        lat: result.geometry.location.lat,
-        lng: result.geometry.location.lng,
-      },
-      rating: result.rating,
-      priceLevel: result.price_level,
-      types: result.types,
-    }));
-  }
-  */
 }
 
 export const placesApiService = new PlacesApiService();

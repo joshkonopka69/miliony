@@ -12,6 +12,15 @@ import {
 import { useAppNavigation, useAppRoute } from '../navigation';
 import { ROUTES } from '../navigation/types';
 
+// Custom SM Logo Component
+const SMLogo = ({ size = 30 }: { size?: number }) => (
+  <View style={[styles.logoContainer, { width: size, height: size }]}>
+    <View style={styles.logoBackground}>
+      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
+    </View>
+  </View>
+);
+
 interface Game {
   id: string;
   title: string;
@@ -90,9 +99,12 @@ export default function EventDetailsScreen() {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Game Details</Text>
-        <TouchableOpacity style={styles.shareButton} onPress={handleShareGame}>
-          <Text style={styles.shareIcon}>📤</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShareGame}>
+            <Text style={styles.shareIcon}>📤</Text>
+          </TouchableOpacity>
+          <SMLogo size={30} />
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -230,6 +242,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 16,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   shareButton: {
     width: 40,
     height: 40,
@@ -241,6 +258,31 @@ const styles = StyleSheet.create({
   shareIcon: {
     fontSize: 20,
     color: '#374151', // text-gray-700
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fbbf24',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logoText: {
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 1,
   },
   scrollView: {
     flex: 1,
@@ -398,6 +440,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-
-
-

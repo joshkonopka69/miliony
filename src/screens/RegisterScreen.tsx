@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -10,12 +10,27 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Keyboard
+  Keyboard,
+  Animated,
+  Dimensions
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
+import { useTranslation } from '../contexts/TranslationContext';
+
+const { width } = Dimensions.get('window');
+
+// Custom SM Logo Component (consistent with other screens)
+const SMLogo = ({ size = 50 }: { size?: number }) => (
+  <View style={[styles.logoContainer, { width: size, height: size }]}>
+    <View style={styles.logoBackground}>
+      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
+    </View>
+  </View>
+);
 
 export default function RegisterScreen() {
   const navigation = useAppNavigation();
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     email: '',
     nick: '',
@@ -24,11 +39,29 @@ export default function RegisterScreen() {
   });
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({});
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const sports = [
-    'Boks', 'Kalistenika', 'Siłownia', 'Koszykówka', 'Rolki/wrotkarstwo',
-    'Piłka nożna', 'Siatkówka', 'BJJ', 'Szachy', 'Ping pong',
-    'Tenis', 'Badminton', 'Squash', 'MMA', 'Judo'
+    t.sports.boxing, t.sports.calisthenics, t.sports.gym, t.sports.basketball, t.sports.rollerSkating,
+    t.sports.football, t.sports.volleyball, t.sports.bjj, t.sports.chess, t.sports.pingPong,
+    t.sports.tennis, t.sports.badminton, t.sports.squash, t.sports.mma, t.sports.judo
   ];
 
   const handleInputChange = (field: string, value: string) => {
@@ -65,7 +98,6 @@ export default function RegisterScreen() {
       return;
     }
     
-    // TODO: Implement registration logic
     console.log('Registration data:', { ...formData, sports: selectedSports });
     navigation.navigate('Map');
   };
@@ -109,84 +141,101 @@ export default function RegisterScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.scrollContent}
         >
-          <View style={styles.content}>
-            {/* Title */}
-            <Text style={styles.title}>Join Sportsmap</Text>
-            <Text style={styles.subtitle}>Create your account to start connecting with athletes</Text>
+          <Animated.View 
+            style={[
+              styles.content,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            {/* Logo and Title */}
+            <View style={styles.titleSection}>
+              <SMLogo size={50} />
+              <Text style={styles.title}>{t.register.title}</Text>
+              <Text style={styles.subtitle}>
+                {t.register.subtitle}
+              </Text>
+            </View>
 
             {/* Form Fields */}
             <View style={styles.formSection}>
               {/* Email Field */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Email</Text>
+                <Text style={styles.inputLabel}>{t.register.emailLabel}</Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current.email = ref; }}
                   style={styles.input}
                   value={formData.email}
                   onChangeText={(value) => handleInputChange('email', value)}
-                  placeholder="Enter your email"
+                  placeholder={t.register.emailPlaceholder}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="next"
                   onSubmitEditing={() => focusNextField('email')}
+                  placeholderTextColor="#8e8e93"
                 />
               </View>
               
               {/* Nickname Field */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Nickname</Text>
+                <Text style={styles.inputLabel}>{t.register.displayNameLabel}</Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current.nick = ref; }}
                   style={styles.input}
                   value={formData.nick}
                   onChangeText={(value) => handleInputChange('nick', value)}
-                  placeholder="Choose a nickname"
+                  placeholder={t.register.displayNamePlaceholder}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="next"
                   onSubmitEditing={() => focusNextField('nick')}
+                  placeholderTextColor="#8e8e93"
                 />
               </View>
               
               {/* Password Field */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Password</Text>
+                <Text style={styles.inputLabel}>{t.register.passwordLabel}</Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current.password = ref; }}
                   style={styles.input}
                   value={formData.password}
                   onChangeText={(value) => handleInputChange('password', value)}
-                  placeholder="Create a password"
+                  placeholder={t.register.passwordPlaceholder}
                   secureTextEntry={true}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="next"
                   onSubmitEditing={() => focusNextField('password')}
+                  placeholderTextColor="#8e8e93"
                 />
               </View>
               
               {/* Repeat Password Field */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Confirm Password</Text>
+                <Text style={styles.inputLabel}>{t.register.confirmPasswordLabel}</Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current.repeatPassword = ref; }}
                   style={styles.input}
                   value={formData.repeatPassword}
                   onChangeText={(value) => handleInputChange('repeatPassword', value)}
-                  placeholder="Confirm your password"
+                  placeholder={t.register.confirmPasswordPlaceholder}
                   secureTextEntry={true}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="done"
                   onSubmitEditing={() => Keyboard.dismiss()}
+                  placeholderTextColor="#8e8e93"
                 />
               </View>
 
               {/* Sports Selection */}
               <View style={styles.sportsSection}>
-                <Text style={styles.sportsLabel}>Your favorite sports</Text>
-                <Text style={styles.sportsSubtitle}>Select all that apply</Text>
+                <Text style={styles.sportsLabel}>{t.register.favoriteSports}</Text>
+                <Text style={styles.sportsSubtitle}>{t.register.selectSports}</Text>
                 <View style={styles.sportsContainer}>
                   {sports.map((sport) => {
                     const isSelected = selectedSports.includes(sport);
@@ -212,7 +261,7 @@ export default function RegisterScreen() {
                 </View>
               </View>
             </View>
-          </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -221,15 +270,15 @@ export default function RegisterScreen() {
         <TouchableOpacity 
           style={styles.registerButton}
           onPress={handleRegister}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <Text style={styles.registerButtonText}>Create Account</Text>
+          <Text style={styles.registerButtonText}>{t.register.createAccount}</Text>
         </TouchableOpacity>
         
         <Text style={styles.loginText}>
-          Already have an account?{' '}
+          {t.register.alreadyHaveAccount}{' '}
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.loginLink}>Sign in</Text>
+            <Text style={styles.loginLink}>{t.register.signIn}</Text>
           </TouchableOpacity>
         </Text>
       </View>
@@ -240,7 +289,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
@@ -250,25 +299,25 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#f0f0f0',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#f8f9fa',
     justifyContent: 'center',
     alignItems: 'center',
   },
   backIcon: {
     fontSize: 18,
-    color: '#475569',
+    color: '#333333',
     fontWeight: '600',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
+    color: '#1a1a1a',
   },
   headerSpacer: {
     width: 40,
@@ -287,40 +336,71 @@ const styles = StyleSheet.create({
     paddingTop: 32,
     paddingBottom: 20,
   },
+  titleSection: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  logoBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fbbf24',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logoText: {
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 1,
+  },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#0f172a',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1a1a1a',
     marginBottom: 8,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#64748b',
-    marginBottom: 40,
+    color: '#666666',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
+    fontWeight: '400',
   },
   formSection: {
-    gap: 24,
+    gap: 20,
   },
   inputGroup: {
     gap: 8,
   },
   inputLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: '#333333',
     marginBottom: 4,
   },
   input: {
-    height: 56,
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
+    height: 52,
+    borderWidth: 1.5,
+    borderColor: '#e1e5e9',
     borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#0f172a',
+    color: '#1a1a1a',
     backgroundColor: '#ffffff',
     shadowColor: '#000',
     shadowOffset: {
@@ -337,25 +417,26 @@ const styles = StyleSheet.create({
   sportsLabel: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
+    color: '#1a1a1a',
     marginBottom: 4,
   },
   sportsSubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: '#666666',
     marginBottom: 16,
+    fontWeight: '400',
   },
   sportsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
   },
   sportChip: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#e1e5e9',
     backgroundColor: '#ffffff',
     shadowColor: '#000',
     shadowOffset: {
@@ -367,16 +448,17 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   sportChipSelected: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: '#fbbf24',
+    borderColor: '#fbbf24',
   },
   sportChipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#475569',
+    color: '#666666',
   },
   sportChipTextSelected: {
-    color: '#ffffff',
+    color: '#000000',
+    fontWeight: '600',
   },
   footer: {
     paddingHorizontal: 24,
@@ -385,10 +467,10 @@ const styles = StyleSheet.create({
     gap: 16,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: '#f0f0f0',
   },
   registerButton: {
-    height: 56,
+    height: 52,
     backgroundColor: '#fbbf24',
     borderRadius: 12,
     justifyContent: 'center',
@@ -405,16 +487,18 @@ const styles = StyleSheet.create({
   registerButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#000000',
+    letterSpacing: 0.3,
   },
   loginText: {
     fontSize: 14,
-    color: '#64748b',
+    color: '#666666',
     textAlign: 'center',
+    fontWeight: '400',
   },
   loginLink: {
     fontWeight: '600',
-    color: '#3b82f6',
+    color: '#fbbf24',
     textDecorationLine: 'underline',
   },
 });

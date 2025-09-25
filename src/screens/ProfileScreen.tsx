@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 import { useAppNavigation } from '../navigation';
+import { BottomNavBar } from '../components';
+
+// Custom SM Logo Component
+const SMLogo = ({ size = 30 }: { size?: number }) => (
+  <View style={[styles.logoContainer, { width: size, height: size }]}>
+    <View style={styles.logoBackground}>
+      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
+    </View>
+  </View>
+);
 
 export default function ProfileScreen() {
   const navigation = useAppNavigation();
@@ -52,7 +62,7 @@ export default function ProfileScreen() {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
-        <View style={styles.headerSpacer} />
+        <SMLogo size={30} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -98,41 +108,41 @@ export default function ProfileScreen() {
         </View>
 
         {/* Games List */}
-        <View style={styles.gamesList}>
+        <View style={styles.gamesSection}>
           {activeTab === 'Created' ? (
-            <>
+            <View style={styles.gamesList}>
               {renderGameItem({
                 id: '1',
                 title: 'Basketball Game',
                 location: 'Central Park',
-                date: '20/07/24',
-                time: '10:00 AM'
+                date: 'Today',
+                time: '5:00 PM'
               })}
               {renderGameItem({
                 id: '2',
                 title: 'Soccer Match',
-                location: 'Riverside Park',
-                date: '15/07/24',
-                time: '06:00 PM'
+                location: 'Prospect Park',
+                date: 'Tomorrow',
+                time: '6:00 PM'
               })}
-            </>
+            </View>
           ) : (
-            <>
+            <View style={styles.gamesList}>
               {renderGameItem({
                 id: '3',
-                title: 'Tennis Tournament',
-                location: 'Queens Park',
-                date: '18/07/24',
-                time: '02:00 PM'
+                title: 'Volleyball Game',
+                location: 'Riverside Park',
+                date: 'Friday',
+                time: '7:00 PM'
               })}
               {renderGameItem({
                 id: '4',
-                title: 'Volleyball League',
+                title: 'Tennis Match',
                 location: 'Brooklyn Bridge Park',
-                date: '12/07/24',
-                time: '07:00 PM'
+                date: 'Saturday',
+                time: '10:00 AM'
               })}
-            </>
+            </View>
           )}
         </View>
 
@@ -157,24 +167,10 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={styles.navIcon}>🗺️</Text>
-          <Text style={styles.navLabel}>Map</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={styles.navIcon}>⚽</Text>
-          <Text style={styles.navLabel}>My Games</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={[styles.navIcon, styles.navIconActive]}>👤</Text>
-          <Text style={[styles.navLabel, styles.navLabelActive]}>Profile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={styles.navIcon}>⚙️</Text>
-          <Text style={styles.navLabel}>Settings</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNavBar 
+        activeTab="MyProfile"
+        onProfilePress={() => navigation.navigate('Profile')}
+      />
     </SafeAreaView>
   );
 }
@@ -191,30 +187,55 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6', // border-gray-100
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: '#f9fafb',
     justifyContent: 'center',
     alignItems: 'center',
   },
   backIcon: {
-    fontSize: 20,
-    color: '#27272a', // text-zinc-800
+    fontSize: 24,
+    color: '#374151', // text-gray-700
+    fontWeight: 'bold',
   },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#18181b', // text-zinc-900
-    letterSpacing: -0.015,
-    paddingRight: 40, // pr-10 equivalent
+    color: '#111827', // text-gray-900
+    textAlign: 'center',
+    flex: 1,
+    marginRight: 40, // pr-10 equivalent
   },
-  headerSpacer: {
-    width: 40,
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fbbf24',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logoText: {
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 1,
   },
   scrollView: {
     flex: 1,
@@ -278,59 +299,68 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
     color: '#71717a', // text-zinc-500
     textAlign: 'center',
+    marginTop: 4,
   },
   profileJoinDate: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'normal',
     color: '#71717a', // text-zinc-500
     textAlign: 'center',
+    marginTop: 4,
   },
   tabsContainer: {
     paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   tabs: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e4e4e7', // border-zinc-200
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#e4e4e7', // border-zinc-200
   },
   tab: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   activeTab: {
-    borderBottomColor: '#18181b', // border-b-zinc-900
+    backgroundColor: '#f9bc06', // bg-[var(--primary-color)]
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: 'medium',
+    fontSize: 16,
+    fontWeight: '500',
     color: '#71717a', // text-zinc-500
   },
   activeTabText: {
+    color: '#ffffff',
     fontWeight: 'bold',
-    color: '#18181b', // text-zinc-900
+  },
+  gamesSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   gamesList: {
-    backgroundColor: '#ffffff',
+    gap: 12,
   },
   gameItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f4f4f5', // divide-zinc-100
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e4e4e7', // border-zinc-200
+    gap: 16,
   },
   gameImage: {
     width: 64,
     height: 64,
-    borderRadius: 8,
-    backgroundColor: '#e4e4e7',
+    borderRadius: 12,
+    backgroundColor: '#e4e4e7', // bg-zinc-200
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -339,40 +369,42 @@ const styles = StyleSheet.create({
   },
   gameInfo: {
     flex: 1,
-    justifyContent: 'center',
   },
   gameTitle: {
     fontSize: 16,
-    fontWeight: 'medium',
+    fontWeight: 'bold',
     color: '#18181b', // text-zinc-900
+    marginBottom: 4,
   },
   gameDetails: {
     fontSize: 14,
-    fontWeight: 'normal',
     color: '#71717a', // text-zinc-500
   },
   friendsSection: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 8,
+    marginBottom: 16,
   },
   friendsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#18181b', // text-zinc-900
-    letterSpacing: -0.015,
-    paddingBottom: 8,
+    marginBottom: 12,
   },
   friendsList: {
-    flexDirection: 'column',
-    gap: 8,
+    flexDirection: 'row',
+    gap: 12,
   },
   friendItem: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    backgroundColor: 'rgba(113, 113, 122, 0.1)', // bg-zinc-100/50
-    padding: 12,
+    backgroundColor: '#ffffff',
+    padding: 16,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e4e4e7', // border-zinc-200
+    gap: 12,
   },
   friendIcon: {
     width: 40,
@@ -381,49 +413,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#e4e4e7', // bg-zinc-200
     justifyContent: 'center',
     alignItems: 'center',
-    flexShrink: 0,
   },
   friendIconText: {
     fontSize: 20,
-    color: '#27272a', // text-zinc-800
+    color: '#71717a', // text-zinc-500
   },
   friendText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: 'medium',
-    color: '#18181b', // text-zinc-900
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: '#e4e4e7', // border-zinc-200
-    backgroundColor: 'rgba(255, 255, 255, 0.8)', // bg-white/80
-    paddingVertical: 8,
-    paddingBottom: 8,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 4,
-  },
-  navIcon: {
-    fontSize: 20,
-    color: '#71717a', // text-zinc-500
-    height: 32,
-    textAlignVertical: 'center',
-  },
-  navIconActive: {
-    color: '#18181b', // text-zinc-900
-  },
-  navLabel: {
-    fontSize: 12,
-    fontWeight: 'medium',
-    color: '#71717a', // text-zinc-500
-  },
-  navLabelActive: {
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '500',
     color: '#18181b', // text-zinc-900
   },
 });

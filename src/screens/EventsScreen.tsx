@@ -12,6 +12,15 @@ import { useAppNavigation } from '../navigation';
 import { ROUTES } from '../navigation/types';
 import { BottomNavBar } from '../components';
 
+// Custom SM Logo Component
+const SMLogo = ({ size = 30 }: { size?: number }) => (
+  <View style={[styles.logoContainer, { width: size, height: size }]}>
+    <View style={styles.logoBackground}>
+      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
+    </View>
+  </View>
+);
+
 interface Game {
   id: string;
   title: string;
@@ -104,7 +113,7 @@ export default function EventsScreen() {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Games</Text>
-        <View style={styles.headerSpacer} />
+        <SMLogo size={30} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -132,7 +141,10 @@ export default function EventsScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <BottomNavBar activeTab="MyGames" />
+      <BottomNavBar 
+        activeTab="MyGames"
+        onProfilePress={() => navigation.navigate('Profile')}
+      />
     </SafeAreaView>
   );
 }
@@ -174,8 +186,30 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 40, // pr-10 equivalent
   },
-  headerSpacer: {
-    width: 40,
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fbbf24',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logoText: {
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 1,
   },
   scrollView: {
     flex: 1,
@@ -239,4 +273,3 @@ const styles = StyleSheet.create({
     color: '#9ca3af', // text-gray-400
   },
 });
-

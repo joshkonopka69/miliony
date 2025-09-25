@@ -6,6 +6,7 @@ export { default as MapScreen } from './MapScreen';
 export { default as ChatScreen } from './ChatScreen';
 export { default as EventsScreen } from './EventsScreen';
 export { default as EventDetailsScreen } from './EventDetailsScreen';
+export { default as EventSearchResultsScreen } from './EventSearchResultsScreen';
 export { default as SettingsScreen } from './SettingsScreen';
 export { default as ProfileScreen } from './ProfileScreen';
 export { default as AddFriendScreen } from './AddFriendScreen';

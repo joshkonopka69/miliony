@@ -9,6 +9,7 @@ export type RootStackParamList = {
   Chat: undefined;
   Events: undefined;
   EventDetails: { game?: any };
+  EventSearchResults: { searchQuery: string; events: any[] };
   Settings: undefined;
   Profile: undefined;
   AddFriend: undefined;
@@ -32,6 +33,7 @@ export type MapScreenProps = RootStackScreenProps<'Map'>;
 export type ChatScreenProps = RootStackScreenProps<'Chat'>;
 export type EventsScreenProps = RootStackScreenProps<'Events'>;
 export type EventDetailsScreenProps = RootStackScreenProps<'EventDetails'>;
+export type EventSearchResultsScreenProps = RootStackScreenProps<'EventSearchResults'>;
 export type SettingsScreenProps = RootStackScreenProps<'Settings'>;
 export type ProfileScreenProps = RootStackScreenProps<'Profile'>;
 export type AddFriendScreenProps = RootStackScreenProps<'AddFriend'>;
@@ -73,6 +75,7 @@ export const ROUTES = {
   LANGUAGE: 'Language' as const,
   GAME_CHAT: 'GameChat' as const,
   EVENT_DETAILS: 'EventDetails' as const,
+  EVENT_SEARCH_RESULTS: 'EventSearchResults' as const,
   TERMS_OF_SERVICE: 'TermsOfService' as const,
   PRIVACY_POLICY: 'PrivacyPolicy' as const,
 } as const;

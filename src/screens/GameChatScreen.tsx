@@ -14,10 +14,23 @@ import {
   Alert,
   Keyboard,
   Dimensions,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  StatusBar,
+  Animated
 } from 'react-native';
 import { useAppNavigation, useAppRoute } from '../navigation';
 import { ROUTES } from '../navigation/types';
+
+const { width } = Dimensions.get('window');
+
+// Custom SM Logo Component
+const SMLogo = ({ size = 50 }: { size?: number }) => (
+  <View style={[styles.logoContainer, { width: size, height: size }]}>
+    <View style={styles.logoBackground}>
+      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
+    </View>
+  </View>
+);
 
 interface Message {
   id: string;
@@ -142,9 +155,27 @@ export default function GameChatScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const textInputRef = useRef<TextInput>(null);
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
 
   // Get game info from route params (if passed)
   const gameData = route.params?.game || gameInfo;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
 
   useEffect(() => {
@@ -260,14 +291,19 @@ export default function GameChatScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <View style={styles.gameInfoContainer}>
-          <Text style={styles.gameTitle}>{gameData.title}</Text>
-          <Text style={styles.gameSubtitle}>{gameData.location}</Text>
+          <SMLogo size={40} />
+          <View style={styles.gameInfo}>
+            <Text style={styles.gameTitle}>{gameData.title}</Text>
+            <Text style={styles.gameSubtitle}>{gameData.location}</Text>
+          </View>
         </View>
         <TouchableOpacity style={styles.usersButton} onPress={toggleMembers}>
           <Text style={styles.usersIcon}>👥</Text>
@@ -372,43 +408,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingBottom: 8,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   backButton: {
-    width: 48,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   backIcon: {
-    fontSize: 24,
-    color: '#0f172a', // stone-900
+    fontSize: 20,
+    color: '#181611',
     fontWeight: 'bold',
   },
   gameInfoContainer: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: 16,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  logoBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fbbf24',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logoText: {
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 1,
+  },
+  gameInfo: {
+    flex: 1,
   },
   gameTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0f172a', // stone-900
+    fontWeight: '700',
+    color: '#181611',
     textAlign: 'center',
-    lineHeight: 20,
-    letterSpacing: -0.24, // tracking-[-0.015em]
+    letterSpacing: -0.5,
   },
   gameSubtitle: {
     fontSize: 14,
-    fontWeight: 'normal',
-    color: '#78716c', // stone-500
+    color: '#6b7280',
     textAlign: 'center',
-    lineHeight: 20,
     marginTop: 2,
   },
   usersButton: {

@@ -1,21 +1,49 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, SafeAreaView, StatusBar, Animated, Dimensions } from 'react-native';
 import { useAppNavigation } from '../navigation';
+import { useTranslation } from '../contexts/TranslationContext';
+
+const { width } = Dimensions.get('window');
+
+// Custom SM Logo Component (same as WelcomeScreen)
+const SMLogo = ({ size = 60 }: { size?: number }) => (
+  <View style={[styles.logoContainer, { width: size, height: size }]}>
+    <View style={styles.logoBackground}>
+      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
+    </View>
+  </View>
+);
 
 export default function AuthScreen() {
   const navigation = useAppNavigation();
+  const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleLogin = () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-
-    // Here you would typically handle authentication
-    // For now, just navigate to map
     navigation.navigate('Map');
   };
 
@@ -31,42 +59,56 @@ export default function AuthScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       
-      {/* Main Content */}
-      <View style={styles.mainContent}>
-        {/* Logo and Title */}
-        <View style={styles.logoSection}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>⚽</Text>
-          </View>
-          <Text style={styles.title}>SportMap</Text>
-        </View>
+      <View style={styles.content}>
+        {/* Header with Logo and Title */}
+        <Animated.View 
+          style={[
+            styles.header,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+                 <SMLogo size={60} />
+                 <Text style={styles.title}>{t.auth.title}</Text>
+                 <Text style={styles.subtitle}>{t.auth.subtitle}</Text>
+        </Animated.View>
 
         {/* Form Section */}
-        <View style={styles.formSection}>
-          {/* Username/Email Input */}
+        <Animated.View 
+          style={[
+            styles.formSection,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          {/* Email Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputIcon}>👤</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Username or Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholderTextColor="#9CA3AF"
-            />
+                   <TextInput
+                     style={styles.input}
+                     placeholder={t.auth.emailPlaceholder}
+                     value={email}
+                     onChangeText={setEmail}
+                     keyboardType="email-address"
+                     autoCapitalize="none"
+                     placeholderTextColor="#8e8e93"
+                     autoComplete="email"
+                   />
           </View>
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputIcon}>🔒</Text>
             <TextInput
               style={styles.input}
-              placeholder="Password"
+              placeholder={t.auth.passwordPlaceholder}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8e8e93"
+              autoComplete="password"
             />
           </View>
 
@@ -74,17 +116,18 @@ export default function AuthScreen() {
           <TouchableOpacity 
             style={styles.loginButton}
             onPress={handleLogin}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <Text style={styles.loginButtonText}>Log In</Text>
+            <Text style={styles.loginButtonText}>{t.auth.signIn}</Text>
           </TouchableOpacity>
 
           {/* Forgot Password */}
           <TouchableOpacity 
             style={styles.forgotPasswordButton}
             onPress={handleForgotPassword}
+            activeOpacity={0.7}
           >
-            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+            <Text style={styles.forgotPasswordText}>{t.auth.forgotPassword}</Text>
           </TouchableOpacity>
 
           {/* Divider */}
@@ -98,13 +141,12 @@ export default function AuthScreen() {
           <TouchableOpacity 
             style={styles.registerButton}
             onPress={handleRegister}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <Text style={styles.registerButtonText}>Register</Text>
+            <Text style={styles.registerButtonText}>{t.auth.createAccount}</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
-
     </SafeAreaView>
   );
 }
@@ -114,120 +156,144 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
-  mainContent: {
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingTop: 60,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+  },
+  header: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-  },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 32,
+    paddingTop: 40,
   },
   logoContainer: {
-    backgroundColor: '#ffd400', // --primary-color
-    padding: 16,
-    borderRadius: 50,
-    marginBottom: 16,
-    shadowColor: '#000',
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#FFD700',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FFD700',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 3,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 6,
   },
-  logoIcon: {
-    fontSize: 48,
+  logoText: {
+    fontWeight: '800',
     color: '#000000',
+    letterSpacing: -0.8,
+    fontFamily: 'System',
   },
   title: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: '#1F2937', // gray-800
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1a1a1a',
     textAlign: 'center',
+    letterSpacing: -0.6,
+    marginBottom: 8,
+    lineHeight: 34,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 20,
   },
   formSection: {
+    alignItems: 'center',
     width: '100%',
-    maxWidth: 320,
+    paddingBottom: 20,
   },
   inputContainer: {
-    position: 'relative',
+    width: '100%',
+    maxWidth: 320,
     marginBottom: 16,
-  },
-  inputIcon: {
-    position: 'absolute',
-    left: 12,
-    top: '50%',
-    transform: [{ translateY: -10 }],
-    fontSize: 20,
-    color: '#9CA3AF', // gray-400
-    zIndex: 1,
   },
   input: {
     width: '100%',
-    backgroundColor: '#F3F4F6', // gray-100
-    paddingVertical: 12,
-    paddingLeft: 40,
-    paddingRight: 16,
-    borderRadius: 50,
-    fontSize: 16,
-    color: '#1F2937', // gray-800
-    borderWidth: 0,
+    height: 52,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1.5,
+    borderColor: '#e1e5e9',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: '#1a1a1a',
+    fontWeight: '400',
   },
   loginButton: {
     width: '100%',
-    backgroundColor: '#ffd400', // --primary-color
-    paddingVertical: 12,
-    borderRadius: 50,
+    maxWidth: 320,
+    height: 52,
+    backgroundColor: '#FFD700',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 8,
-    shadowColor: '#000',
+    shadowColor: '#FFD700',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 3,
   },
   loginButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937', // gray-900
-    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000000',
+    letterSpacing: 0.2,
   },
   forgotPasswordButton: {
     alignItems: 'center',
     marginTop: 16,
   },
   forgotPasswordText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
-    color: '#6B7280', // gray-500
+    color: '#007AFF',
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 20,
+    width: '100%',
+    maxWidth: 320,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E7EB', // gray-200
+    backgroundColor: '#e1e5e9',
   },
   dividerText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#9CA3AF', // gray-400
+    fontSize: 13,
+    color: '#8e8e93',
     marginHorizontal: 16,
+    fontWeight: '500',
   },
   registerButton: {
     width: '100%',
+    maxWidth: 320,
+    height: 52,
     backgroundColor: '#000000',
-    paddingVertical: 12,
-    borderRadius: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -235,12 +301,12 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 2,
   },
   registerButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '500',
     color: '#ffffff',
-    textAlign: 'center',
+    letterSpacing: 0.2,
   },
 });

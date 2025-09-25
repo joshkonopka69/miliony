@@ -1,16 +1,50 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
   SafeAreaView, 
-  ScrollView 
+  ScrollView,
+  StatusBar,
+  Animated,
+  Dimensions
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
+import { useTranslation } from '../contexts/TranslationContext';
+
+const { width } = Dimensions.get('window');
+
+// Custom SM Logo Component
+const SMLogo = ({ size = 50 }: { size?: number }) => (
+  <View style={[styles.logoContainer, { width: size, height: size }]}>
+    <View style={styles.logoBackground}>
+      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
+    </View>
+  </View>
+);
 
 export default function PrivacyPolicyScreen() {
   const navigation = useAppNavigation();
+  const { t } = useTranslation();
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleBack = () => {
     navigation.goBack();
@@ -18,6 +52,8 @@ export default function PrivacyPolicyScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -27,130 +63,121 @@ export default function PrivacyPolicyScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <Text style={styles.lastUpdated}>Last updated: December 2024</Text>
-          
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>1. Information We Collect</Text>
-            <Text style={styles.sectionText}>
-              We collect information you provide directly to us, such as when you create an account, participate in activities, or contact us for support.
-            </Text>
-            <Text style={styles.subsectionTitle}>Personal Information:</Text>
-            <Text style={styles.listItem}>• Name and email address</Text>
-            <Text style={styles.listItem}>• Profile information and preferences</Text>
-            <Text style={styles.listItem}>• Location data (with your permission)</Text>
-            <Text style={styles.listItem}>• Photos and content you share</Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>2. How We Use Your Information</Text>
-            <Text style={styles.sectionText}>
-              We use the information we collect to:
-            </Text>
-            <Text style={styles.listItem}>• Provide, maintain, and improve our services</Text>
-            <Text style={styles.listItem}>• Process transactions and send related information</Text>
-            <Text style={styles.listItem}>• Send technical notices and support messages</Text>
-            <Text style={styles.listItem}>• Respond to your comments and questions</Text>
-            <Text style={styles.listItem}>• Communicate with you about products, services, and events</Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>3. Information Sharing</Text>
-            <Text style={styles.sectionText}>
-              We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except in the following circumstances:
-            </Text>
-            <Text style={styles.listItem}>• With your explicit consent</Text>
-            <Text style={styles.listItem}>• To comply with legal obligations</Text>
-            <Text style={styles.listItem}>• To protect our rights and safety</Text>
-            <Text style={styles.listItem}>• In connection with a business transfer</Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>4. Data Security</Text>
-            <Text style={styles.sectionText}>
-              We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the internet is 100% secure.
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Animated.View 
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          {/* Logo and Title */}
+          <View style={styles.titleSection}>
+            <SMLogo size={50} />
+            <Text style={styles.title}>Privacy Policy</Text>
+            <Text style={styles.subtitle}>
+              Your privacy is important to us. Please read this policy carefully.
             </Text>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>5. Location Information</Text>
-            <Text style={styles.sectionText}>
-              We may collect and use location information to provide location-based services. You can control location sharing through your device settings or app permissions.
-            </Text>
-          </View>
+          {/* Content Section */}
+          <View style={styles.contentSection}>
+            <Text style={styles.lastUpdated}>Last updated: December 2024</Text>
+            
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>1. Information We Collect</Text>
+              <Text style={styles.sectionText}>
+                We collect information you provide directly to us, such as when you create an account, participate in activities, or contact us for support.
+              </Text>
+              <Text style={styles.subsectionTitle}>Personal Information:</Text>
+              <Text style={styles.listItem}>• Name and email address</Text>
+              <Text style={styles.listItem}>• Profile information and preferences</Text>
+              <Text style={styles.listItem}>• Location data (with your permission)</Text>
+              <Text style={styles.listItem}>• Photos and content you share</Text>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>6. Cookies and Tracking</Text>
-            <Text style={styles.sectionText}>
-              We use cookies and similar tracking technologies to enhance your experience, analyze usage patterns, and improve our services. You can control cookie preferences through your browser settings.
-            </Text>
-          </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>2. How We Use Your Information</Text>
+              <Text style={styles.sectionText}>
+                We use the information we collect to:
+              </Text>
+              <Text style={styles.listItem}>• Provide, maintain, and improve our services</Text>
+              <Text style={styles.listItem}>• Process transactions and send related information</Text>
+              <Text style={styles.listItem}>• Send technical notices and support messages</Text>
+              <Text style={styles.listItem}>• Respond to your comments and questions</Text>
+              <Text style={styles.listItem}>• Communicate with you about products and services</Text>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>7. Third-Party Services</Text>
-            <Text style={styles.sectionText}>
-              Our application may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties. We encourage you to read their privacy policies.
-            </Text>
-          </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>3. Information Sharing</Text>
+              <Text style={styles.sectionText}>
+                We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except as described in this policy.
+              </Text>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>8. Children's Privacy</Text>
-            <Text style={styles.sectionText}>
-              Our services are not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13. If we become aware that we have collected personal information from a child under 13, we will take steps to delete such information.
-            </Text>
-          </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>4. Data Security</Text>
+              <Text style={styles.sectionText}>
+                We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.
+              </Text>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>9. Your Rights</Text>
-            <Text style={styles.sectionText}>
-              You have the right to:
-            </Text>
-            <Text style={styles.listItem}>• Access your personal information</Text>
-            <Text style={styles.listItem}>• Correct inaccurate information</Text>
-            <Text style={styles.listItem}>• Delete your account and data</Text>
-            <Text style={styles.listItem}>• Opt out of marketing communications</Text>
-            <Text style={styles.listItem}>• Data portability</Text>
-          </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>5. Cookies and Tracking</Text>
+              <Text style={styles.sectionText}>
+                We use cookies and similar tracking technologies to enhance your experience and analyze how our service is used.
+              </Text>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>10. Data Retention</Text>
-            <Text style={styles.sectionText}>
-              We retain your personal information for as long as necessary to provide our services and fulfill the purposes outlined in this privacy policy, unless a longer retention period is required by law.
-            </Text>
-          </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>6. Your Rights</Text>
+              <Text style={styles.sectionText}>
+                You have the right to:
+              </Text>
+              <Text style={styles.listItem}>• Access your personal information</Text>
+              <Text style={styles.listItem}>• Correct inaccurate information</Text>
+              <Text style={styles.listItem}>• Delete your personal information</Text>
+              <Text style={styles.listItem}>• Object to processing of your information</Text>
+              <Text style={styles.listItem}>• Data portability</Text>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>11. International Transfers</Text>
-            <Text style={styles.sectionText}>
-              Your information may be transferred to and processed in countries other than your own. We ensure appropriate safeguards are in place to protect your personal information.
-            </Text>
-          </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>7. Children's Privacy</Text>
+              <Text style={styles.sectionText}>
+                Our service is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.
+              </Text>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>12. Changes to This Policy</Text>
-            <Text style={styles.sectionText}>
-              We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.
-            </Text>
-          </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>8. Changes to This Policy</Text>
+              <Text style={styles.sectionText}>
+                We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page.
+              </Text>
+            </View>
 
-          <View style={styles.contactSection}>
-            <Text style={styles.contactTitle}>Contact Us</Text>
-            <Text style={styles.contactText}>
-              If you have any questions about this Privacy Policy, please contact us at:
-            </Text>
-            <Text style={styles.contactEmail}>privacy@miliony.com</Text>
-            <Text style={styles.contactText}>
-              Or write to us at:
-            </Text>
-            <Text style={styles.contactAddress}>
-              Miliony Inc.{'\n'}
-              123 Sports Street{'\n'}
-              City, State 12345{'\n'}
-              United States
-            </Text>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>9. Contact Us</Text>
+              <Text style={styles.sectionText}>
+                If you have any questions about this Privacy Policy, please contact us at:
+              </Text>
+              <Text style={styles.contactEmail}>privacy@miliony.com</Text>
+              <Text style={styles.sectionText}>
+                Or by mail at:
+              </Text>
+              <Text style={styles.contactAddress}>
+                123 Sports Street{'\n'}
+                City, State 12345{'\n'}
+                United States
+              </Text>
+            </View>
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -159,133 +186,144 @@ export default function PrivacyPolicyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb', // bg-gray-50
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingBottom: 12,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6', // border-gray-100
+    borderBottomColor: '#f0f0f0',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f9fafb',
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   backIcon: {
-    fontSize: 24,
-    color: '#374151', // text-gray-700
+    fontSize: 20,
+    color: '#181611',
     fontWeight: 'bold',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827', // text-gray-900
-    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#181611',
+    letterSpacing: -0.5,
     flex: 1,
-    marginRight: 40, // pr-10 equivalent
+    textAlign: 'center',
   },
   headerSpacer: {
-    width: 40,
+    width: 36,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
-    padding: 16,
-    gap: 20,
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+  },
+  titleSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  logoBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fbbf24',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  logoText: {
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 1,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#181611',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 20,
+  },
+  contentSection: {
+    flex: 1,
   },
   lastUpdated: {
     fontSize: 14,
-    color: '#6b7280', // text-gray-500
+    color: '#6b7280',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 24,
+    fontStyle: 'italic',
   },
   section: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827', // text-gray-900
+    fontWeight: '700',
+    color: '#181611',
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+  sectionText: {
+    fontSize: 16,
+    color: '#374151',
+    lineHeight: 24,
     marginBottom: 12,
   },
   subsectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151', // text-gray-700
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  sectionText: {
-    fontSize: 16,
-    color: '#374151', // text-gray-700
-    lineHeight: 24,
+    color: '#181611',
+    marginTop: 12,
     marginBottom: 8,
   },
   listItem: {
     fontSize: 16,
-    color: '#374151', // text-gray-700
+    color: '#374151',
     lineHeight: 24,
-    marginLeft: 8,
     marginBottom: 4,
-  },
-  contactSection: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  contactTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827', // text-gray-900
-    marginBottom: 12,
-  },
-  contactText: {
-    fontSize: 16,
-    color: '#374151', // text-gray-700
-    lineHeight: 24,
-    marginBottom: 8,
+    paddingLeft: 8,
   },
   contactEmail: {
     fontSize: 16,
-    color: '#10b981', // text-emerald-500
-    fontWeight: '500',
-    marginBottom: 8,
+    color: '#fbbf24',
+    fontWeight: '600',
+    marginTop: 8,
   },
   contactAddress: {
     fontSize: 16,
-    color: '#374151', // text-gray-700
+    color: '#374151',
     lineHeight: 24,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });
-
-
-

@@ -1,10 +1,41 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, SafeAreaView } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, SafeAreaView, StatusBar, Animated, Dimensions } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { ROUTES } from '../navigation/types';
+import { useTranslation } from '../contexts/TranslationContext';
+
+const { width } = Dimensions.get('window');
+
+// Custom SM Logo Component
+const SMLogo = ({ size = 40 }: { size?: number }) => (
+  <View style={[styles.logoContainer, { width: size, height: size }]}>
+    <View style={styles.logoBackground}>
+      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
+    </View>
+  </View>
+);
 
 export default function SettingsScreen() {
   const navigation = useAppNavigation();
+  const { t } = useTranslation();
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleBack = () => {
     navigation.goBack();
@@ -24,7 +55,6 @@ export default function SettingsScreen() {
       ]
     );
   };
-
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -62,25 +92,39 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      
+      {/* Header with Logo and Title */}
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
+        <SMLogo size={40} />
         <Text style={styles.headerTitle}>Settings</Text>
         <View style={styles.headerSpacer} />
-      </View>
+      </Animated.View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }}
+      >
         <View style={styles.content}>
           {/* Account Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Account</Text>
             <View style={styles.sectionContainer}>
-              {renderSettingItem(
-                'Edit Profile',
-                () => navigation.navigate(ROUTES.PROFILE)
-              )}
               {renderSettingItem(
                 'Favorite Sports',
                 () => console.log('Favorite Sports pressed')
@@ -132,10 +176,18 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Logout Button */}
-      <View style={styles.logoutContainer}>
+      <Animated.View 
+        style={[
+          styles.logoutContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <TouchableOpacity 
           style={styles.logoutButton}
           onPress={handleLogout}
@@ -143,7 +195,7 @@ export default function SettingsScreen() {
         >
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -157,8 +209,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingVertical: 16,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fbbf24',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logoText: {
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 1,
   },
   backButton: {
     padding: 8,
@@ -169,12 +257,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    letterSpacing: -0.5,
     flex: 1,
     textAlign: 'center',
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#181611',
-    letterSpacing: -0.5,
   },
   headerSpacer: {
     width: 24,
