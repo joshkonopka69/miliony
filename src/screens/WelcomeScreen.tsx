@@ -37,6 +37,10 @@ export default function WelcomeScreen() {
     navigation.navigate('Auth');
   };
 
+  const handleTestScreen = () => {
+    navigation.navigate('EventTest');
+  };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -94,6 +98,16 @@ export default function WelcomeScreen() {
             >
               <Text style={styles.emailIcon}>✉️</Text>
               <Text style={styles.emailButtonText}>Continue with Email</Text>
+            </TouchableOpacity>
+
+            {/* Test Button */}
+            <TouchableOpacity 
+              style={styles.testButton}
+              onPress={handleTestScreen}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.testIcon}>🧪</Text>
+              <Text style={styles.testButtonText}>Test Events & Chat</Text>
             </TouchableOpacity>
           </View>
 
@@ -217,6 +231,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#181611',
+    letterSpacing: 0.24,
+  },
+  testButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    height: 56,
+    backgroundColor: '#6c757d',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+  },
+  testIcon: {
+    fontSize: 20,
+  },
+  testButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
     letterSpacing: 0.24,
   },
   termsText: {

@@ -53,7 +53,7 @@ export default function MapScreen() {
       </TouchableOpacity>
 
       <BottomNavBar 
-        activeTab="Map"
+        activeTab="Home"
         onAddPress={() => setShowEventModal(true)}
       />
     </SafeAreaView>

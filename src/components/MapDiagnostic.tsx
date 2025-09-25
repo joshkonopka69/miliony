@@ -44,7 +44,6 @@ export default function MapDiagnostic() {
             longitudeDelta: 0.0421,
           }}
           onMapReady={handleMapReady}
-          onError={handleMapError}
           showsUserLocation={false}
           showsMyLocationButton={false}
         />

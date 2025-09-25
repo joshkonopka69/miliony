@@ -146,7 +146,7 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
   };
 
   useEffect(() => {
-    if (onMapReady && mapRef) {
+    if (onMapReady && mapRef && mapRef.current) {
       onMapReady(mapRef);
     }
   }, [onMapReady]);
@@ -170,7 +170,8 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
       }
     } catch (err) {
       console.error('🚨 Location permission error:', err);
-      Alert.alert('Error', `Failed to request location permission: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      Alert.alert('Error', `Failed to request location permission: ${errorMessage}`);
     }
   };
 
@@ -179,7 +180,6 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
       console.log('🌍 Getting current location...');
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
-        timeout: 10000,
         maximumAge: 60000,
       });
       
@@ -204,7 +204,8 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
       }
     } catch (error) {
       console.error('🚨 Location error:', error);
-      Alert.alert('Location Error', `Unable to get your current location: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Location Error', `Unable to get your current location: ${errorMessage}`);
     }
   };
 

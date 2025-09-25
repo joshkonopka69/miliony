@@ -20,6 +20,7 @@ import {
   GameChatScreen,
   TermsOfServiceScreen,
   PrivacyPolicyScreen,
+  EventTestScreen,
 } from '../screens';
 
 // Import navigation utilities and types
@@ -154,6 +155,11 @@ export default function AppNavigator() {
         <Stack.Screen 
           name={ROUTES.PRIVACY_POLICY} 
           component={PrivacyPolicyScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="EventTest" 
+          component={EventTestScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

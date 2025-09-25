@@ -18,6 +18,7 @@ export type RootStackParamList = {
   GameChat: { game?: any };
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
+  EventTest: undefined;
 };
 
 // Screen Props Types
@@ -75,6 +76,7 @@ export const ROUTES = {
   EVENT_DETAILS: 'EventDetails' as const,
   TERMS_OF_SERVICE: 'TermsOfService' as const,
   PRIVACY_POLICY: 'PrivacyPolicy' as const,
+  EVENT_TEST: 'EventTest' as const,
 } as const;
 
 export type RouteNames = typeof ROUTES[keyof typeof ROUTES];
