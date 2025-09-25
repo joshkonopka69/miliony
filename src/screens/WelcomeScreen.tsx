@@ -1,79 +1,35 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Animated, Dimensions, Modal } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView, Animated } from 'react-native';
 import { useAppNavigation } from '../navigation';
-import { useTranslation, Language } from '../contexts/TranslationContext';
-
-const { width } = Dimensions.get('window');
-
-// Custom SM Logo Component
-const SMLogo = ({ size = 80 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
-
-// Custom Google Icon Component - Simple and clean
-const GoogleIcon = ({ size = 20 }: { size?: number }) => (
-  <View style={[styles.googleIconContainer, { width: size, height: size }]}>
-    <View style={styles.googleIcon}>
-      <Text style={[styles.googleIconText, { fontSize: size * 0.7 }]}>G</Text>
-    </View>
-  </View>
-);
-
-// Custom Apple Icon Component - Black square icon
-const AppleIcon = ({ size = 20 }: { size?: number }) => (
-  <View style={[styles.appleIconContainer, { width: size, height: size }]}>
-    <View style={styles.appleIcon}>
-      <View style={[styles.appleSquare, {
-        width: size * 0.8,
-        height: size * 0.8,
-        backgroundColor: '#000000',
-        borderRadius: size * 0.1,
-      }]} />
-    </View>
-  </View>
-);
 
 export default function WelcomeScreen() {
   const navigation = useAppNavigation();
-  const { t, language, setLanguage, availableLanguages } = useTranslation();
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
-  
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
-    // Staggered animation sequence for more natural feel
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
+    // Fade in animation on component mount
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 1000,
         useNativeDriver: true,
       }),
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-      ]),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
   const handleGoogleAuth = () => {
+    // TODO: Implement Google authentication
     navigation.navigate('Auth');
   };
 
   const handleAppleAuth = () => {
+    // TODO: Implement Apple authentication
     navigation.navigate('Auth');
   };
 
@@ -81,93 +37,67 @@ export default function WelcomeScreen() {
     navigation.navigate('Auth');
   };
 
-<<<<<<< HEAD
-  const handleLanguageSelect = (selectedLanguage: Language) => {
-    setLanguage(selectedLanguage);
-    setShowLanguageModal(false);
-  };
-
-  const getCurrentLanguageName = () => {
-    const currentLang = availableLanguages.find(lang => lang.code === language);
-    return currentLang?.name || 'English';
-  };
-=======
   const handleTestScreen = () => {
     navigation.navigate('EventTest');
   };
 
->>>>>>> e8c0124cd79c66d28c3d92ee223bfde032a745b5
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       
       <View style={styles.content}>
-        {/* Header with Logo and Title */}
+        {/* Main Content */}
         <Animated.View 
           style={[
-            styles.header,
-            {
-              opacity: fadeAnim,
-              transform: [
-                { translateY: slideAnim },
-                { scale: scaleAnim }
-              ],
-            },
-          ]}
-        >
-          <SMLogo size={72} />
-          <Text style={styles.title}>{t.welcome.title}</Text>
-          <Text style={styles.subtitle}>
-            {t.welcome.subtitle}
-          </Text>
-        </Animated.View>
-
-        {/* Authentication Section */}
-        <Animated.View 
-          style={[
-            styles.authSection,
+            styles.main,
             {
               opacity: fadeAnim,
               transform: [{ translateY: slideAnim }],
             },
           ]}
         >
+          {/* Location Icon */}
+          <View style={styles.iconContainer}>
+            <Text style={styles.locationIcon}>📍</Text>
+          </View>
+
+          {/* Title and Subtitle */}
+          <Text style={styles.title}>Sportsmap</Text>
+          <Text style={styles.subtitle}>Find games and players nearby</Text>
+        </Animated.View>
+
+        {/* Authentication Buttons */}
+        <View style={styles.authSection}>
           <View style={styles.buttonContainer}>
             {/* Google Button */}
             <TouchableOpacity 
               style={styles.googleButton}
               onPress={handleGoogleAuth}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <GoogleIcon size={20} />
-              <Text style={styles.googleButtonText}>{t.welcome.continueWithGoogle}</Text>
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
 
             {/* Apple Button */}
             <TouchableOpacity 
               style={styles.appleButton}
               onPress={handleAppleAuth}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <AppleIcon size={20} />
-              <Text style={styles.appleButtonText}>{t.welcome.continueWithApple}</Text>
+              <Text style={styles.appleIcon}>🍎</Text>
+              <Text style={styles.appleButtonText}>Continue with Apple</Text>
             </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
 
             {/* Email Button */}
             <TouchableOpacity 
               style={styles.emailButton}
               onPress={handleEmailAuth}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <Text style={styles.emailButtonText}>{t.welcome.signUpWithEmail}</Text>
+              <Text style={styles.emailIcon}>✉️</Text>
+              <Text style={styles.emailButtonText}>Continue with Email</Text>
             </TouchableOpacity>
 
             {/* Test Button */}
@@ -183,63 +113,12 @@ export default function WelcomeScreen() {
 
           {/* Terms and Privacy */}
           <Text style={styles.termsText}>
-            {t.welcome.termsText}{' '}
-            <Text style={styles.linkText}>{t.welcome.termsOfService}</Text> and{' '}
-            <Text style={styles.linkText}>{t.welcome.privacyPolicy}</Text>
+            By continuing, you agree to our{' '}
+            <Text style={styles.linkText}>Terms of Service</Text> and{' '}
+            <Text style={styles.linkText}>Privacy Policy</Text>.
           </Text>
-
-          {/* Language Selection */}
-          <TouchableOpacity 
-            style={styles.languageButton}
-            onPress={() => setShowLanguageModal(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.languageButtonText}>🌐 {getCurrentLanguageName()}</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-
-      {/* Language Selection Modal */}
-      <Modal
-        visible={showLanguageModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowLanguageModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{t.welcome.selectLanguage}</Text>
-            {availableLanguages.map((lang) => (
-              <TouchableOpacity
-                key={lang.code}
-                style={[
-                  styles.languageOption,
-                  language === lang.code && styles.languageOptionSelected
-                ]}
-                onPress={() => handleLanguageSelect(lang.code)}
-                activeOpacity={0.7}
-              >
-                <Text style={[
-                  styles.languageOptionText,
-                  language === lang.code && styles.languageOptionTextSelected
-                ]}>
-                  {lang.name}
-                </Text>
-                {language === lang.code && (
-                  <Text style={styles.checkmark}>✓</Text>
-                )}
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowLanguageModal(false)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TouchableOpacity>
-          </View>
         </View>
-      </Modal>
+      </View>
     </SafeAreaView>
   );
 }
@@ -252,199 +131,107 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
+    paddingTop: 64,
+    paddingBottom: 32,
   },
-  header: {
+  main: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 40,
+    paddingHorizontal: 16,
   },
-  logoContainer: {
-    marginBottom: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+  iconContainer: {
+    marginBottom: 16,
   },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FFD700',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  logoText: {
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: -1,
-    fontFamily: 'System',
+  locationIcon: {
+    fontSize: 64,
+    color: '#f9bc06',
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#181611',
     textAlign: 'center',
-    letterSpacing: -0.8,
-    marginBottom: 12,
-    lineHeight: 38,
+    letterSpacing: -0.5,
+    lineHeight: 40,
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: '#666666',
+    fontSize: 18,
+    fontWeight: 'normal',
+    color: '#575757',
     textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 20,
+    lineHeight: 24,
   },
   authSection: {
     alignItems: 'center',
-    width: '100%',
+    paddingHorizontal: 16,
   },
   buttonContainer: {
     width: '100%',
-    maxWidth: 320,
-    gap: 12,
+    maxWidth: 384,
+    gap: 16,
   },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 52,
+    gap: 12,
+    height: 56,
     backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: '#e1e5e9',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  googleIconContainer: {
-    marginRight: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e4e4e7',
+    borderRadius: 28,
+    paddingHorizontal: 20,
   },
   googleIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#dadce0',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-    elevation: 1,
-  },
-  googleIconText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4285F4',
-    textAlign: 'center',
-    lineHeight: 12,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#4285f4',
   },
   googleButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
-    color: '#3c4043',
-    letterSpacing: 0.2,
+    color: '#575757',
+    letterSpacing: 0.24,
   },
   appleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 52,
+    gap: 12,
+    height: 56,
     backgroundColor: '#000000',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  appleIconContainer: {
-    marginRight: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 28,
+    paddingHorizontal: 20,
   },
   appleIcon: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appleSquare: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: 20,
   },
   appleButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
     color: '#ffffff',
-    letterSpacing: 0.2,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e1e5e9',
-  },
-  dividerText: {
-    fontSize: 13,
-    color: '#8e8e93',
-    marginHorizontal: 16,
-    fontWeight: '500',
+    letterSpacing: 0.24,
   },
   emailButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 52,
-    backgroundColor: '#FFD700',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    gap: 12,
+    height: 56,
+    backgroundColor: '#f9bc06',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+  },
+  emailIcon: {
+    fontSize: 20,
   },
   emailButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#000000',
-    letterSpacing: 0.2,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#181611',
+    letterSpacing: 0.24,
   },
   testButton: {
     flexDirection: 'row',
@@ -467,100 +254,14 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 12,
-    color: '#8e8e93',
+    color: '#71717a',
     textAlign: 'center',
-    marginTop: 24,
+    marginTop: 16,
+    maxWidth: 320,
     lineHeight: 16,
-    paddingHorizontal: 20,
   },
   linkText: {
-    color: '#007AFF',
-    fontWeight: '500',
-  },
-  languageButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginTop: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e1e5e9',
-  },
-  languageButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333333',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  modalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 300,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  languageOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: '#f8f9fa',
-  },
-  languageOptionSelected: {
-    backgroundColor: '#fbbf24',
-  },
-  languageOptionText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333333',
-  },
-  languageOptionTextSelected: {
-    color: '#000000',
-    fontWeight: '600',
-  },
-  checkmark: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  modalCloseButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    marginTop: 16,
-    backgroundColor: '#e1e5e9',
-    borderRadius: 8,
-  },
-  modalCloseText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333333',
+    textDecorationLine: 'underline',
   },
 });
 

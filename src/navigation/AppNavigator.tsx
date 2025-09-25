@@ -11,7 +11,6 @@ import {
   ChatScreen,
   EventsScreen,
   EventDetailsScreen,
-  EventSearchResultsScreen,
   SettingsScreen,
   ProfileScreen,
   AddFriendScreen,
@@ -111,11 +110,6 @@ export default function AppNavigator() {
         <Stack.Screen 
           name={ROUTES.EVENT_DETAILS} 
           component={EventDetailsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name={ROUTES.EVENT_SEARCH_RESULTS} 
-          component={EventSearchResultsScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen 
