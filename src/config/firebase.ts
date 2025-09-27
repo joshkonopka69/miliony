@@ -32,11 +32,16 @@ let auth: any;
 let messaging: any;
 
 try {
-  firestore = getFirestore(app);
-  auth = getAuth(app);
-  messaging = getMessaging(app);
-  
-  console.log('✅ Firebase services initialized successfully');
+  // Check if we're in a web environment
+  if (typeof window !== 'undefined') {
+    firestore = getFirestore(app);
+    auth = getAuth(app);
+    // Only initialize messaging in web environment
+    messaging = getMessaging(app);
+    console.log('✅ Firebase services initialized successfully');
+  } else {
+    throw new Error('Not in web environment');
+  }
 } catch (error) {
   console.warn('⚠️ Firebase services not available:', error);
   // Create mock services for development

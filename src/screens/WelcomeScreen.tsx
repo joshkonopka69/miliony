@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Animated, Dimensions, Modal } from 'react-native';
-import { useAppNavigation } from '../navigation';
+import { useAppNavigation } from '../navigation/hooks-only';
 import { useTranslation, Language } from '../contexts/TranslationContext';
 
 const { width } = Dimensions.get('window');
@@ -81,7 +81,6 @@ export default function WelcomeScreen() {
     navigation.navigate('Auth');
   };
 
-<<<<<<< HEAD
   const handleLanguageSelect = (selectedLanguage: Language) => {
     setLanguage(selectedLanguage);
     setShowLanguageModal(false);
@@ -91,12 +90,10 @@ export default function WelcomeScreen() {
     const currentLang = availableLanguages.find(lang => lang.code === language);
     return currentLang?.name || 'English';
   };
-=======
+
   const handleTestScreen = () => {
     navigation.navigate('EventTest');
   };
-
->>>>>>> e8c0124cd79c66d28c3d92ee223bfde032a745b5
 
   return (
     <SafeAreaView style={styles.container}>
