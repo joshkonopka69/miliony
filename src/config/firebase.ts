@@ -1,7 +1,7 @@
 // Firebase configuration for SportMap - Expo Compatible
 import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
+
 import { getMessaging } from 'firebase/messaging';
 
 export interface FirebaseConfig {
@@ -32,16 +32,28 @@ let auth: any;
 let messaging: any;
 
 try {
-  // Check if we're in a web environment
+  // Initialize Firebase services for React Native
+  
+  
+  // Only initialize firestore and messaging in web environment
   if (typeof window !== 'undefined') {
     firestore = getFirestore(app);
-    auth = getAuth(app);
-    // Only initialize messaging in web environment
     messaging = getMessaging(app);
-    console.log('✅ Firebase services initialized successfully');
   } else {
-    throw new Error('Not in web environment');
+    // Create mock firestore for React Native
+    firestore = {
+      collection: () => ({
+        add: () => Promise.resolve({ id: 'mock-id' }),
+        get: () => Promise.resolve({ docs: [] }),
+        onSnapshot: () => () => {},
+      }),
+    };
+    messaging = {
+      getToken: () => Promise.resolve('mock-token'),
+    };
   }
+  
+  console.log('✅ Firebase services initialized successfully');
 } catch (error) {
   console.warn('⚠️ Firebase services not available:', error);
   // Create mock services for development

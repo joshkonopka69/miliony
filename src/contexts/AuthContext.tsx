@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { authService, AuthUser, AuthState, LoginCredentials, RegisterCredentials, AuthError } from '../services/authService';
+import { simpleAuthService, AuthUser, AuthState, LoginCredentials, RegisterCredentials, AuthError } from '../services/simpleAuthService';
 
 // Context interface
 interface AuthContextType {
@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Subscribe to auth state changes
   useEffect(() => {
-    const unsubscribe = authService.onAuthStateChanged((newState: AuthState) => {
+    const unsubscribe = simpleAuthService.onAuthStateChanged((newState: AuthState) => {
       setAuthState(newState);
     });
 
@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Login with email and password
   const login = async (credentials: LoginCredentials): Promise<{ success: boolean; error?: AuthError }> => {
     try {
-      const result = await authService.login(credentials);
+      const result = await simpleAuthService.login(credentials);
       return result;
     } catch (error: any) {
       console.error('Login error:', error);
@@ -63,7 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Register with email and password
   const register = async (credentials: RegisterCredentials): Promise<{ success: boolean; error?: AuthError }> => {
     try {
-      const result = await authService.register(credentials);
+      const result = await simpleAuthService.register(credentials);
       return result;
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -77,44 +77,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Login with Google
+  // Login with Google (placeholder)
   const loginWithGoogle = async (): Promise<{ success: boolean; error?: AuthError }> => {
-    try {
-      const result = await authService.signInWithGoogle();
-      return result;
-    } catch (error: any) {
-      console.error('Google login error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'auth/unknown',
-          message: 'An unexpected error occurred during Google sign-in.',
-        },
-      };
-    }
+    return {
+      success: false,
+      error: {
+        code: 'auth/not-implemented',
+        message: 'Google Sign-In not implemented yet',
+        customData: {},
+        name: 'NotImplementedError',
+      },
+    };
   };
 
-  // Login with Apple
+  // Login with Apple (placeholder)
   const loginWithApple = async (): Promise<{ success: boolean; error?: AuthError }> => {
-    try {
-      const result = await authService.signInWithApple();
-      return result;
-    } catch (error: any) {
-      console.error('Apple login error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'auth/unknown',
-          message: 'An unexpected error occurred during Apple sign-in.',
-        },
-      };
-    }
+    return {
+      success: false,
+      error: {
+        code: 'auth/not-implemented',
+        message: 'Apple Sign-In not implemented yet',
+        customData: {},
+        name: 'NotImplementedError',
+      },
+    };
   };
 
   // Logout
   const logout = async (): Promise<{ success: boolean; error?: AuthError }> => {
     try {
-      const result = await authService.logout();
+      const result = await simpleAuthService.logout();
       return result;
     } catch (error: any) {
       console.error('Logout error:', error);
@@ -128,64 +120,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Send password reset email
+  // Send password reset email (placeholder)
   const sendPasswordReset = async (email: string): Promise<{ success: boolean; error?: AuthError }> => {
-    try {
-      const result = await authService.sendPasswordResetEmail(email);
-      return result;
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'auth/unknown',
-          message: 'An unexpected error occurred while sending password reset email.',
-        },
-      };
-    }
+    return {
+      success: false,
+      error: {
+        code: 'auth/not-implemented',
+        message: 'Password reset not implemented yet',
+        customData: {},
+        name: 'NotImplementedError',
+      },
+    };
   };
 
-  // Send email verification
+  // Send email verification (placeholder)
   const sendEmailVerification = async (): Promise<{ success: boolean; error?: AuthError }> => {
-    try {
-      const result = await authService.sendEmailVerification();
-      return result;
-    } catch (error: any) {
-      console.error('Email verification error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'auth/unknown',
-          message: 'An unexpected error occurred while sending verification email.',
-        },
-      };
-    }
+    return {
+      success: false,
+      error: {
+        code: 'auth/not-implemented',
+        message: 'Email verification not implemented yet',
+        customData: {},
+        name: 'NotImplementedError',
+      },
+    };
   };
 
-  // Update user profile
+  // Update user profile (placeholder)
   const updateProfile = async (updates: Partial<AuthUser>): Promise<{ success: boolean; error?: AuthError }> => {
-    try {
-      const result = await authService.updateProfile(updates);
-      return result;
-    } catch (error: any) {
-      console.error('Profile update error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'auth/unknown',
-          message: 'An unexpected error occurred while updating profile.',
-        },
-      };
-    }
+    return {
+      success: false,
+      error: {
+        code: 'auth/not-implemented',
+        message: 'Profile update not implemented yet',
+        customData: {},
+        name: 'NotImplementedError',
+      },
+    };
   };
 
   // Refresh user data
   const refreshUser = async (): Promise<void> => {
     try {
-      // The auth state will be automatically updated by the auth service
-      // This method can be used to trigger a manual refresh if needed
-      const currentState = authService.getCurrentAuthState();
-      setAuthState(currentState);
+      // Simple implementation - just get current user
+      const user = simpleAuthService.getCurrentUser();
+      if (user) {
+        setAuthState({
+          user,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+      }
     } catch (error) {
       console.error('Error refreshing user:', error);
     }

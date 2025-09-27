@@ -106,18 +106,41 @@ class SupabaseService {
   }
 
   async createUser(userData: Partial<User>): Promise<User | null> {
-    const { data, error } = await supabase
-      .from('users')
-      .insert(userData)
-      .select()
-      .single();
+    try {
+      // Try the Firebase UID to UUID function first
+      const { data, error } = await supabase.rpc('create_user_with_firebase_uid', {
+        firebase_uid: userData.id,
+        user_email: userData.email,
+        user_display_name: userData.display_name,
+        user_favorite_sports: userData.favorite_sports || []
+      });
 
-    if (error) {
+      if (error) {
+        console.error('Error creating user with function:', error);
+        
+        // Fallback to direct insert (this will work if RLS is disabled)
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('users')
+          .insert({
+            ...userData,
+            id: userData.id || 'temp-id-' + Date.now() // Use Firebase UID or temp ID
+          })
+          .select()
+          .single();
+
+        if (fallbackError) {
+          console.error('Error creating user (fallback):', fallbackError);
+          return null;
+        }
+
+        return fallbackData;
+      }
+
+      return data;
+    } catch (error) {
       console.error('Error creating user:', error);
       return null;
     }
-
-    return data;
   }
 
   async updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
