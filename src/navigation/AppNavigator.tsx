@@ -21,6 +21,25 @@ import {
   TermsOfServiceScreen,
   PrivacyPolicyScreen,
   EventTestScreen,
+  // Analytics screens
+  AnalyticsDashboard,
+  UserAnalytics,
+  EventAnalytics,
+  SocialAnalytics,
+  PerformanceAnalytics,
+  // Security screens
+  ReportContentScreen,
+  ModerationQueueScreen,
+  SecuritySettingsScreen,
+  BlockedUsersScreen,
+  AppealScreen,
+  ModerationDashboard,
+  // Group screens
+  GroupDetailsScreen,
+  GroupMembersScreen,
+  // Notification screens
+  NotificationsScreen,
+  NotificationSettingsScreen,
 } from '../screens';
 
 // Import navigation utilities and types
@@ -160,6 +179,89 @@ export default function AppNavigator() {
         <Stack.Screen 
           name="EventTest" 
           component={EventTestScreen}
+          options={{ headerShown: false }}
+        />
+        
+        {/* Analytics Screens */}
+        <Stack.Screen 
+          name={ROUTES.ANALYTICS_DASHBOARD} 
+          component={AnalyticsDashboard}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.USER_ANALYTICS} 
+          component={UserAnalytics}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.EVENT_ANALYTICS} 
+          component={EventAnalytics}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.SOCIAL_ANALYTICS} 
+          component={SocialAnalytics}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.PERFORMANCE_ANALYTICS} 
+          component={PerformanceAnalytics}
+          options={{ headerShown: false }}
+        />
+        
+        {/* Security/Moderation Screens */}
+        <Stack.Screen 
+          name={ROUTES.REPORT_CONTENT} 
+          component={ReportContentScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.MODERATION_QUEUE} 
+          component={ModerationQueueScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.SECURITY_SETTINGS} 
+          component={SecuritySettingsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.BLOCKED_USERS} 
+          component={BlockedUsersScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.APPEAL} 
+          component={AppealScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.MODERATION_DASHBOARD} 
+          component={ModerationDashboard}
+          options={{ headerShown: false }}
+        />
+        
+        {/* Group Screens */}
+        <Stack.Screen 
+          name={ROUTES.GROUP_DETAILS} 
+          component={GroupDetailsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.GROUP_MEMBERS} 
+          component={GroupMembersScreen}
+          options={{ headerShown: false }}
+        />
+        
+        {/* Notification Screens */}
+        <Stack.Screen 
+          name={ROUTES.NOTIFICATIONS} 
+          component={NotificationsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.NOTIFICATION_SETTINGS} 
+          component={NotificationSettingsScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

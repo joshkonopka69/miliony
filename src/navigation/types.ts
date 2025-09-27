@@ -19,6 +19,32 @@ export type RootStackParamList = {
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
   EventTest: undefined;
+  
+  // Analytics Routes
+  AnalyticsDashboard: undefined;
+  UserAnalytics: undefined;
+  EventAnalytics: undefined;
+  SocialAnalytics: undefined;
+  PerformanceAnalytics: undefined;
+  
+  // Security/Moderation Routes
+  ReportContent: { contentId: string; contentType: string; contentData: any };
+  ModerationQueue: undefined;
+  SecuritySettings: undefined;
+  BlockedUsers: undefined;
+  Appeal: undefined;
+  ModerationDashboard: undefined;
+  
+  // Group Routes
+  GroupDetails: { groupId: string };
+  GroupMembers: { groupId: string };
+  
+  // Notification Routes
+  Notifications: undefined;
+  NotificationSettings: undefined;
+  
+  // Search Routes
+  EventSearchResults: { searchQuery: string; events: any[] };
 };
 
 // Screen Props Types
@@ -77,6 +103,32 @@ export const ROUTES = {
   TERMS_OF_SERVICE: 'TermsOfService' as const,
   PRIVACY_POLICY: 'PrivacyPolicy' as const,
   EVENT_TEST: 'EventTest' as const,
+  
+  // Analytics Routes
+  ANALYTICS_DASHBOARD: 'AnalyticsDashboard' as const,
+  USER_ANALYTICS: 'UserAnalytics' as const,
+  EVENT_ANALYTICS: 'EventAnalytics' as const,
+  SOCIAL_ANALYTICS: 'SocialAnalytics' as const,
+  PERFORMANCE_ANALYTICS: 'PerformanceAnalytics' as const,
+  
+  // Security/Moderation Routes
+  REPORT_CONTENT: 'ReportContent' as const,
+  MODERATION_QUEUE: 'ModerationQueue' as const,
+  SECURITY_SETTINGS: 'SecuritySettings' as const,
+  BLOCKED_USERS: 'BlockedUsers' as const,
+  APPEAL: 'Appeal' as const,
+  MODERATION_DASHBOARD: 'ModerationDashboard' as const,
+  
+  // Group Routes
+  GROUP_DETAILS: 'GroupDetails' as const,
+  GROUP_MEMBERS: 'GroupMembers' as const,
+  
+  // Notification Routes
+  NOTIFICATIONS: 'Notifications' as const,
+  NOTIFICATION_SETTINGS: 'NotificationSettings' as const,
+  
+  // Search Routes
+  EVENT_SEARCH_RESULTS: 'EventSearchResults' as const,
 } as const;
 
 export type RouteNames = typeof ROUTES[keyof typeof ROUTES];

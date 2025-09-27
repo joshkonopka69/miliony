@@ -6,3 +6,7 @@ export { default as EventDetailsModal } from './EventDetailsModal';
 export { default as PlaceDetailsMap } from './PlaceDetailsMap';
 export { default as ActivityFilterModal } from './ActivityFilterModal';
 export { default as VenueInfoSheet } from './VenueInfoSheet';
+export { default as AuthForm } from './AuthForm';
+
+// Auth components
+export * from './auth';

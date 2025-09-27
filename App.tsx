@@ -3,13 +3,28 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import { TranslationProvider } from './src/contexts/TranslationContext';
+import { AuthProvider } from './src/contexts/AuthContext';
+import { AnalyticsProvider } from './src/contexts/AnalyticsContext';
+import { ModerationProvider } from './src/contexts/ModerationContext';
+import { GroupProvider } from './src/contexts/GroupContext';
+import { NotificationProvider } from './src/contexts/NotificationContext';
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <TranslationProvider>
-        <StatusBar style="auto" />
-        <AppNavigator />
+        <AuthProvider>
+          <AnalyticsProvider>
+            <ModerationProvider>
+              <GroupProvider>
+                <NotificationProvider>
+                  <StatusBar style="auto" />
+                  <AppNavigator />
+                </NotificationProvider>
+              </GroupProvider>
+            </ModerationProvider>
+          </AnalyticsProvider>
+        </AuthProvider>
       </TranslationProvider>
     </SafeAreaProvider>
   );
