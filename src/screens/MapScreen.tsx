@@ -55,7 +55,6 @@ export default function MapScreen() {
       <BottomNavBar 
         activeTab="Home"
         onProfilePress={() => navigation.navigate('Profile')}
-        onAddPress={() => setShowEventModal(true)}
       />
     </SafeAreaView>
   );

@@ -6,14 +6,18 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
+import { useTranslation } from '../contexts/TranslationContext';
 
 export default function TermsOfServiceScreen() {
   const navigation = useAppNavigation();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}

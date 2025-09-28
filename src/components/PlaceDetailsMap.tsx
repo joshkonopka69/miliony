@@ -90,7 +90,10 @@ export default function PlaceDetailsMap({
         if (onError) onError(errorMsg);
       }
     } catch (err) {
-      const errorMsg = `Network error: ${err.message}`;
+      let errorMsg = 'Network error';
+      if (err instanceof Error) {
+        errorMsg = `Network error: ${err.message}`;
+      }
       setError(errorMsg);
       if (onError) onError(errorMsg);
     } finally {
@@ -285,6 +288,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
 
 
 
