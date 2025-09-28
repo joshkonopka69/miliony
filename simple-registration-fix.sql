@@ -44,3 +44,4 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. Grant execute permission
 GRANT EXECUTE ON FUNCTION create_user_with_firebase_uid TO anon, authenticated;
+

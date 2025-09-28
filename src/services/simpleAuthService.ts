@@ -336,3 +336,4 @@ class SimpleAuthService {
 // Create and export singleton instance
 export const simpleAuthService = new SimpleAuthService();
 export default simpleAuthService;
+

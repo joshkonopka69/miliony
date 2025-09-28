@@ -71,3 +71,4 @@ CREATE TRIGGER on_auth_user_created
 
 -- 7. Grant execute permission on the function
 GRANT EXECUTE ON FUNCTION handle_new_user TO anon, authenticated;
+

@@ -127,3 +127,4 @@ CREATE POLICY "Allow all operations on events" ON events
 
 CREATE POLICY "Allow all operations on event_participants" ON event_participants
   FOR ALL USING (true) WITH CHECK (true);
+

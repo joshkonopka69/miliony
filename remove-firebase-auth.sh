@@ -17,3 +17,4 @@ find src -name "*.tsx" -o -name "*.ts" | xargs grep -l "authService" | xargs sed
 
 echo "✅ Firebase Auth removed successfully!"
 echo "📱 Your app should now work with Supabase-only authentication"
+
