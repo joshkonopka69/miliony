@@ -2,7 +2,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import { supabase } from '../config/supabase';
+import { supabase } from './supabase';
 import { Event } from './firestore';
 
 // Configure notification behavior
