@@ -55,7 +55,8 @@ try {
   
   console.log('✅ Firebase services initialized successfully');
 } catch (error) {
-  console.warn('⚠️ Firebase services not available:', error);
+  // Suppress Firebase warning since we're using Supabase
+  // console.warn('⚠️ Firebase services not available:', error);
   // Create mock services for development
   firestore = {
     collection: () => ({

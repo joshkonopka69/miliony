@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { simpleAuthService, AuthUser, AuthState, LoginCredentials, RegisterCredentials, AuthError } from '../services/simpleAuthService';
+import { GoogleAuthService } from '../services/googleAuthService';
+import { AppleAuthService } from '../services/appleAuthService';
+import { supabase } from '../services/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Context interface
 interface AuthContextType {
@@ -77,30 +81,193 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Login with Google (placeholder)
+  // Login with Google
   const loginWithGoogle = async (): Promise<{ success: boolean; error?: AuthError }> => {
-    return {
-      success: false,
-      error: {
-        code: 'auth/not-implemented',
-        message: 'Google Sign-In not implemented yet',
-        customData: {},
-        name: 'NotImplementedError',
-      },
-    };
+    try {
+      // Configure Google Sign-In if not already configured
+      await GoogleAuthService.configure();
+      
+      const result = await GoogleAuthService.signIn();
+      if (!result.success) {
+        return {
+          success: false,
+          error: {
+            code: 'auth/google-signin-failed',
+            message: result.error || 'Google sign-in failed',
+          },
+        };
+      }
+
+      if (!result.user) {
+        return {
+          success: false,
+          error: {
+            code: 'auth/google-signin-failed',
+            message: 'No user data received from Google',
+          },
+        };
+      }
+
+      // Sign in with Supabase using Google ID token
+      const { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: result.user.idToken,
+        nonce: Math.random().toString(36), // Generate a random nonce
+      });
+
+      if (authError) {
+        console.error('Supabase Google auth error:', authError);
+        return {
+          success: false,
+          error: {
+            code: 'auth/supabase-error',
+            message: authError.message || 'Failed to authenticate with Supabase',
+          },
+        };
+      }
+
+      if (!authData.user) {
+        return {
+          success: false,
+          error: {
+            code: 'auth/no-user',
+            message: 'No user data received from Supabase',
+          },
+        };
+      }
+
+      // Create or update user profile
+      const authUser: AuthUser = {
+        id: authData.user.id,
+        email: result.user.email,
+        displayName: result.user.displayName,
+        avatarUrl: result.user.avatarUrl,
+        favoriteSports: [],
+        isEmailVerified: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save to storage
+      await AsyncStorage.setItem('auth_user', JSON.stringify(authUser));
+
+      // Update auth state
+      const newAuthState = {
+        user: authUser,
+        isLoading: false,
+        isAuthenticated: true,
+      };
+      setAuthState(newAuthState);
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      return {
+        success: false,
+        error: {
+          code: 'auth/unknown',
+          message: error.message || 'Google sign-in failed',
+        },
+      };
+    }
   };
 
-  // Login with Apple (placeholder)
+  // Login with Apple
   const loginWithApple = async (): Promise<{ success: boolean; error?: AuthError }> => {
-    return {
-      success: false,
-      error: {
-        code: 'auth/not-implemented',
-        message: 'Apple Sign-In not implemented yet',
-        customData: {},
-        name: 'NotImplementedError',
-      },
-    };
+    try {
+      const isAvailable = await AppleAuthService.isAvailable();
+      if (!isAvailable) {
+        return {
+          success: false,
+          error: {
+            code: 'auth/apple-not-available',
+            message: 'Apple Sign-In is not available on this device',
+          },
+        };
+      }
+
+      const result = await AppleAuthService.signIn();
+      if (!result.success) {
+        return {
+          success: false,
+          error: {
+            code: 'auth/apple-signin-failed',
+            message: result.error || 'Apple sign-in failed',
+          },
+        };
+      }
+
+      if (!result.user) {
+        return {
+          success: false,
+          error: {
+            code: 'auth/apple-signin-failed',
+            message: 'No user data received from Apple',
+          },
+        };
+      }
+
+      // Sign in with Supabase using Apple ID token
+      const { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: result.user.identityToken || '',
+        nonce: Math.random().toString(36), // Generate a random nonce
+      });
+
+      if (authError) {
+        console.error('Supabase Apple auth error:', authError);
+        return {
+          success: false,
+          error: {
+            code: 'auth/supabase-error',
+            message: authError.message || 'Failed to authenticate with Supabase',
+          },
+        };
+      }
+
+      if (!authData.user) {
+        return {
+          success: false,
+          error: {
+            code: 'auth/no-user',
+            message: 'No user data received from Supabase',
+          },
+        };
+      }
+
+      // Create or update user profile
+      const authUser: AuthUser = {
+        id: authData.user.id,
+        email: result.user.email || 'apple-user@privaterelay.appleid.com',
+        displayName: result.user.displayName || 'Apple User',
+        favoriteSports: [],
+        isEmailVerified: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save to storage
+      await AsyncStorage.setItem('auth_user', JSON.stringify(authUser));
+
+      // Update auth state
+      const newAuthState = {
+        user: authUser,
+        isLoading: false,
+        isAuthenticated: true,
+      };
+      setAuthState(newAuthState);
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Apple login error:', error);
+      return {
+        success: false,
+        error: {
+          code: 'auth/unknown',
+          message: error.message || 'Apple sign-in failed',
+        },
+      };
+    }
   };
 
   // Logout

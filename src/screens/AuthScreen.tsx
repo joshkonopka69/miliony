@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, SafeAreaView, StatusBar, Animated, Dimensions } from 'react-native';
-import { useAppNavigation } from '../navigation';
+import { View, Text, StyleSheet, Alert, StatusBar, Animated, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginForm, SocialLoginButtons, PasswordResetModal } from '../components/auth';
@@ -17,7 +19,7 @@ const SMLogo = ({ size = 60 }: { size?: number }) => (
 );
 
 export default function AuthScreen() {
-  const navigation = useAppNavigation();
+  const navigation = useNavigation<NavigationProp<any>>();
   const { t } = useTranslation();
   const { sendPasswordReset } = useAuth();
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -45,7 +47,7 @@ export default function AuthScreen() {
   };
 
   const handleAuthError = (error: any) => {
-    Alert.alert('Authentication Error', error.message || 'An error occurred during authentication');
+    Alert.alert('Authentication Error', error?.message || 'An error occurred during authentication');
   };
 
   const handleForgotPassword = () => {

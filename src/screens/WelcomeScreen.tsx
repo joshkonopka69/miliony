@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Animated, Dimensions, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Animated, Dimensions, Modal, Alert } from 'react-native';
 import { useAppNavigation } from '../navigation/hooks-only';
 import { useTranslation, Language } from '../contexts/TranslationContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -40,6 +41,7 @@ const AppleIcon = ({ size = 20 }: { size?: number }) => (
 export default function WelcomeScreen() {
   const navigation = useAppNavigation();
   const { t, language, setLanguage, availableLanguages } = useTranslation();
+  const { loginWithGoogle, loginWithApple } = useAuth();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -69,12 +71,30 @@ export default function WelcomeScreen() {
     ]).start();
   }, []);
 
-  const handleGoogleAuth = () => {
-    navigation.navigate('Auth');
+  const handleGoogleAuth = async () => {
+    try {
+      const result = await loginWithGoogle();
+      if (result.success) {
+        navigation.navigate('Map');
+      } else {
+        Alert.alert('Authentication Error', result.error?.message || 'Google sign-in failed');
+      }
+    } catch (error: any) {
+      Alert.alert('Authentication Error', error.message || 'An error occurred during Google sign-in');
+    }
   };
 
-  const handleAppleAuth = () => {
-    navigation.navigate('Auth');
+  const handleAppleAuth = async () => {
+    try {
+      const result = await loginWithApple();
+      if (result.success) {
+        navigation.navigate('Map');
+      } else {
+        Alert.alert('Authentication Error', result.error?.message || 'Apple sign-in failed');
+      }
+    } catch (error: any) {
+      Alert.alert('Authentication Error', error.message || 'An error occurred during Apple sign-in');
+    }
   };
 
   const handleEmailAuth = () => {

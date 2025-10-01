@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   StatusBar,
   Alert,
 } from 'react-native';
+import { PlaceDetails } from '../services/placesApi';
 
 interface EventData {
   activity: string;
@@ -18,6 +19,11 @@ interface EventData {
   maxParticipants: number;
   date: Date;
   time: Date;
+  venueName: string;
+  venueAddress: string;
+  placeId?: string;
+  coordinates?: { lat: number; lng: number };
+  placeDetails?: PlaceDetails;
 }
 
 interface EventCreationModalProps {
@@ -28,6 +34,7 @@ interface EventCreationModalProps {
   venueAddress: string;
   placeId?: string;
   coordinates?: { lat: number; lng: number };
+  placeDetails?: PlaceDetails;
 }
 
 const ACTIVITIES = [
@@ -47,12 +54,113 @@ export default function EventCreationModal({
   venueAddress,
   placeId,
   coordinates,
+  placeDetails,
 }: EventCreationModalProps) {
   const [activity, setActivity] = useState('');
   const [description, setDescription] = useState('');
   const [maxParticipants, setMaxParticipants] = useState(8);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+
+  // Pre-fill form with place details
+  useEffect(() => {
+    if (placeDetails) {
+      const suggestedActivity = getSuggestedActivity(placeDetails.types);
+      if (suggestedActivity) {
+        setActivity(suggestedActivity);
+      }
+      
+      // Pre-fill description with place context
+      const placeContext = `Meetup at ${placeDetails.name}`;
+      if (placeDetails.rating) {
+        setDescription(`${placeContext} (⭐ ${placeDetails.rating}/5 rating)`);
+      } else {
+        setDescription(placeContext);
+      }
+    }
+  }, [placeDetails]);
+
+  const getSuggestedActivity = (types: string[]): string | null => {
+    if (!types || types.length === 0) return null;
+    
+    const typeActivityMap: { [key: string]: string } = {
+      'gym': 'Gym Workout',
+      'park': 'Running',
+      'stadium': 'Football',
+      'swimming_pool': 'Swimming',
+      'sports_complex': 'Basketball',
+      'tennis_court': 'Tennis',
+      'basketball_court': 'Basketball',
+      'bowling_alley': 'Other',
+      'golf_course': 'Other',
+      'ice_rink': 'Other',
+      'health': 'Yoga',
+      'tourist_attraction': 'Hiking',
+    };
+
+    for (const type of types) {
+      if (typeActivityMap[type]) {
+        return typeActivityMap[type];
+      }
+    }
+    
+    return null;
+  };
+
+  const getPlaceBasedSuggestions = (placeDetails?: PlaceDetails) => {
+    if (!placeDetails) return null;
+
+    const suggestions = {
+      activities: [] as string[],
+      description: '',
+      maxParticipants: 8,
+    };
+
+    // Activity suggestions based on place type
+    if (placeDetails.types.includes('gym')) {
+      suggestions.activities = ['Gym Workout', 'Weight Training', 'Cardio', 'Yoga', 'Pilates'];
+    } else if (placeDetails.types.includes('park')) {
+      suggestions.activities = ['Running', 'Walking', 'Cycling', 'Yoga', 'Hiking'];
+    } else if (placeDetails.types.includes('stadium')) {
+      suggestions.activities = ['Football', 'Soccer', 'Rugby', 'Track & Field'];
+    } else if (placeDetails.types.includes('swimming_pool')) {
+      suggestions.activities = ['Swimming', 'Water Polo', 'Aqua Aerobics'];
+    } else if (placeDetails.types.includes('sports_complex')) {
+      suggestions.activities = ['Basketball', 'Volleyball', 'Tennis', 'Badminton'];
+    }
+
+    // Description template based on place
+    const placeName = placeDetails.name;
+    const rating = placeDetails.rating ? ` (⭐ ${placeDetails.rating}/5)` : '';
+    suggestions.description = `Join us for a fun activity at ${placeName}${rating}!`;
+
+    // Max participants based on place capacity
+    if (placeDetails.types.includes('stadium')) {
+      suggestions.maxParticipants = 50;
+    } else if (placeDetails.types.includes('sports_complex')) {
+      suggestions.maxParticipants = 20;
+    } else if (placeDetails.types.includes('gym')) {
+      suggestions.maxParticipants = 12;
+    }
+
+    return suggestions;
+  };
+
+  const getPlaceCapacityInfo = (placeDetails?: PlaceDetails): string => {
+    if (!placeDetails) return '';
+
+    if (placeDetails.types.includes('stadium')) {
+      return '🏟️ Large venue - perfect for big groups';
+    } else if (placeDetails.types.includes('sports_complex')) {
+      return '🏃 Sports complex - great for team activities';
+    } else if (placeDetails.types.includes('gym')) {
+      return '💪 Gym facility - ideal for fitness activities';
+    } else if (placeDetails.types.includes('park')) {
+      return '🌳 Outdoor space - perfect for outdoor activities';
+    }
+    
+    return '';
+  };
 
   const handleCreate = () => {
     if (!activity.trim()) {
@@ -76,6 +184,11 @@ export default function EventCreationModal({
       maxParticipants,
       date: new Date(`${date} ${time}`),
       time: new Date(`${date} ${time}`),
+      venueName,
+      venueAddress,
+      placeId,
+      coordinates,
+      placeDetails,
     };
 
     onCreateEvent(eventData);
@@ -104,6 +217,18 @@ export default function EventCreationModal({
           <View style={styles.venueSection}>
             <Text style={styles.venueName}>{venueName}</Text>
             <Text style={styles.venueAddress}>{venueAddress}</Text>
+            {placeDetails && (
+              <View style={styles.placeInfoContainer}>
+                <Text style={styles.placeInfoText}>
+                  {getPlaceCapacityInfo(placeDetails)}
+                </Text>
+                {placeDetails.rating && (
+                  <Text style={styles.placeRating}>
+                    ⭐ {placeDetails.rating}/5 rating
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Activity Selection */}
@@ -261,6 +386,22 @@ const styles = StyleSheet.create({
   venueAddress: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  placeInfoContainer: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  placeInfoText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  placeRating: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
   },
   section: {
     marginTop: 24,

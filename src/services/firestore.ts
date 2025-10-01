@@ -15,6 +15,44 @@ export interface Event {
   time: string;
   createdAt: string;
   geohash?: string;
+  placeDetails?: {
+    placeId: string;
+    name: string;
+    address: string;
+    coordinates: { lat: number; lng: number };
+    rating?: number;
+    priceLevel?: number;
+    phoneNumber?: string;
+    website?: string;
+    openingHours?: {
+      openNow: boolean;
+      periods: Array<{
+        open: { day: number; time: string };
+        close: { day: number; time: string };
+      }>;
+      weekdayText: string[];
+    };
+    photos?: Array<{
+      photoReference: string;
+      height: number;
+      width: number;
+      url?: string;
+    }>;
+    reviews?: Array<{
+      authorName: string;
+      rating: number;
+      text: string;
+      time: number;
+      profilePhotoUrl?: string;
+    }>;
+    types: string[];
+    utcOffset?: number;
+    vicinity?: string;
+    formattedPhoneNumber?: string;
+    internationalPhoneNumber?: string;
+    url?: string;
+    utcOffsetMinutes?: number;
+  };
 }
 
 export interface User {
@@ -62,6 +100,35 @@ class FirestoreService {
 
   async getEventById(eventId: string): Promise<Event | null> {
     return this.events.find(event => event.id === eventId) || null;
+  }
+
+  async getEventsByPlace(placeId: string): Promise<Event[]> {
+    return this.events.filter(event => event.placeId === placeId);
+  }
+
+  async getEventsByPlaceType(placeType: string): Promise<Event[]> {
+    return this.events.filter(event => 
+      event.placeDetails?.types?.includes(placeType)
+    );
+  }
+
+  async getPopularPlaces(): Promise<Array<{ placeId: string; name: string; eventCount: number }>> {
+    const placeCounts = new Map<string, { name: string; count: number }>();
+    
+    this.events.forEach(event => {
+      if (event.placeId) {
+        const existing = placeCounts.get(event.placeId);
+        if (existing) {
+          existing.count++;
+        } else {
+          placeCounts.set(event.placeId, { name: event.placeName, count: 1 });
+        }
+      }
+    });
+
+    return Array.from(placeCounts.entries())
+      .map(([placeId, data]) => ({ placeId, name: data.name, eventCount: data.count }))
+      .sort((a, b) => b.eventCount - a.eventCount);
   }
 
   async joinEvent(eventId: string, userId: string): Promise<void> {

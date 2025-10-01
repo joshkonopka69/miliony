@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   Modal,
   Dimensions,
-  TextInput
+  TextInput,
+  ActivityIndicator
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -16,12 +17,18 @@ import {
   ActivityFilterModal, 
   EventCreationModal, 
   EventDetailsModal, 
-  VenueInfoSheet 
+  VenueInfoSheet,
+  PlaceInfoModal
 } from './index';
-import { placesApiService, Place, ActivityFilter } from '../services/placesApi';
+import LoadingSpinner from './LoadingSpinner';
+import { PlaceInfoSkeleton } from './SkeletonLoader';
+import { placesApiService, Place, PlaceDetails, ActivityFilter } from '../services/placesApi';
 import { firestoreService, Event } from '../services/firestore';
 import { useAppNavigation } from '../navigation';
 import { ROUTES } from '../navigation/types';
+import { errorHandler } from '../utils/errorHandler';
+import { hapticFeedback } from '../utils/hapticFeedback';
+import { performanceOptimizer } from '../utils/performanceOptimizer';
 
 interface EnhancedInteractiveMapProps {
   onLocationSelect?: (location: any) => void;
@@ -63,6 +70,21 @@ export default function EnhancedInteractiveMap({
   });
   const [loading, setLoading] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery || '');
+  
+  // Custom pin state variables
+  const [customPins, setCustomPins] = useState<Array<{
+    id: string;
+    coordinate: { latitude: number; longitude: number };
+    title: string;
+    description: string;
+  }>>([]);
+  const [selectedPin, setSelectedPin] = useState<string | null>(null);
+  const [showPinDetails, setShowPinDetails] = useState(false);
+  
+  // Place details state variables
+  const [showPlaceInfo, setShowPlaceInfo] = useState(false);
+  const [selectedPlaceDetails, setSelectedPlaceDetails] = useState<PlaceDetails | null>(null);
+  const [placeDetailsLoading, setPlaceDetailsLoading] = useState(false);
 
   useEffect(() => {
     requestLocationPermission();
@@ -75,7 +97,7 @@ export default function EnhancedInteractiveMap({
 
   useEffect(() => {
     if (userLocation) {
-      searchPlaces();
+      debouncedSearchPlaces();
     }
   }, [userLocation, currentFilters]);
 
@@ -146,7 +168,10 @@ export default function EnhancedInteractiveMap({
     try {
       const placesData = await placesApiService.searchNearby(userLocation, currentFilters);
       console.log('EnhancedInteractiveMap: Received places data:', placesData.length, 'places');
-      setPlaces(placesData);
+      
+      // Optimize markers for performance
+      const optimizedPlaces = performanceOptimizer.optimizeMapMarkers(placesData, 50);
+      setPlaces(optimizedPlaces);
 
       // Load events in the current region
       const eventsData = await firestoreService.getEventsInBounds(
@@ -162,21 +187,8 @@ export default function EnhancedInteractiveMap({
       setAllEvents(eventsData);
       setEvents(eventsData);
     } catch (error) {
-      console.error('Error searching places:', error);
-      
-      // Show more specific error messages based on error type
-      let errorMessage = 'Failed to load venues';
-      if (error instanceof Error) {
-        if (error.message.includes('HTTP error')) {
-          errorMessage = 'Network error. Please check your internet connection.';
-        } else if (error.message.includes('Google Places API error')) {
-          errorMessage = 'Google Places API error. Please try again later.';
-        } else if (error.message.includes('Failed to search nearby places')) {
-          errorMessage = 'Unable to find venues in this area. Try adjusting your filters.';
-        }
-      }
-      
-      Alert.alert('Error', errorMessage);
+      const appError = errorHandler.handleApiError(error, 'searchPlaces');
+      errorHandler.showUserFriendlyError(appError, 'Search');
       
       // Set empty results to clear the map
       setPlaces([]);
@@ -184,6 +196,13 @@ export default function EnhancedInteractiveMap({
       setLoading(false);
     }
   };
+
+  // Debounced search function
+  const debouncedSearchPlaces = performanceOptimizer.debounce(
+    'searchPlaces',
+    searchPlaces,
+    500 // 500ms delay
+  );
 
   const handleFilterApply = (filters: ActivityFilter) => {
     console.log('EnhancedInteractiveMap: Received filters:', filters);
@@ -193,9 +212,40 @@ export default function EnhancedInteractiveMap({
     console.log('EnhancedInteractiveMap: Filters updated, will trigger searchPlaces');
   };
 
-  const handlePlacePress = (place: Place) => {
+  const handlePlacePress = async (place: Place) => {
+    console.log('🎯 Place pressed:', place.name, place.placeId);
     setSelectedPlace(place);
-    setShowVenueInfo(true);
+    
+    // Haptic feedback for place selection
+    try {
+      await hapticFeedback.placeSelected();
+    } catch (error) {
+      console.log('Haptic feedback error:', error);
+    }
+    
+    // Fetch detailed place information with loading state
+    setPlaceDetailsLoading(true);
+    console.log('🔄 Fetching place details for:', place.placeId);
+    
+    try {
+      const placeDetails = await placesApiService.getPlaceDetails(place.placeId);
+      console.log('📋 Place details received:', placeDetails);
+      
+      if (placeDetails) {
+        setSelectedPlaceDetails(placeDetails);
+        setShowPlaceInfo(true);
+        console.log('✅ Place info modal should be visible now');
+      } else {
+        console.log('❌ No place details received');
+        Alert.alert('Error', 'Unable to load place details');
+      }
+    } catch (error) {
+      console.log('❌ Error fetching place details:', error);
+      const appError = errorHandler.handleApiError(error, 'getPlaceDetails');
+      errorHandler.showUserFriendlyError(appError, 'Place Details');
+    } finally {
+      setPlaceDetailsLoading(false);
+    }
   };
 
   const handleEventPress = (event: Event) => {
@@ -279,6 +329,143 @@ export default function EnhancedInteractiveMap({
     }
   };
 
+  const handleMapPress = async (event: any) => {
+    const { coordinate } = event.nativeEvent;
+    const pinId = `pin_${Date.now()}`;
+    
+    const newPin = {
+      id: pinId,
+      coordinate,
+      title: 'Custom Location',
+      description: `Lat: ${coordinate.latitude.toFixed(6)}, Lng: ${coordinate.longitude.toFixed(6)}`
+    };
+    
+    setCustomPins(prev => [...prev, newPin]);
+    setSelectedPin(pinId);
+    
+    // Haptic feedback for pin placement
+    await hapticFeedback.mapPinPlaced();
+    
+    // Show coordinates in an alert
+    Alert.alert(
+      'Pin Placed',
+      `Coordinates: ${coordinate.latitude.toFixed(6)}, ${coordinate.longitude.toFixed(6)}`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleDeletePin = (pinId: string) => {
+    Alert.alert(
+      'Delete Pin',
+      'Are you sure you want to delete this pin?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setCustomPins(prev => prev.filter(pin => pin.id !== pinId));
+            if (selectedPin === pinId) {
+              setSelectedPin(null);
+            }
+            Alert.alert('Success', 'Pin deleted successfully');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEditPin = (pinId: string) => {
+    const pin = customPins.find(p => p.id === pinId);
+    if (!pin) return;
+
+    Alert.prompt(
+      'Edit Pin',
+      'Enter new title for this pin:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save',
+          onPress: (newTitle) => {
+            if (newTitle && newTitle.trim()) {
+              setCustomPins(prev => 
+                prev.map(p => 
+                  p.id === pinId 
+                    ? { ...p, title: newTitle.trim() }
+                    : p
+                )
+              );
+              Alert.alert('Success', 'Pin updated successfully');
+            } else {
+              Alert.alert('Error', 'Please enter a valid title');
+            }
+          },
+        },
+      ],
+      'plain-text',
+      pin.title
+    );
+  };
+
+  const handleShowPinList = () => {
+    if (customPins.length === 0) {
+      Alert.alert('No Pins', 'You haven\'t placed any pins yet.');
+      return;
+    }
+
+    const pinList = customPins.map(pin => 
+      `${pin.title}\n${pin.description}`
+    ).join('\n\n');
+
+    Alert.alert(
+      'Your Pins',
+      pinList,
+      [
+        { text: 'OK' },
+        { text: 'Clear All', style: 'destructive', onPress: handleClearAllPins }
+      ]
+    );
+  };
+
+  const handleClearAllPins = () => {
+    Alert.alert(
+      'Clear All Pins',
+      'Are you sure you want to delete all pins?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: () => {
+            setCustomPins([]);
+            setSelectedPin(null);
+            Alert.alert('Success', 'All pins cleared');
+          },
+        },
+      ]
+    );
+  };
+
+  const handlePinLongPress = (pinId: string) => {
+    Alert.alert(
+      'Pin Options',
+      'What would you like to do with this pin?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit', onPress: () => handleEditPin(pinId) },
+        { text: 'Delete', style: 'destructive', onPress: () => handleDeletePin(pinId) },
+      ]
+    );
+  };
+
+  const handleCreateMeetupFromPlace = (placeDetails: PlaceDetails) => {
+    // Close place info modal
+    setShowPlaceInfo(false);
+    
+    // Open event creation modal with place details pre-filled
+    setShowEventCreation(true);
+  };
+
   const getEventIcon = (activity: string) => {
     const iconMap: { [key: string]: string } = {
       'Football': '⚽',
@@ -303,6 +490,7 @@ export default function EnhancedInteractiveMap({
         provider={PROVIDER_GOOGLE}
         region={region}
         onRegionChangeComplete={setRegion}
+        onPress={handleMapPress}
         showsUserLocation={true}
         showsMyLocationButton={true}
         onMapReady={() => onMapReady?.(mapRef)}
@@ -329,6 +517,25 @@ export default function EnhancedInteractiveMap({
           >
             <View style={styles.placeMarker}>
               <Text style={styles.placeMarkerText}>📍</Text>
+            </View>
+          </Marker>
+        ))}
+
+        {/* Custom Pin Markers */}
+        {customPins.map((pin) => (
+          <Marker
+            key={pin.id}
+            coordinate={pin.coordinate}
+            title={pin.title}
+            description={pin.description}
+            onPress={() => setSelectedPin(pin.id)}
+            onCalloutPress={() => handlePinLongPress(pin.id)}
+          >
+            <View style={[
+              styles.customPinMarker,
+              selectedPin === pin.id && styles.selectedPinMarker
+            ]}>
+              <Text style={styles.customPinText}>📍</Text>
             </View>
           </Marker>
         ))}
@@ -363,14 +570,18 @@ export default function EnhancedInteractiveMap({
             value={localSearchQuery}
             onChangeText={setLocalSearchQuery}
           />
-          {localSearchQuery.length > 0 && (
+          {loading ? (
+            <View style={styles.searchLoading}>
+              <ActivityIndicator size="small" color="#3b82f6" />
+            </View>
+          ) : localSearchQuery.length > 0 ? (
             <TouchableOpacity
               style={styles.clearButton}
               onPress={() => setLocalSearchQuery('')}
             >
               <Text style={styles.clearIcon}>✕</Text>
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
 
         {/* Filter Button */}
@@ -390,6 +601,20 @@ export default function EnhancedInteractiveMap({
             Filter {(currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && '●'}
           </Text>
         </TouchableOpacity>
+
+        {/* Pin Management Button */}
+        {customPins.length > 0 && (
+          <TouchableOpacity
+            style={styles.pinManagementButton}
+            onPress={handleShowPinList}
+            activeOpacity={0.8}
+            pointerEvents="auto"
+          >
+            <Text style={styles.pinManagementButtonText}>
+              📍 {customPins.length}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Loading Indicator */}
@@ -424,6 +649,7 @@ export default function EnhancedInteractiveMap({
         venueAddress={selectedPlace?.address || ''}
         placeId={selectedPlace?.placeId}
         coordinates={selectedPlace?.coordinates}
+        placeDetails={selectedPlaceDetails}
       />
 
       <EventDetailsModal
@@ -451,6 +677,14 @@ export default function EnhancedInteractiveMap({
         } : null}
         onClose={() => setShowVenueInfo(false)}
         onCreateEvent={handleCreateEvent}
+      />
+
+      <PlaceInfoModal
+        visible={showPlaceInfo}
+        onClose={() => setShowPlaceInfo(false)}
+        placeDetails={selectedPlaceDetails}
+        onCreateMeetup={handleCreateMeetupFromPlace}
+        loading={placeDetailsLoading}
       />
     </View>
   );
@@ -536,6 +770,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#9ca3af',
   },
+  searchLoading: {
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   placeMarker: {
     backgroundColor: '#ffffff',
     borderRadius: 20,
@@ -617,5 +856,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#374151',
     fontWeight: '500',
+  },
+  customPinMarker: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#FFD700',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  selectedPinMarker: {
+    backgroundColor: '#FF6B6B',
+    transform: [{ scale: 1.2 }],
+  },
+  customPinText: {
+    fontSize: 16,
+    color: '#ffffff',
   },
 });

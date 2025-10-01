@@ -1,6 +1,8 @@
 // Google Places API service for venue search and filtering
 // Real implementation using Google Places API
 
+import { performanceOptimizer } from '../utils/performanceOptimizer';
+
 export interface Place {
   placeId: string;
   name: string;
@@ -13,6 +15,44 @@ export interface Place {
   openingHours?: string[];
   photos?: string[];
   types: string[];
+}
+
+export interface PlaceDetails {
+  placeId: string;
+  name: string;
+  address: string;
+  coordinates: { lat: number; lng: number };
+  rating?: number;
+  priceLevel?: number;
+  phoneNumber?: string;
+  website?: string;
+  openingHours?: {
+    openNow: boolean;
+    periods: Array<{
+      open: { day: number; time: string };
+      close: { day: number; time: string };
+    }>;
+    weekdayText: string[];
+  };
+  photos?: Array<{
+    photoReference: string;
+    height: number;
+    width: number;
+  }>;
+  reviews?: Array<{
+    authorName: string;
+    rating: number;
+    text: string;
+    time: number;
+    profilePhotoUrl?: string;
+  }>;
+  types: string[];
+  utcOffset?: number;
+  vicinity?: string;
+  formattedPhoneNumber?: string;
+  internationalPhoneNumber?: string;
+  url?: string;
+  utcOffsetMinutes?: number;
 }
 
 export interface ActivityFilter {
@@ -39,6 +79,8 @@ class PlacesApiService {
   private apiKey: string = 'AIzaSyDBJ65DOu4WMoTRjvz1J6i6VbYbjOoEW2E'; // Using the API key from MyPlaceDetailsScreen
   private baseUrl: string = 'https://maps.googleapis.com/maps/api/place';
   private useMockData: boolean = true; // Set to false to use real API
+  private placeDetailsCache: Map<string, { data: PlaceDetails; timestamp: number }> = new Map();
+  private cacheExpiryTime: number = 5 * 60 * 1000; // 5 minutes in milliseconds
   
   // Mock data for fallback when API fails
   private mockPlaces: Place[] = [
@@ -115,10 +157,22 @@ class PlacesApiService {
   ): Promise<Place[]> {
     console.log('Searching nearby places:', { location, filter });
 
+    // Create cache key for this search
+    const cacheKey = `searchNearby_${location.lat}_${location.lng}_${JSON.stringify(filter)}`;
+    
+    // Check cache first
+    const cached = performanceOptimizer.getCache(cacheKey);
+    if (cached) {
+      console.log('Returning cached results');
+      return cached;
+    }
+
     // Use mock data for testing - set useMockData to false to use real API
     if (this.useMockData) {
       console.log('Using mock data for testing');
-      return this.getMockResults(location, filter);
+      const mockResults = this.getMockResults(location, filter);
+      performanceOptimizer.setCache(cacheKey, mockResults, 2 * 60 * 1000); // 2 minutes cache
+      return mockResults;
     }
 
     try {
@@ -166,6 +220,10 @@ class PlacesApiService {
       }
 
       console.log('Final results:', filteredResults);
+      
+      // Cache the results
+      performanceOptimizer.setCache(cacheKey, filteredResults, 5 * 60 * 1000); // 5 minutes cache
+      
       return filteredResults;
     } catch (error) {
       console.error('Error searching nearby places, using mock data:', error);
@@ -322,13 +380,34 @@ class PlacesApiService {
     return results;
   }
 
-  async getPlaceDetails(placeId: string): Promise<Place | null> {
+  async getPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
     console.log('Getting place details for:', placeId);
+
+    // Check cache first
+    const cached = this.placeDetailsCache.get(placeId);
+    if (cached && (Date.now() - cached.timestamp) < this.cacheExpiryTime) {
+      console.log('Returning cached place details for:', placeId);
+      return cached.data;
+    }
+
+    // Use mock data for testing
+    if (this.useMockData) {
+      console.log('Using mock place details for:', placeId);
+      const mockDetails = this.getMockPlaceDetails(placeId);
+      if (mockDetails) {
+        // Cache the mock data
+        this.placeDetailsCache.set(placeId, {
+          data: mockDetails,
+          timestamp: Date.now()
+        });
+        return mockDetails;
+      }
+    }
 
     try {
       const params = new URLSearchParams({
         place_id: placeId,
-        fields: 'place_id,name,formatted_address,geometry,rating,price_level,formatted_phone_number,website,opening_hours,photos,types',
+        fields: 'place_id,name,formatted_address,geometry,rating,price_level,formatted_phone_number,website,opening_hours,photos,reviews,types,utc_offset,vicinity,international_phone_number,url,utc_offset_minutes',
         key: this.apiKey,
       });
 
@@ -343,11 +422,11 @@ class PlacesApiService {
       const data = await response.json();
 
       if (data.status !== 'OK') {
-        throw new Error(`Google Places API error: ${data.status}`);
+        throw new Error(`Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
       }
 
       const result = data.result;
-      return {
+      const placeDetails: PlaceDetails = {
         placeId: result.place_id,
         name: result.name,
         address: result.formatted_address || 'Address not available',
@@ -359,14 +438,119 @@ class PlacesApiService {
         priceLevel: result.price_level,
         phoneNumber: result.formatted_phone_number,
         website: result.website,
-        openingHours: result.opening_hours?.weekday_text || [],
-        photos: result.photos?.map((photo: any) => photo.photo_reference) || [],
+        openingHours: result.opening_hours ? {
+          openNow: result.opening_hours.open_now,
+          periods: result.opening_hours.periods || [],
+          weekdayText: result.opening_hours.weekday_text || []
+        } : undefined,
+        photos: result.photos?.map((photo: any) => ({
+          photoReference: photo.photo_reference,
+          height: photo.height,
+          width: photo.width
+        })) || [],
+        reviews: result.reviews?.map((review: any) => ({
+          authorName: review.author_name,
+          rating: review.rating,
+          text: review.text,
+          time: review.time,
+          profilePhotoUrl: review.profile_photo_url
+        })) || [],
         types: result.types || [],
+        utcOffset: result.utc_offset,
+        vicinity: result.vicinity,
+        formattedPhoneNumber: result.formatted_phone_number,
+        internationalPhoneNumber: result.international_phone_number,
+        url: result.url,
+        utcOffsetMinutes: result.utc_offset_minutes
       };
+
+      // Cache the result
+      this.placeDetailsCache.set(placeId, {
+        data: placeDetails,
+        timestamp: Date.now()
+      });
+
+      console.log('Place details fetched and cached for:', placeId);
+      return placeDetails;
     } catch (error) {
       console.error('Error getting place details:', error);
+      
+      // Fallback to mock data
+      const mockDetails = this.getMockPlaceDetails(placeId);
+      if (mockDetails) {
+        console.log('Using mock data as fallback for:', placeId);
+        return mockDetails;
+      }
+      
       throw new Error('Failed to get place details');
     }
+  }
+
+  private getMockPlaceDetails(placeId: string): PlaceDetails | null {
+    const mockPlacesDetails: { [key: string]: PlaceDetails } = {
+      'ChIJ123456789': {
+        placeId: 'ChIJ123456789',
+        name: 'Central Park',
+        address: 'Central Park, New York, NY 10024',
+        coordinates: { lat: 40.7829, lng: -73.9654 },
+        rating: 4.5,
+        priceLevel: 0,
+        phoneNumber: '+1-212-310-6600',
+        website: 'https://www.centralparknyc.org',
+        openingHours: {
+          openNow: true,
+          periods: [],
+          weekdayText: ['Monday: 6:00 AM – 1:00 AM', 'Tuesday: 6:00 AM – 1:00 AM', 'Wednesday: 6:00 AM – 1:00 AM', 'Thursday: 6:00 AM – 1:00 AM', 'Friday: 6:00 AM – 1:00 AM', 'Saturday: 6:00 AM – 1:00 AM', 'Sunday: 6:00 AM – 1:00 AM']
+        },
+        photos: [
+          { photoReference: 'mock_photo_1', height: 400, width: 600 }
+        ],
+        reviews: [
+          {
+            authorName: 'John Doe',
+            rating: 5,
+            text: 'Beautiful park with great walking trails and recreational facilities.',
+            time: Date.now() - 86400000, // 1 day ago
+            profilePhotoUrl: 'https://via.placeholder.com/50'
+          }
+        ],
+        types: ['park', 'tourist_attraction'],
+        utcOffset: -300,
+        vicinity: 'Manhattan, New York'
+      },
+      'ChIJ987654321': {
+        placeId: 'ChIJ987654321',
+        name: 'Equinox Gym',
+        address: '123 Main St, New York, NY 10001',
+        coordinates: { lat: 40.7589, lng: -73.9851 },
+        rating: 4.2,
+        priceLevel: 3,
+        phoneNumber: '+1-555-0123',
+        website: 'https://equinox.com',
+        openingHours: {
+          openNow: true,
+          periods: [],
+          weekdayText: ['Monday: 5:00 AM – 11:00 PM', 'Tuesday: 5:00 AM – 11:00 PM', 'Wednesday: 5:00 AM – 11:00 PM', 'Thursday: 5:00 AM – 11:00 PM', 'Friday: 5:00 AM – 11:00 PM', 'Saturday: 6:00 AM – 10:00 PM', 'Sunday: 7:00 AM – 9:00 PM']
+        },
+        photos: [
+          { photoReference: 'mock_photo_2', height: 400, width: 600 }
+        ],
+        reviews: [
+          {
+            authorName: 'Jane Smith',
+            rating: 4,
+            text: 'Great gym with excellent equipment and clean facilities.',
+            time: Date.now() - 172800000, // 2 days ago
+            profilePhotoUrl: 'https://via.placeholder.com/50'
+          }
+        ],
+        types: ['gym', 'health'],
+        utcOffset: -300,
+        vicinity: 'Manhattan, New York'
+      }
+    };
+
+    return mockPlacesDetails[placeId] || null;
   }
 
   async getPlacePhoto(photoReference: string, maxWidth: number = 400): Promise<string> {
@@ -415,6 +599,55 @@ class PlacesApiService {
 
   private toRad(deg: number): number {
     return deg * (Math.PI / 180);
+  }
+
+  // Cache management methods
+  clearCache(): void {
+    this.placeDetailsCache.clear();
+    console.log('Place details cache cleared');
+  }
+
+  getCacheSize(): number {
+    return this.placeDetailsCache.size;
+  }
+
+  isCached(placeId: string): boolean {
+    const cached = this.placeDetailsCache.get(placeId);
+    return cached !== undefined && (Date.now() - cached.timestamp) < this.cacheExpiryTime;
+  }
+
+  // Enhanced photo URL generation
+  getPlacePhotoUrl(photoReference: string, maxWidth: number = 400, maxHeight?: number): string {
+    const params = new URLSearchParams({
+      photo_reference: photoReference,
+      maxwidth: maxWidth.toString(),
+      key: this.apiKey,
+    });
+
+    if (maxHeight) {
+      params.append('maxheight', maxHeight.toString());
+    }
+
+    return `${this.baseUrl}/photo?${params}`;
+  }
+
+  // Get place details with photo URLs
+  async getPlaceDetailsWithPhotos(placeId: string): Promise<PlaceDetails | null> {
+    const placeDetails = await this.getPlaceDetails(placeId);
+    if (!placeDetails || !placeDetails.photos) {
+      return placeDetails;
+    }
+
+    // Add photo URLs to the place details
+    const placeDetailsWithPhotos = {
+      ...placeDetails,
+      photos: placeDetails.photos.map(photo => ({
+        ...photo,
+        url: this.getPlacePhotoUrl(photo.photoReference, 400, 300)
+      }))
+    };
+
+    return placeDetailsWithPhotos;
   }
 
 }
