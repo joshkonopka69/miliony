@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import MapView from 'react-native-maps';
+import ExpoGoMap from './ExpoGoMap';
 
 export default function MapFallback() {
   return (

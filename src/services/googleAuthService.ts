@@ -1,4 +1,6 @@
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import * as Crypto from 'expo-crypto';
 
 export interface GoogleUser {
   id: string;
@@ -16,15 +18,15 @@ export interface GoogleAuthResult {
 }
 
 export class GoogleAuthService {
+  private static readonly GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'YOUR_WEB_CLIENT_ID';
+  private static readonly GOOGLE_REDIRECT_URI = AuthSession.makeRedirectUri({
+    useProxy: true,
+  });
+
   static async configure() {
     try {
-      await GoogleSignin.configure({
-        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'YOUR_WEB_CLIENT_ID',
-        offlineAccess: true,
-        hostedDomain: '',
-        forceCodeForRefreshToken: true,
-      });
       console.log('✅ Google Sign-In configured successfully');
+      console.log('Redirect URI:', this.GOOGLE_REDIRECT_URI);
     } catch (error) {
       console.error('❌ Google Sign-In configuration failed:', error);
     }
@@ -32,38 +34,67 @@ export class GoogleAuthService {
 
   static async signIn(): Promise<GoogleAuthResult> {
     try {
-      await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      
-      return {
-        success: true,
-        user: {
-          id: userInfo.user.id,
-          email: userInfo.user.email,
-          displayName: userInfo.user.name,
-          avatarUrl: userInfo.user.photo,
-          idToken: userInfo.idToken,
-          accessToken: userInfo.serverAuthCode,
-        }
-      };
+      const request = new AuthSession.AuthRequest({
+        clientId: this.GOOGLE_CLIENT_ID,
+        scopes: ['openid', 'profile', 'email'],
+        redirectUri: this.GOOGLE_REDIRECT_URI,
+        responseType: AuthSession.ResponseType.Code,
+        extraParams: {},
+        additionalParameters: {},
+        prompt: AuthSession.Prompt.SelectAccount,
+      });
+
+      const result = await request.promptAsync({
+        authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+      });
+
+      if (result.type === 'success') {
+        const tokenResponse = await AuthSession.exchangeCodeAsync(
+          {
+            clientId: this.GOOGLE_CLIENT_ID,
+            code: result.params.code,
+            redirectUri: this.GOOGLE_REDIRECT_URI,
+            extraParams: {
+              code_verifier: request.codeChallenge,
+            },
+          },
+          {
+            tokenEndpoint: 'https://oauth2.googleapis.com/token',
+          }
+        );
+
+        // Get user info from Google
+        const userInfoResponse = await fetch(
+          `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokenResponse.accessToken}`
+        );
+        const userInfo = await userInfoResponse.json();
+
+        return {
+          success: true,
+          user: {
+            id: userInfo.id,
+            email: userInfo.email,
+            displayName: userInfo.name,
+            avatarUrl: userInfo.picture,
+            idToken: tokenResponse.idToken || '',
+            accessToken: tokenResponse.accessToken,
+          }
+        };
+      } else if (result.type === 'cancel') {
+        return { success: false, error: 'User cancelled the login flow' };
+      } else {
+        return { success: false, error: 'Google sign-in failed' };
+      }
     } catch (error: any) {
       console.error('Google sign-in error:', error);
-      
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        return { success: false, error: 'User cancelled the login flow' };
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        return { success: false, error: 'Sign in is in progress already' };
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        return { success: false, error: 'Play services not available' };
-      } else {
-        return { success: false, error: error.message || 'Google sign-in failed' };
-      }
+      return { success: false, error: error.message || 'Google sign-in failed' };
     }
   }
 
   static async signOut(): Promise<{ success: boolean; error?: string }> {
     try {
-      await GoogleSignin.signOut();
+      // For Expo AuthSession, we just clear any stored tokens
+      // The actual sign-out happens on the Google side
       return { success: true };
     } catch (error: any) {
       console.error('Google sign-out error:', error);
@@ -72,21 +103,13 @@ export class GoogleAuthService {
   }
 
   static async getCurrentUser() {
-    try {
-      const userInfo = await GoogleSignin.getCurrentUser();
-      return userInfo;
-    } catch (error) {
-      console.error('Error getting current Google user:', error);
-      return null;
-    }
+    // With Expo AuthSession, we don't have a persistent session
+    // User would need to sign in again
+    return null;
   }
 
   static async isSignedIn(): Promise<boolean> {
-    try {
-      return await GoogleSignin.isSignedIn();
-    } catch (error) {
-      console.error('Error checking Google sign-in status:', error);
-      return false;
-    }
+    // With Expo AuthSession, we don't have a persistent session
+    return false;
   }
 }

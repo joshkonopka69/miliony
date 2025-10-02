@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import ExpoGoMap from './ExpoGoMap';
 
 export default function MapDiagnostic() {
   const [mapLoaded, setMapLoaded] = useState(false);
