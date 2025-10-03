@@ -11,14 +11,14 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useAuth, AuthError } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
 import ErrorMessage from './ErrorMessage';
 
 // Types
 export interface RegisterFormProps {
   onSuccess?: () => void;
-  onError?: (error: AuthError) => void;
+  onError?: (error: any) => void;
   onLogin?: () => void;
   style?: any;
 }
@@ -47,7 +47,7 @@ export default function RegisterForm({
   style,
 }: RegisterFormProps) {
   const { t } = useTranslation();
-  const { register } = useAuth();
+  const { signUp } = useAuth();
   
   const [formData, setFormData] = useState<RegisterFormData>({
     email: '',
@@ -131,19 +131,21 @@ export default function RegisterForm({
     setErrors({});
 
     try {
-      const result = await register({
-        email: formData.email,
-        password: formData.password,
-        displayName: formData.displayName,
-        favoriteSports: formData.favoriteSports,
+      const result = await signUp(formData.email, formData.password, {
+        display_name: formData.displayName,
+        favorite_sports: formData.favoriteSports,
       });
 
       if (result.success) {
         onSuccess?.();
       } else {
-        if (result.error) {
-          setErrors({ general: result.error.message });
-          onError?.(result.error);
+        const error = result.error as any;
+        const errorMessage = typeof error === 'string' 
+          ? error 
+          : error?.message || 'Registration failed';
+        setErrors({ general: errorMessage });
+        if (error) {
+          onError?.(error);
         }
       }
     } catch (error: any) {

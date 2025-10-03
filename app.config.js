@@ -4,7 +4,7 @@ export default {
     name: "SportMap",
     slug: "sportmap",
     version: "1.0.0",
-    sdkVersion: "54.0.0",
+    owner: "hubertdomagala",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -49,7 +49,7 @@ export default {
     ],
     extra: {
       eas: {
-        projectId: "your-project-id"
+        projectId: "372e8a03-e24f-4695-9ec5-f86f6408a7fa"
       }
     }
   }

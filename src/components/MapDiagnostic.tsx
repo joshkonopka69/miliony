@@ -34,19 +34,7 @@ export default function MapDiagnostic() {
       </View>
       
       <View style={styles.mapContainer}>
-        <MapView
-          style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={{
-            latitude: 40.7589,
-            longitude: -73.9851,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          }}
-          onMapReady={handleMapReady}
-          showsUserLocation={false}
-          showsMyLocationButton={false}
-        />
+        <ExpoGoMap />
       </View>
       
       <View style={styles.status}>

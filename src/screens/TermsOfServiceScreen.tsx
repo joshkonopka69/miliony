@@ -23,9 +23,9 @@ export default function TermsOfServiceScreen() {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>← {t.policy.back}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Terms of Service</Text>
+        <Text style={styles.title}>{t.policy.termsOfService}</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

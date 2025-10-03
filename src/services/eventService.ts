@@ -1,292 +1,338 @@
-// Integrated Event Service combining Supabase and Firebase
-import { supabaseService, Event, CreateEventData, EventFilters } from './supabase';
-import { firebaseService, LiveEvent, LiveMessage } from './firebase';
+import { supabase } from './supabase';
 
-export interface IntegratedEvent extends Event {
-  liveEvent?: LiveEvent;
-  isLive: boolean;
+export interface Event {
+  id: string;
+  name: string;
+  description: string;
+  activity: string;
+  max_participants: number;
+  participants_count: number;
+  location_name: string;
+  latitude: number;
+  longitude: number;
+  place_id?: string;
+  created_by: string;
+  status: 'live' | 'past' | 'cancelled';
+  start_time?: string;
+  end_time?: string;
+  created_at: string;
+  updated_at: string;
   participants: string[];
-  messages: LiveMessage[];
+  is_joined?: boolean;
 }
 
-export interface CreateEventRequest extends CreateEventData {
-  // Additional fields for real-time features
-  enableChat?: boolean;
-  enablePresence?: boolean;
+export interface CreateEventData {
+  name: string;
+  description: string;
+  activity: string;
+  max_participants: number;
+  location_name: string;
+  latitude: number;
+  longitude: number;
+  place_id?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
-class EventService {
-  // Create event in both Supabase and Firebase
-  async createEvent(eventData: CreateEventRequest): Promise<IntegratedEvent | null> {
+export class EventService {
+  // Create a new event
+  static async createEvent(
+    creatorId: string,
+    eventData: CreateEventData
+  ): Promise<Event | null> {
     try {
-      // 1. Create event in Supabase (persistent)
-      const supabaseEvent = await supabaseService.createEvent(eventData);
-      if (!supabaseEvent) {
-        throw new Error('Failed to create event in Supabase');
-      }
+      const { data, error } = await supabase
+        .from('events')
+        .insert({
+          ...eventData,
+          created_by: creatorId,
+          participants_count: 1,
+          status: 'live',
+        })
+        .select()
+        .single();
 
-      // 2. Create live event in Firebase (real-time)
-      const liveEvent = await firebaseService.createLiveEvent({
-        supabaseEventId: supabaseEvent.id,
-        name: supabaseEvent.name,
-        activity: supabaseEvent.activity,
-        location: {
-          latitude: supabaseEvent.latitude,
-          longitude: supabaseEvent.longitude,
-          placeId: supabaseEvent.place_id,
-          name: supabaseEvent.location_name,
-        },
-        createdBy: supabaseEvent.created_by,
-        maxParticipants: supabaseEvent.max_participants,
-      });
-
-      // 3. Return integrated event
-      return {
-        ...supabaseEvent,
-        liveEvent,
-        isLive: true,
-        participants: liveEvent.participants,
-        messages: [],
-      } as IntegratedEvent;
-    } catch (error) {
-      console.error('Error creating event:', error);
-      return null;
-    }
-  }
-
-  // Get events with real-time data
-  async getEvents(filters?: EventFilters): Promise<IntegratedEvent[]> {
-    try {
-      // 1. Get events from Supabase
-      const supabaseEvents = await supabaseService.getEvents(filters);
-      
-      // 2. Get live events from Firebase
-      const liveEvents = await firebaseService.getLiveEvents();
-      
-      // 3. Combine data
-      const integratedEvents: IntegratedEvent[] = supabaseEvents.map(event => {
-        const liveEvent = liveEvents.find(le => le.supabaseEventId === event.id);
-        
-        return {
-          ...event,
-          liveEvent,
-          isLive: !!liveEvent,
-          participants: liveEvent?.participants || [],
-          messages: [], // Will be loaded separately if needed
-        };
-      });
-
-      return integratedEvents;
-    } catch (error) {
-      console.error('Error fetching events:', error);
-      return [];
-    }
-  }
-
-  // Get single event with real-time data
-  async getEventById(eventId: string): Promise<IntegratedEvent | null> {
-    try {
-      // 1. Get event from Supabase
-      const supabaseEvent = await supabaseService.getEventById(eventId);
-      if (!supabaseEvent) {
+      if (error) {
+        console.error('Error creating event:', error);
         return null;
       }
 
-      // 2. Get live event from Firebase
-      const liveEvent = await firebaseService.getLiveEvent(eventId);
-      
-      // 3. Get messages if event is live
-      let messages: LiveMessage[] = [];
-      if (liveEvent) {
-        messages = await firebaseService.getEventMessages(eventId);
-      }
+      // Add creator as participant
+      await this.joinEvent(data.id, creatorId);
 
-      return {
-        ...supabaseEvent,
-        liveEvent: liveEvent || undefined,
-        isLive: !!liveEvent,
-        participants: liveEvent?.participants || [],
-        messages,
-      };
+      return data;
     } catch (error) {
-      console.error('Error fetching event:', error);
+      console.error('Error in createEvent:', error);
       return null;
-    }
-  }
-
-  // Join event (both Supabase and Firebase)
-  async joinEvent(eventId: string, userId: string): Promise<boolean> {
-    try {
-      // 1. Join in Supabase
-      const supabaseSuccess = await supabaseService.joinEvent(eventId, userId);
-      if (!supabaseSuccess) {
-        return false;
-      }
-
-      // 2. Join in Firebase (if event is live)
-      const liveEvent = await firebaseService.getLiveEvent(eventId);
-      if (liveEvent) {
-        const firebaseSuccess = await firebaseService.joinLiveEvent(eventId, userId);
-        if (!firebaseSuccess) {
-          // Rollback Supabase join
-          await supabaseService.leaveEvent(eventId, userId);
-          return false;
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error joining event:', error);
-      return false;
-    }
-  }
-
-  // Leave event (both Supabase and Firebase)
-  async leaveEvent(eventId: string, userId: string): Promise<boolean> {
-    try {
-      // 1. Leave in Supabase
-      const supabaseSuccess = await supabaseService.leaveEvent(eventId, userId);
-      if (!supabaseSuccess) {
-        return false;
-      }
-
-      // 2. Leave in Firebase (if event is live)
-      const liveEvent = await firebaseService.getLiveEvent(eventId);
-      if (liveEvent) {
-        await firebaseService.leaveLiveEvent(eventId, userId);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error leaving event:', error);
-      return false;
-    }
-  }
-
-  // End event (mark as past in both systems)
-  async endEvent(eventId: string, userId: string): Promise<boolean> {
-    try {
-      // 1. Update status in Supabase
-      const supabaseSuccess = await supabaseService.updateEvent(eventId, { status: 'past' });
-      if (!supabaseSuccess) {
-        return false;
-      }
-
-      // 2. End live event in Firebase
-      const firebaseSuccess = await firebaseService.endLiveEvent(eventId, userId);
-      if (!firebaseSuccess) {
-        // Rollback Supabase update
-        await supabaseService.updateEvent(eventId, { status: 'live' });
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error ending event:', error);
-      return false;
-    }
-  }
-
-  // Send message to event
-  async sendMessage(eventId: string, senderId: string, senderName: string, text: string): Promise<LiveMessage | null> {
-    try {
-      // 1. Send message in Firebase
-      const message = await firebaseService.sendMessage(eventId, senderId, senderName, text);
-      if (!message) {
-        return null;
-      }
-
-      // 2. Optionally save to Supabase for persistence
-      await supabaseService.sendEventMessage(eventId, senderId, text);
-
-      return message;
-    } catch (error) {
-      console.error('Error sending message:', error);
-      return null;
-    }
-  }
-
-  // Get event messages
-  async getEventMessages(eventId: string, limit: number = 50): Promise<LiveMessage[]> {
-    try {
-      return await firebaseService.getEventMessages(eventId, limit);
-    } catch (error) {
-      console.error('Error fetching event messages:', error);
-      return [];
-    }
-  }
-
-  // Subscribe to live events (real-time updates)
-  subscribeToLiveEvents(callback: (events: LiveEvent[]) => void): () => void {
-    return firebaseService.subscribeToLiveEvents(callback);
-  }
-
-  // Subscribe to specific event updates
-  subscribeToEvent(eventId: string, callback: (event: LiveEvent | null) => void): () => void {
-    return firebaseService.subscribeToLiveEvent(eventId, callback);
-  }
-
-  // Subscribe to event messages
-  subscribeToEventMessages(eventId: string, callback: (message: LiveMessage) => void): () => void {
-    return firebaseService.subscribeToEventMessages(eventId, callback);
-  }
-
-  // Subscribe to event presence
-  subscribeToEventPresence(eventId: string, callback: (presence: any[]) => void): () => void {
-    return firebaseService.subscribeToEventPresence(eventId, callback);
-  }
-
-  // Update user presence in event
-  async updateUserPresence(eventId: string, userId: string, status: 'online' | 'away' | 'offline'): Promise<void> {
-    try {
-      await firebaseService.updateUserPresence(eventId, userId, status);
-    } catch (error) {
-      console.error('Error updating user presence:', error);
     }
   }
 
   // Get events near location
-  async getEventsNearLocation(latitude: number, longitude: number, radius: number = 10): Promise<IntegratedEvent[]> {
+  static async getNearbyEvents(
+    latitude: number,
+    longitude: number,
+    radiusKm: number = 10,
+    limit: number = 20
+  ): Promise<Event[]> {
     try {
-      const filters: EventFilters = {
-        location: { latitude, longitude, radius },
-        status: 'live',
-      };
+      const { data, error } = await supabase.rpc('get_events_near_location', {
+        user_lat: latitude,
+        user_lng: longitude,
+        radius_km: radiusKm,
+      });
 
-      return await this.getEvents(filters);
+      if (error) {
+        console.error('Error fetching nearby events:', error);
+        return [];
+      }
+
+      return data?.slice(0, limit) || [];
     } catch (error) {
-      console.error('Error fetching events near location:', error);
+      console.error('Error in getNearbyEvents:', error);
       return [];
     }
   }
 
-  // Search events by activity
-  async searchEventsByActivity(activity: string): Promise<IntegratedEvent[]> {
+  // Get user's events
+  static async getUserEvents(userId: string): Promise<Event[]> {
     try {
-      const filters: EventFilters = {
-        activity,
-        status: 'live',
-      };
+      const { data, error } = await supabase.rpc('get_user_events', {
+        user_uuid: userId,
+      });
 
-      return await this.getEvents(filters);
+      if (error) {
+        console.error('Error fetching user events:', error);
+        return [];
+      }
+
+      return data || [];
     } catch (error) {
-      console.error('Error searching events by activity:', error);
+      console.error('Error in getUserEvents:', error);
       return [];
     }
   }
 
-  // Get user's events (created and joined)
-  async getUserEvents(userId: string): Promise<IntegratedEvent[]> {
+  // Join an event
+  static async joinEvent(eventId: string, userId: string): Promise<boolean> {
     try {
-      // This would require additional Supabase functions
-      // For now, return empty array
-      return [];
+      const { data, error } = await supabase.rpc('join_event', {
+        event_uuid: eventId,
+        user_uuid: userId,
+      });
+
+      if (error) {
+        console.error('Error joining event:', error);
+        return false;
+      }
+
+      return data;
     } catch (error) {
-      console.error('Error fetching user events:', error);
+      console.error('Error in joinEvent:', error);
+      return false;
+    }
+  }
+
+  // Leave an event
+  static async leaveEvent(eventId: string, userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase.rpc('leave_event', {
+        event_uuid: eventId,
+        user_uuid: userId,
+      });
+
+      if (error) {
+        console.error('Error leaving event:', error);
+        return false;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in leaveEvent:', error);
+      return false;
+    }
+  }
+
+  // Get event details
+  static async getEventDetails(eventId: string): Promise<Event | null> {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          event_participants!inner(user_id)
+        `)
+        .eq('id', eventId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching event details:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in getEventDetails:', error);
+      return null;
+    }
+  }
+
+  // Update event
+  static async updateEvent(
+    eventId: string,
+    userId: string,
+    updates: Partial<CreateEventData>
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update(updates)
+        .eq('id', eventId)
+        .eq('created_by', userId);
+
+      if (error) {
+        console.error('Error updating event:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in updateEvent:', error);
+      return false;
+    }
+  }
+
+  // Cancel event
+  static async cancelEvent(eventId: string, userId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({ status: 'cancelled' })
+        .eq('id', eventId)
+        .eq('created_by', userId);
+
+      if (error) {
+        console.error('Error cancelling event:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in cancelEvent:', error);
+      return false;
+    }
+  }
+
+  // Delete event
+  static async deleteEvent(eventId: string, userId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId)
+        .eq('created_by', userId);
+
+      if (error) {
+        console.error('Error deleting event:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in deleteEvent:', error);
+      return false;
+    }
+  }
+
+  // Search events
+  static async searchEvents(
+    query: string,
+    activity?: string,
+    latitude?: number,
+    longitude?: number,
+    radiusKm?: number
+  ): Promise<Event[]> {
+    try {
+      let supabaseQuery = supabase
+        .from('events')
+        .select('*')
+        .eq('status', 'live')
+        .ilike('name', `%${query}%`);
+
+      if (activity) {
+        supabaseQuery = supabaseQuery.eq('activity', activity);
+      }
+
+      if (latitude && longitude && radiusKm) {
+        // This would need a custom function for distance filtering
+        // For now, we'll get all matching events
+      }
+
+      const { data, error } = await supabaseQuery
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Error searching events:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in searchEvents:', error);
       return [];
     }
+  }
+
+  // Get event participants
+  static async getEventParticipants(eventId: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('event_participants')
+        .select(`
+          user_id,
+          users!inner(id, display_name, avatar_url)
+        `)
+        .eq('event_id', eventId);
+
+      if (error) {
+        console.error('Error fetching event participants:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getEventParticipants:', error);
+      return [];
+    }
+  }
+
+  // Subscribe to event updates
+  static subscribeToEventUpdates(
+    eventId: string,
+    onUpdate: (event: Event) => void,
+    onError?: (error: any) => void
+  ) {
+    return supabase
+      .channel(`event-${eventId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'events',
+          filter: `id=eq.${eventId}`,
+        },
+        (payload) => {
+          onUpdate(payload.new as Event);
+        }
+      )
+      .subscribe((status, error) => {
+        if (error) {
+          console.error('Subscription error:', error);
+          onError?.(error);
+        }
+      });
   }
 }
 
-export const eventService = new EventService();
-export default eventService;
+export default EventService;

@@ -11,7 +11,11 @@ import {
   TextInput,
   ActivityIndicator
 } from 'react-native';
-import ExpoGoMap from './ExpoGoMap';
+import GoogleMapsView from './GoogleMapsView';
+import PlaceDetailsModal from './PlaceDetailsModal';
+import EventPin from './EventPin';
+import EventSearchFilter, { EventSearchFilters } from './EventSearchFilter';
+import LiveEventStatus from './LiveEventStatus';
 import * as Location from 'expo-location';
 import { 
   ActivityFilterModal, 
@@ -22,8 +26,11 @@ import {
 } from './index';
 import LoadingSpinner from './LoadingSpinner';
 import { PlaceInfoSkeleton } from './SkeletonLoader';
-import { placesApiService, Place, PlaceDetails, ActivityFilter } from '../services/placesApi';
-import { firestoreService, Event } from '../services/firestore';
+import { placesApiService } from '../services/placesApi';
+import { firestoreService } from '../services/firestore';
+import { enhancedEventService } from '../services/enhancedEventService';
+import { authService } from '../services/authService';
+import { notificationService } from '../services/notificationService';
 import { useAppNavigation } from '../navigation';
 import { ROUTES } from '../navigation/types';
 import { errorHandler } from '../utils/errorHandler';
@@ -33,7 +40,7 @@ import { performanceOptimizer } from '../utils/performanceOptimizer';
 interface EnhancedInteractiveMapProps {
   onLocationSelect?: (location: any) => void;
   searchQuery?: string;
-  onMapReady?: (mapRef: React.RefObject<MapView>) => void;
+  onMapReady?: (mapRef: React.RefObject<any>) => void;
   onLocationPermissionGranted?: () => void;
 }
 
@@ -45,25 +52,26 @@ export default function EnhancedInteractiveMap({
   onMapReady,
   onLocationPermissionGranted,
 }: EnhancedInteractiveMapProps) {
+  const [selectedPlace, setSelectedPlace] = useState<any>(null);
+  const [showPlaceDetails, setShowPlaceDetails] = useState(false);
   const navigation = useAppNavigation();
-  const mapRef = useRef<MapView>(null);
-  const [region, setRegion] = useState<Region>({
+  const mapRef = useRef<any>(null);
+  const [region, setRegion] = useState<any>({
     latitude: 40.7829,
     longitude: -73.9654,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [allEvents, setAllEvents] = useState<Event[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [places, setPlaces] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [allEvents, setAllEvents] = useState<any[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showEventCreation, setShowEventCreation] = useState(false);
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [showVenueInfo, setShowVenueInfo] = useState(false);
-  const [currentFilters, setCurrentFilters] = useState<ActivityFilter>({
+  const [currentFilters, setCurrentFilters] = useState<any>({
     types: [],
     keywords: [],
     radius: 3000,
@@ -85,11 +93,63 @@ export default function EnhancedInteractiveMap({
   const [showPlaceInfo, setShowPlaceInfo] = useState(false);
   const [selectedPlaceDetails, setSelectedPlaceDetails] = useState<PlaceDetails | null>(null);
   const [placeDetailsLoading, setPlaceDetailsLoading] = useState(false);
+  
+  // Event management state
+  const [showEventSearchFilter, setShowEventSearchFilter] = useState(false);
+  const [eventSearchFilters, setEventSearchFilters] = useState<EventSearchFilters>({
+    query: '',
+    activities: [],
+    timeFilter: 'all',
+    distance: 10,
+    skillLevel: 'all',
+    maxParticipants: 20,
+    showFullEvents: true,
+    showLiveOnly: false,
+  });
 
   useEffect(() => {
     requestLocationPermission();
     loadInitialData();
+    initializeNotifications();
+    setupRealtimeSubscriptions();
   }, []);
+
+  // Initialize notifications
+  const initializeNotifications = async () => {
+    try {
+      await notificationService.initialize();
+    } catch (error) {
+      console.error('Error initializing notifications:', error);
+    }
+  };
+
+  // Setup real-time subscriptions
+  const setupRealtimeSubscriptions = () => {
+    // Subscribe to area events
+    const unsubscribeAreaEvents = enhancedEventService.subscribeToAreaEvents(
+      {
+        north: region.latitude + region.latitudeDelta,
+        south: region.latitude - region.latitudeDelta,
+        east: region.longitude + region.longitudeDelta,
+        west: region.longitude - region.longitudeDelta,
+      },
+      (update) => {
+        console.log('Area event update:', update);
+        loadEvents(); // Refresh events when area updates
+      }
+    );
+
+    // Subscribe to user events
+    const unsubscribeUserEvents = enhancedEventService.subscribeToUserEvents((update) => {
+      console.log('User event update:', update);
+      loadEvents(); // Refresh events when user events update
+    });
+
+    return () => {
+      unsubscribeAreaEvents();
+      unsubscribeUserEvents();
+    };
+  };
 
   useEffect(() => {
     setLocalSearchQuery(searchQuery || '');
@@ -156,6 +216,34 @@ export default function EnhancedInteractiveMap({
   const loadInitialData = async () => {
     // Seed mock data
     await firestoreService.seedMockData();
+    // Load events
+    await loadEvents();
+  };
+
+  const loadEvents = async () => {
+    try {
+      setLoading(true);
+      const events = await enhancedEventService.getEvents({
+        bounds: {
+          north: region.latitude + region.latitudeDelta,
+          south: region.latitude - region.latitudeDelta,
+          east: region.longitude + region.longitudeDelta,
+          west: region.longitude - region.longitudeDelta,
+        },
+        ...eventSearchFilters,
+      });
+      
+      // Ensure events is an array and filter out any null/undefined events
+      const validEvents = Array.isArray(events) ? events.filter(event => event && event.id) : [];
+      setEvents(validEvents);
+      setAllEvents(validEvents);
+    } catch (error) {
+      console.error('Error loading events:', error);
+      setEvents([]);
+      setAllEvents([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const searchPlaces = async () => {
@@ -249,6 +337,10 @@ export default function EnhancedInteractiveMap({
   };
 
   const handleEventPress = (event: Event) => {
+    if (!event) {
+      console.error('Event is null or undefined');
+      return;
+    }
     setSelectedEvent(event);
     setShowEventDetails(true);
   };
@@ -283,44 +375,15 @@ export default function EnhancedInteractiveMap({
     }
   };
 
-  const handleJoinEvent = async (eventId: string) => {
-    try {
-      await firestoreService.joinEvent(eventId, 'user123');
-      setEvents(prev => 
-        prev.map(event => 
-          event.id === eventId 
-            ? { ...event, participants: [...event.participants, 'user123'] }
-            : event
-        )
-      );
-      Alert.alert('Success', 'You joined the event!');
-    } catch (error) {
-      console.error('Error joining event:', error);
-      Alert.alert('Error', 'Failed to join event');
-    }
-  };
-
-  const handleLeaveEvent = async (eventId: string) => {
-    try {
-      await firestoreService.leaveEvent(eventId, 'user123');
-      setEvents(prev => 
-        prev.map(event => 
-          event.id === eventId 
-            ? { ...event, participants: event.participants.filter(id => id !== 'user123') }
-            : event
-        )
-      );
-      Alert.alert('Success', 'You left the event');
-    } catch (error) {
-      console.error('Error leaving event:', error);
-      Alert.alert('Error', 'Failed to leave event');
-    }
-  };
-
   const handleDeleteEvent = async (eventId: string) => {
+    if (!eventId) {
+      console.error('Event ID is null or undefined');
+      return;
+    }
+    
     try {
       await firestoreService.deleteEvent(eventId, 'user123');
-      setEvents(prev => prev.filter(event => event.id !== eventId));
+      setEvents(prev => prev.filter(event => event && event.id !== eventId));
       setShowEventDetails(false);
       Alert.alert('Success', 'Event deleted');
     } catch (error) {
@@ -482,81 +545,74 @@ export default function EnhancedInteractiveMap({
     return iconMap[activity] || '🏃';
   };
 
+  const handlePlaceSelect = (place: any) => {
+    setSelectedPlace(place);
+    setShowPlaceDetails(true);
+  };
+
+  const handlePlanEvent = (place: any) => {
+    // Navigate to event creation with place data
+    console.log('Planning event at:', place);
+    // You can add navigation logic here
+  };
+
+  // Event handling functions
+
+  const handleJoinEvent = async (eventId: string) => {
+    if (!eventId) {
+      console.error('Event ID is null or undefined');
+      return;
+    }
+    
+    try {
+      const result = await enhancedEventService.joinEvent(eventId);
+      if (result.success) {
+        Alert.alert('Success', 'You have joined the event!');
+        // Refresh events list
+        loadEvents();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to join event');
+      }
+    } catch (error) {
+      console.error('Error joining event:', error);
+      Alert.alert('Error', 'Failed to join event');
+    }
+  };
+
+  const handleLeaveEvent = async (eventId: string) => {
+    if (!eventId) {
+      console.error('Event ID is null or undefined');
+      return;
+    }
+    
+    try {
+      const result = await enhancedEventService.leaveEvent(eventId);
+      if (result.success) {
+        Alert.alert('Success', 'You have left the event');
+        // Refresh events list
+        loadEvents();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to leave event');
+      }
+    } catch (error) {
+      console.error('Error leaving event:', error);
+      Alert.alert('Error', 'Failed to leave event');
+    }
+  };
+
+  const handleApplyEventFilters = (filters: EventSearchFilters) => {
+    setEventSearchFilters(filters);
+    console.log('Applied filters:', filters);
+    // Add filter application logic here
+  };
+
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        region={region}
-        onRegionChangeComplete={setRegion}
-        onPress={handleMapPress}
-        showsUserLocation={true}
-        showsMyLocationButton={true}
-        onMapReady={() => onMapReady?.(mapRef)}
-        scrollEnabled={true}
-        zoomEnabled={true}
-        pitchEnabled={true}
-        rotateEnabled={true}
-        moveOnMarkerPress={false}
-        showsCompass={false}
-        showsScale={false}
-        showsBuildings={false}
-        showsIndoors={false}
-        showsTraffic={false}
-        showsPointsOfInterest={false}
-      >
-        {/* Place Markers */}
-        {places.map((place) => (
-          <Marker
-            key={place.placeId}
-            coordinate={place.coordinates}
-            title={place.name}
-            description={place.address}
-            onPress={() => handlePlacePress(place)}
-          >
-            <View style={styles.placeMarker}>
-              <Text style={styles.placeMarkerText}>📍</Text>
-            </View>
-          </Marker>
-        ))}
-
-        {/* Custom Pin Markers */}
-        {customPins.map((pin) => (
-          <Marker
-            key={pin.id}
-            coordinate={pin.coordinate}
-            title={pin.title}
-            description={pin.description}
-            onPress={() => setSelectedPin(pin.id)}
-            onCalloutPress={() => handlePinLongPress(pin.id)}
-          >
-            <View style={[
-              styles.customPinMarker,
-              selectedPin === pin.id && styles.selectedPinMarker
-            ]}>
-              <Text style={styles.customPinText}>📍</Text>
-            </View>
-          </Marker>
-        ))}
-
-        {/* Event Markers */}
-        {events.map((event) => (
-          <Marker
-            key={event.id}
-            coordinate={event.coordinates || { latitude: 0, longitude: 0 }}
-            title={event.activity}
-            description={`${event.participants.length}/${event.maxParticipants} participants`}
-            onPress={() => handleEventPress(event)}
-          >
-            <View style={styles.eventMarker}>
-              <Text style={styles.eventMarkerText}>
-                {getEventIcon(event.activity)}
-              </Text>
-            </View>
-          </Marker>
-        ))}
-      </MapView>
+      <GoogleMapsView
+        onLocationSelect={onLocationSelect}
+        onPlaceSelect={handlePlaceSelect}
+        searchQuery={searchQuery}
+      />
 
       {/* Search and Filter Container */}
       <View style={styles.searchFilterContainer} pointerEvents="box-none">
@@ -599,6 +655,24 @@ export default function EnhancedInteractiveMap({
             (currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && styles.filterButtonTextActive
           ]}>
             Filter {(currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && '●'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Event Search Filter Button */}
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            (eventSearchFilters.activities.length > 0 || eventSearchFilters.query) && styles.filterButtonActive
+          ]}
+          onPress={() => setShowEventSearchFilter(true)}
+          activeOpacity={0.8}
+          pointerEvents="auto"
+        >
+          <Text style={[
+            styles.filterButtonText,
+            (eventSearchFilters.activities.length > 0 || eventSearchFilters.query) && styles.filterButtonTextActive
+          ]}>
+            Events {(eventSearchFilters.activities.length > 0 || eventSearchFilters.query) && '●'}
           </Text>
         </TouchableOpacity>
 
@@ -652,15 +726,17 @@ export default function EnhancedInteractiveMap({
         placeDetails={selectedPlaceDetails}
       />
 
-      <EventDetailsModal
-        visible={showEventDetails}
-        onClose={() => setShowEventDetails(false)}
-        event={selectedEvent}
-        currentUserId="user123"
-        onJoinEvent={handleJoinEvent}
-        onLeaveEvent={handleLeaveEvent}
-        onDeleteEvent={handleDeleteEvent}
-      />
+      {selectedEvent && (
+        <EventDetailsModal
+          visible={showEventDetails}
+          onClose={() => setShowEventDetails(false)}
+          event={selectedEvent}
+          currentUserId="user123"
+          onJoinEvent={handleJoinEvent}
+          onLeaveEvent={handleLeaveEvent}
+          onDeleteEvent={handleDeleteEvent}
+        />
+      )}
 
       <VenueInfoSheet
         visible={showVenueInfo}
@@ -685,6 +761,33 @@ export default function EnhancedInteractiveMap({
         placeDetails={selectedPlaceDetails}
         onCreateMeetup={handleCreateMeetupFromPlace}
         loading={placeDetailsLoading}
+      />
+
+      <PlaceDetailsModal
+        visible={showPlaceDetails}
+        onClose={() => setShowPlaceDetails(false)}
+        place={selectedPlace}
+        onPlanEvent={handlePlanEvent}
+      />
+
+      {/* Event Details Modal */}
+      {selectedEvent && (
+        <EventDetailsModal
+          visible={showEventDetails}
+          onClose={() => setShowEventDetails(false)}
+          event={selectedEvent}
+          currentUserId="current-user-id" // Replace with actual user ID
+          onJoinEvent={handleJoinEvent}
+          onLeaveEvent={handleLeaveEvent}
+        />
+      )}
+
+      {/* Event Search Filter Modal */}
+      <EventSearchFilter
+        visible={showEventSearchFilter}
+        onClose={() => setShowEventSearchFilter(false)}
+        onApplyFilters={handleApplyEventFilters}
+        currentFilters={eventSearchFilters}
       />
     </View>
   );

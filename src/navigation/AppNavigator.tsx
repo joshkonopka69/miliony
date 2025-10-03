@@ -21,6 +21,7 @@ import {
   TermsOfServiceScreen,
   PrivacyPolicyScreen,
   EventTestScreen,
+  BackendTestScreen,
   // Analytics screens
   AnalyticsDashboard,
   UserAnalytics,
@@ -179,6 +180,11 @@ export default function AppNavigator() {
         <Stack.Screen 
           name="EventTest" 
           component={EventTestScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="BackendTest" 
+          component={BackendTestScreen}
           options={{ headerShown: false }}
         />
         

@@ -4,36 +4,44 @@ import {
   Text,
   StyleSheet,
   Modal,
-  TouchableOpacity,
   ScrollView,
-  SafeAreaView,
-  StatusBar,
+  TouchableOpacity,
   Alert,
-  Image,
+  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
-
-interface Event {
-  id: string;
-  creatorId: string;
-  activity: string;
-  placeName: string;
-  address: string;
-  description: string;
-  maxParticipants: number;
-  participants: string[];
-  time: string;
-  createdAt: string;
-}
+import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../styles/theme';
+import Button from './ui/Button';
+import Card from './ui/Card';
+import { EventService } from '../services/eventService';
 
 interface EventDetailsModalProps {
   visible: boolean;
   onClose: () => void;
-  event: Event | null;
-  currentUserId: string;
-  onJoinEvent: (eventId: string) => void;
-  onLeaveEvent: (eventId: string) => void;
-  onDeleteEvent: (eventId: string) => void;
+  event: {
+    id: string;
+    name: string;
+    description: string;
+    activity: string;
+    max_participants: number;
+    participants_count: number;
+    location_name: string;
+    latitude: number;
+    longitude: number;
+    created_by: string;
+    status: 'live' | 'past' | 'cancelled';
+    start_time?: string;
+    end_time?: string;
+    created_at: string;
+    participants: string[];
+  };
+  currentUserId?: string;
+  onJoinEvent?: (eventId: string) => void;
+  onLeaveEvent?: (eventId: string) => void;
 }
+
+const { width } = Dimensions.get('window');
 
 export default function EventDetailsModal({
   visible,
@@ -42,228 +50,187 @@ export default function EventDetailsModal({
   currentUserId,
   onJoinEvent,
   onLeaveEvent,
-  onDeleteEvent,
 }: EventDetailsModalProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  // Safety check for null event
+  if (!event) {
+    return null;
+  }
+  const [loading, setLoading] = useState(false);
+  const [isJoined, setIsJoined] = useState(
+    currentUserId && event.participants ? event.participants.includes(currentUserId) : false
+  );
 
-  if (!event) return null;
+  const isLive = event.status === 'live';
+  const isFull = event.participants_count >= event.max_participants;
+  const isCreator = currentUserId === event.created_by;
+  const canJoin = isLive && !isFull && !isJoined && !isCreator;
 
-  const isCreator = event.creatorId === currentUserId;
-  const isParticipant = event.participants.includes(currentUserId);
-  const canJoin = !isParticipant && event.participants.length < event.maxParticipants;
-  const isFull = event.participants.length >= event.maxParticipants;
+  const handleJoinEvent = async () => {
+    if (!currentUserId) {
+      Alert.alert('Login Required', 'Please log in to join events.');
+      return;
+    }
 
-  const handleJoin = async () => {
-    if (isLoading) return;
-    
-    setIsLoading(true);
+    setLoading(true);
     try {
-      await onJoinEvent(event.id);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to join event. Please try again.');
+      await EventService.joinEvent(event.id, currentUserId);
+      setIsJoined(true);
+      onJoinEvent?.(event.id);
+      Alert.alert('Success', 'You have joined the event!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to join event');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleLeave = async () => {
-    if (isLoading) return;
-    
-    Alert.alert(
-      'Leave Event',
-      'Are you sure you want to leave this event?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: async () => {
-            setIsLoading(true);
-            try {
-              await onLeaveEvent(event.id);
-            } catch (error) {
-              Alert.alert('Error', 'Failed to leave event. Please try again.');
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        },
-      ]
-    );
+  const handleLeaveEvent = async () => {
+    if (!currentUserId) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await EventService.leaveEvent(event.id, currentUserId);
+      setIsJoined(false);
+      onLeaveEvent?.(event.id);
+      Alert.alert('Success', 'You have left the event.');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to leave event');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Event',
-      'Are you sure you want to delete this event? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setIsLoading(true);
-            try {
-              await onDeleteEvent(event.id);
-              onClose();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete event. Please try again.');
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        },
-      ]
-    );
+  const formatDateTime = (dateString?: string) => {
+    if (!dateString) return 'No specific time';
+    const date = new Date(dateString);
+    return date.toLocaleString();
   };
 
-  const formatTime = (timeString: string) => {
-    const date = new Date(timeString);
-    return date.toLocaleString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const getStatusColor = () => {
+    switch (event.status) {
+      case 'live': return '#10b981';
+      case 'past': return '#6b7280';
+      case 'cancelled': return '#ef4444';
+      default: return '#6b7280';
+    }
   };
 
-  const getActivityIcon = (activity: string) => {
-    const iconMap: { [key: string]: string } = {
-      'Football': '⚽',
-      'Basketball': '🏀',
-      'Tennis': '🎾',
-      'Swimming': '🏊',
-      'Gym Workout': '💪',
-      'Yoga': '🧘',
-      'Running': '🏃',
-      'Cycling': '🚴',
-      'Volleyball': '🏐',
-      'Badminton': '🏸',
-      'Squash': '🎾',
-      'Boxing': '🥊',
-      'Martial Arts': '🥋',
-      'Dancing': '💃',
-      'Hiking': '🥾',
-      'Rock Climbing': '🧗',
-      'Bouldering': '🧗‍♂️',
-      'Skateboarding': '🛹',
-    };
-    return iconMap[activity] || '🏃';
+  const getStatusText = () => {
+    switch (event.status) {
+      case 'live': return 'Live';
+      case 'past': return 'Past';
+      case 'cancelled': return 'Cancelled';
+      default: return 'Unknown';
+    }
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeText}>✕</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Ionicons name="close" size={24} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Event Details</Text>
-          {isCreator && (
-            <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-              <Text style={styles.deleteText}>Delete</Text>
-            </TouchableOpacity>
-          )}
+          <Text style={styles.headerTitle}>Event Details</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Event Header */}
-          <View style={styles.eventHeader}>
-            <View style={styles.activityContainer}>
-              <Text style={styles.activityIcon}>{getActivityIcon(event.activity)}</Text>
-              <Text style={styles.activityName}>{event.activity}</Text>
+          {/* Event Status */}
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
+              <Text style={styles.statusText}>{getStatusText()}</Text>
             </View>
-            <Text style={styles.venueName}>{event.placeName}</Text>
-            <Text style={styles.venueAddress}>{event.address}</Text>
-          </View>
-
-          {/* Event Info */}
-          <View style={styles.infoSection}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>📅 Date & Time</Text>
-              <Text style={styles.infoValue}>{formatTime(event.time)}</Text>
-            </View>
-            
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>👥 Participants</Text>
-              <Text style={styles.infoValue}>
-                {event.participants.length}/{event.maxParticipants}
-              </Text>
-            </View>
-
-            {event.description && (
-              <View style={styles.descriptionContainer}>
-                <Text style={styles.descriptionLabel}>📝 Description</Text>
-                <Text style={styles.descriptionText}>{event.description}</Text>
+            {isLive && (
+              <View style={styles.liveIndicator}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>LIVE</Text>
               </View>
             )}
           </View>
 
-          {/* Participants List */}
-          <View style={styles.participantsSection}>
-            <Text style={styles.participantsTitle}>
-              Participants ({event.participants.length})
-            </Text>
-            <View style={styles.participantsList}>
-              {event.participants.map((participantId, index) => (
-                <View key={participantId} style={styles.participantItem}>
-                  <View style={styles.participantAvatar}>
-                    <Text style={styles.participantInitial}>
-                      {participantId.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.participantInfo}>
-                    <Text style={styles.participantName}>
-                      {participantId === event.creatorId ? 'You (Creator)' : `User ${index + 1}`}
-                    </Text>
-                    {participantId === event.creatorId && (
-                      <Text style={styles.creatorBadge}>Event Creator</Text>
-                    )}
-                  </View>
-                </View>
-              ))}
+          {/* Event Info */}
+          <Card style={styles.eventCard}>
+            <Text style={styles.eventName}>{event.name}</Text>
+            <Text style={styles.activity}>{event.activity}</Text>
+            
+            {event.description && (
+              <Text style={styles.description}>{event.description}</Text>
+            )}
+
+            <View style={styles.detailsRow}>
+              <Ionicons name="location" size={16} color={theme.colors.text} />
+              <Text style={styles.detailText}>{event.location_name}</Text>
             </View>
+
+            <View style={styles.detailsRow}>
+              <Ionicons name="people" size={16} color={theme.colors.text} />
+              <Text style={styles.detailText}>
+                {event.participants_count}/{event.max_participants} participants
+              </Text>
+            </View>
+
+            {event.start_time && (
+              <View style={styles.detailsRow}>
+                <Ionicons name="time" size={16} color={theme.colors.text} />
+                <Text style={styles.detailText}>
+                  Starts: {formatDateTime(event.start_time)}
+                </Text>
+              </View>
+            )}
+
+            {event.end_time && (
+              <View style={styles.detailsRow}>
+                <Ionicons name="time" size={16} color={theme.colors.text} />
+                <Text style={styles.detailText}>
+                  Ends: {formatDateTime(event.end_time)}
+                </Text>
+              </View>
+            )}
+          </Card>
+
+          {/* Action Buttons */}
+          <View style={styles.actionContainer}>
+            {isCreator ? (
+              <Button
+                title="You Created This Event"
+                onPress={() => {}}
+                style={[styles.actionButton, styles.creatorButton]}
+                disabled
+              />
+            ) : isJoined ? (
+              <Button
+                title="Leave Event"
+                onPress={handleLeaveEvent}
+                style={[styles.actionButton, styles.leaveButton]}
+                loading={loading}
+              />
+            ) : canJoin ? (
+              <Button
+                title="Join Event"
+                onPress={handleJoinEvent}
+                style={[styles.actionButton, styles.joinButton]}
+                loading={loading}
+              />
+            ) : (
+              <Button
+                title={isFull ? "Event Full" : "Event Not Available"}
+                onPress={() => {}}
+                style={[styles.actionButton, styles.disabledButton]}
+                disabled
+              />
+            )}
           </View>
         </ScrollView>
-
-        {/* Footer Actions */}
-        <View style={styles.footer}>
-          {isCreator ? (
-            <View style={styles.creatorActions}>
-              <Text style={styles.creatorText}>You created this event</Text>
-            </View>
-          ) : isParticipant ? (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.leaveButton]}
-              onPress={handleLeave}
-              disabled={isLoading}
-            >
-              <Text style={styles.leaveButtonText}>
-                {isLoading ? 'Leaving...' : 'Leave Event'}
-              </Text>
-            </TouchableOpacity>
-          ) : canJoin ? (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.joinButton]}
-              onPress={handleJoin}
-              disabled={isLoading}
-            >
-              <Text style={styles.joinButtonText}>
-                {isLoading ? 'Joining...' : 'Join Event'}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.fullEvent}>
-              <Text style={styles.fullEventText}>Event is full</Text>
-            </View>
-          )}
-        </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -271,7 +238,7 @@ export default function EventDetailsModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -280,207 +247,103 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: theme.colors.border,
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
-  closeText: {
-    fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '600',
-  },
-  title: {
+  headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: theme.colors.text,
   },
-  deleteButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  deleteText: {
-    fontSize: 16,
-    color: '#ef4444',
-    fontWeight: '500',
+  headerSpacer: {
+    width: 40,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    padding: 20,
   },
-  eventHeader: {
-    paddingVertical: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  activityContainer: {
+  statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  activityIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  activityName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  venueName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 4,
-  },
-  venueAddress: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  infoSection: {
-    paddingVertical: 20,
-  },
-  infoRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    marginBottom: 20,
   },
-  infoLabel: {
-    fontSize: 16,
-    color: '#374151',
-    fontWeight: '500',
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
-  infoValue: {
-    fontSize: 16,
-    color: '#111827',
+  statusText: {
+    color: 'white',
+    fontSize: 12,
     fontWeight: '600',
   },
-  descriptionContainer: {
-    marginTop: 16,
+  liveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  descriptionLabel: {
-    fontSize: 16,
-    color: '#374151',
-    fontWeight: '500',
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+    marginRight: 6,
+  },
+  liveText: {
+    color: '#10b981',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  eventCard: {
+    marginBottom: 20,
+  },
+  eventName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: theme.colors.text,
     marginBottom: 8,
   },
-  descriptionText: {
+  activity: {
     fontSize: 16,
-    color: '#111827',
-    lineHeight: 24,
-  },
-  participantsSection: {
-    paddingVertical: 20,
-  },
-  participantsTitle: {
-    fontSize: 18,
+    color: theme.colors.primary,
     fontWeight: '600',
-    color: '#111827',
+    marginBottom: 12,
+  },
+  description: {
+    fontSize: 16,
+    color: theme.colors.text,
+    lineHeight: 24,
     marginBottom: 16,
   },
-  participantsList: {
-    gap: 12,
-  },
-  participantItem: {
+  detailsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    marginBottom: 8,
   },
-  participantAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+  detailText: {
+    fontSize: 14,
+    color: theme.colors.text,
+    marginLeft: 8,
   },
-  participantInitial: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  participantInfo: {
-    flex: 1,
-  },
-  participantName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#111827',
-  },
-  creatorBadge: {
-    fontSize: 12,
-    color: '#3b82f6',
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+  actionContainer: {
+    marginTop: 20,
   },
   actionButton: {
-    height: 56,
+    height: 50,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   joinButton: {
-    backgroundColor: '#3b82f6',
-    shadowColor: '#3b82f6',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  joinButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
+    backgroundColor: theme.colors.primary,
   },
   leaveButton: {
     backgroundColor: '#ef4444',
-    shadowColor: '#ef4444',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
-  leaveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
+  creatorButton: {
+    backgroundColor: '#6b7280',
   },
-  creatorActions: {
-    alignItems: 'center',
-  },
-  creatorText: {
-    fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  fullEvent: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  fullEventText: {
-    fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '500',
+  disabledButton: {
+    backgroundColor: '#d1d5db',
   },
 });

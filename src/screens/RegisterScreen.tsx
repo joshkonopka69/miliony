@@ -4,16 +4,15 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  SafeAreaView, 
   StatusBar, 
   Alert,
   Animated,
   Dimensions
 } from 'react-native';
-import { useAppNavigation } from '../navigation';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppNavigation } from '../navigation/hooks';
 import { useTranslation } from '../contexts/TranslationContext';
-import { useAuth } from '../contexts/AuthContext';
-import { RegisterForm, SocialLoginButtons, EmailVerificationModal } from '../components/auth';
+import { RegisterForm, EmailVerificationModal } from '../components/auth';
 
 const { width } = Dimensions.get('window');
 
@@ -29,7 +28,6 @@ const SMLogo = ({ size = 50 }: { size?: number }) => (
 export default function RegisterScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
-  const { sendEmailVerification } = useAuth();
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   
@@ -92,12 +90,6 @@ export default function RegisterScreen() {
         style={styles.authForm}
       />
       
-      <SocialLoginButtons
-        onSuccess={handleAuthSuccess}
-        onError={handleAuthError}
-        style={styles.socialButtons}
-      />
-      
       <EmailVerificationModal
         visible={showEmailVerification}
         onClose={() => setShowEmailVerification(false)}
@@ -147,10 +139,6 @@ const styles = StyleSheet.create({
   },
   authForm: {
     flex: 1,
-  },
-  socialButtons: {
-    paddingHorizontal: 24,
-    paddingBottom: 20,
   },
 });
 

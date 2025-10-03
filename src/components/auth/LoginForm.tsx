@@ -45,7 +45,7 @@ export default function LoginForm({
   style,
 }: LoginFormProps) {
   const { t } = useTranslation();
-  const { login } = useAuth();
+  const { signIn } = useAuth();
   
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -103,17 +103,18 @@ export default function LoginForm({
     setErrors({});
 
     try {
-      const result = await login({
-        email: formData.email,
-        password: formData.password,
-      });
+      const result = await signIn(formData.email, formData.password);
 
       if (result.success) {
         onSuccess?.();
       } else {
-        if (result.error) {
-          setErrors({ general: result.error.message });
-          onError?.(result.error);
+        const error = result.error as any;
+        const errorMessage = typeof error === 'string' 
+          ? error 
+          : error?.message || 'Login failed';
+        setErrors({ general: errorMessage });
+        if (error) {
+          onError?.(error);
         }
       }
     } catch (error: any) {

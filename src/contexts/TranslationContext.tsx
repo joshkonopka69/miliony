@@ -62,6 +62,20 @@ export interface Translations {
     confirm: string;
   };
   
+  // Policy Screens
+  policy: {
+    privacyPolicy: string;
+    termsOfService: string;
+    lastUpdated: string;
+    back: string;
+  };
+  
+  // Map Screen
+  map: {
+    permissionDenied: string;
+    locationAccessNeeded: string;
+  };
+  
   // Sports
   sports: {
     boxing: string;
@@ -143,6 +157,16 @@ const translations: Record<Language, Translations> = {
       success: 'Success',
       confirm: 'Confirm',
     },
+    policy: {
+      privacyPolicy: 'Privacy Policy',
+      termsOfService: 'Terms of Service',
+      lastUpdated: 'Last updated',
+      back: 'Back',
+    },
+    map: {
+      permissionDenied: 'Permission Denied',
+      locationAccessNeeded: 'Location access is needed to show your position on the map.',
+    },
     sports: {
       boxing: 'Boxing',
       calisthenics: 'Calisthenics',
@@ -217,6 +241,16 @@ const translations: Record<Language, Translations> = {
       error: 'Błąd',
       success: 'Sukces',
       confirm: 'Potwierdź',
+    },
+    policy: {
+      privacyPolicy: 'Polityka Prywatności',
+      termsOfService: 'Warunki Usługi',
+      lastUpdated: 'Ostatnia aktualizacja',
+      back: 'Wstecz',
+    },
+    map: {
+      permissionDenied: 'Odmowa Dostępu',
+      locationAccessNeeded: 'Dostęp do lokalizacji jest potrzebny, aby pokazać Twoją pozycję na mapie.',
     },
     sports: {
       boxing: 'Boks',
@@ -293,6 +327,16 @@ const translations: Record<Language, Translations> = {
       success: 'Éxito',
       confirm: 'Confirmar',
     },
+    policy: {
+      privacyPolicy: 'Política de Privacidad',
+      termsOfService: 'Términos de Servicio',
+      lastUpdated: 'Última actualización',
+      back: 'Atrás',
+    },
+    map: {
+      permissionDenied: 'Permiso Denegado',
+      locationAccessNeeded: 'Se necesita acceso a la ubicación para mostrar tu posición en el mapa.',
+    },
     sports: {
       boxing: 'Boxeo',
       calisthenics: 'Calistenia',
@@ -368,6 +412,16 @@ const translations: Record<Language, Translations> = {
       success: 'Succès',
       confirm: 'Confirmer',
     },
+    policy: {
+      privacyPolicy: 'Politique de Confidentialité',
+      termsOfService: 'Conditions d\'Utilisation',
+      lastUpdated: 'Dernière mise à jour',
+      back: 'Retour',
+    },
+    map: {
+      permissionDenied: 'Permission Refusée',
+      locationAccessNeeded: 'L\'accès à la localisation est nécessaire pour afficher votre position sur la carte.',
+    },
     sports: {
       boxing: 'Boxe',
       calisthenics: 'Callisthénie',
@@ -442,6 +496,16 @@ const translations: Record<Language, Translations> = {
       error: 'Fehler',
       success: 'Erfolg',
       confirm: 'Bestätigen',
+    },
+    policy: {
+      privacyPolicy: 'Datenschutzrichtlinie',
+      termsOfService: 'Nutzungsbedingungen',
+      lastUpdated: 'Zuletzt aktualisiert',
+      back: 'Zurück',
+    },
+    map: {
+      permissionDenied: 'Berechtigung Verweigert',
+      locationAccessNeeded: 'Standortzugriff ist erforderlich, um deine Position auf der Karte anzuzeigen.',
     },
     sports: {
       boxing: 'Boxen',

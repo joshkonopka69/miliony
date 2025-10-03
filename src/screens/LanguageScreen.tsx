@@ -51,6 +51,7 @@ export default function LanguageScreen() {
   };
 
   const handleLanguageSelect = (langCode: Language) => {
+    console.log('LanguageScreen: Setting language to:', langCode);
     setLanguage(langCode);
     navigation.goBack();
   };

@@ -23,14 +23,14 @@ export default function PrivacyPolicyScreen() {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>← {t.policy.back}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Privacy Policy</Text>
+        <Text style={styles.title}>{t.policy.privacyPolicy}</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.lastUpdated}>
-          Last updated: {new Date().toLocaleDateString()}
+          {t.policy.lastUpdated}: {new Date().toLocaleDateString()}
         </Text>
 
         <Text style={styles.sectionTitle}>1. Information We Collect</Text>

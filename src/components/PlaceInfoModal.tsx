@@ -183,7 +183,9 @@ export default function PlaceInfoModal({
           <View key={index} style={styles.reviewItem}>
             <View style={styles.reviewHeader}>
               <Text style={styles.reviewAuthor}>{review.authorName}</Text>
-              <Text style={styles.reviewRating}>{renderStars(review.rating)}</Text>
+              <View style={styles.reviewRating}>
+                <Text>{renderStars(review.rating)}</Text>
+              </View>
             </View>
             <Text style={styles.reviewText} numberOfLines={3}>
               {review.text}

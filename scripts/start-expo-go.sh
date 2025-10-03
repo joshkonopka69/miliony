@@ -24,3 +24,5 @@ echo ""
 echo "✅ App should now be running in Expo Go!"
 echo "📱 Open the Expo Go app on your phone and scan the QR code"
 echo "🌐 Or press 'w' to open in web browser"
+
+

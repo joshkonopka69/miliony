@@ -17,7 +17,7 @@ const SMLogo = ({ size = 40 }: { size?: number }) => (
 
 export default function SettingsScreen() {
   const navigation = useAppNavigation();
-  const { t } = useTranslation();
+  const { t, language, availableLanguages } = useTranslation();
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -36,6 +36,12 @@ export default function SettingsScreen() {
       }),
     ]).start();
   }, []);
+
+  // Refresh screen when language changes
+  useEffect(() => {
+    console.log('SettingsScreen: Language changed to:', language);
+    // Force re-render when language changes
+  }, [language]);
 
   const handleBack = () => {
     navigation.goBack();
@@ -140,7 +146,9 @@ export default function SettingsScreen() {
                 'Language',
                 () => navigation.navigate(ROUTES.LANGUAGE),
                 <View style={styles.languageContainer}>
-                  <Text style={styles.languageText}>English</Text>
+                  <Text style={styles.languageText}>
+                    {availableLanguages.find(lang => lang.code === language)?.name || 'English'}
+                  </Text>
                   <Text style={styles.chevronIcon}>›</Text>
                 </View>,
                 false
@@ -159,6 +167,18 @@ export default function SettingsScreen() {
               {renderSettingItem(
                 'Privacy Policy',
                 () => navigation.navigate(ROUTES.PRIVACY_POLICY)
+              )}
+            </View>
+          </View>
+
+          {/* Development Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Development</Text>
+            <View style={styles.sectionContainer}>
+              {renderSettingItem(
+                'Backend Test',
+                () => navigation.navigate('BackendTest'),
+                <Text style={styles.chevronIcon}>›</Text>
               )}
             </View>
           </View>

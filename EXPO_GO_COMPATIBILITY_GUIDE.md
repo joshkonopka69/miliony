@@ -124,3 +124,5 @@ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_google_client_id_here
 ## 🎉 Success!
 
 Your app should now run perfectly in Expo Go! 🚀
+
+

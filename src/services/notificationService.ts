@@ -1,116 +1,133 @@
-// Push notification service for real-time updates
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
-import { Event } from './firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+export interface NotificationData {
+  title: string;
+  body: string;
+  data?: any;
+  type: 'event_reminder' | 'participant_joined' | 'event_cancelled' | 'event_updated' | 'general';
+}
 
-export class NotificationService {
-  private static expoPushToken: string | null = null;
+class NotificationService {
+  private expoPushToken: string | null = null;
+  private isInitialized = false;
 
-  // Register for push notifications
-  static async registerForPushNotifications(): Promise<string | null> {
-    console.log('🔔 Registering for push notifications...');
+  // Initialize notification service
+  async initialize(): Promise<void> {
+    if (this.isInitialized) return;
     
-    if (!Device.isDevice) {
-      console.log('❌ Must use physical device for push notifications');
-      return null;
-    }
-
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      console.log('❌ Failed to get push token for push notification!');
-      return null;
+    // Skip notifications in Expo Go (SDK 53+ limitation)
+    if (__DEV__ && !Device.isDevice) {
+      console.log('Notifications disabled in Expo Go - use development build for full functionality');
+      return;
     }
 
     try {
-      const token = await Notifications.getExpoPushTokenAsync({
-        projectId: 'your-expo-project-id', // Replace with your Expo project ID
+      // Configure notification behavior
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        }),
       });
-      
-      this.expoPushToken = token.data;
-      console.log('✅ Push token received:', this.expoPushToken);
-      
-      // Store token in Supabase
-      await this.storePushToken(this.expoPushToken);
-      
-      return this.expoPushToken;
+
+      // Request permissions
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== 'granted') {
+        console.warn('Notification permissions not granted');
+        return;
+      }
+
+      // Get push token
+      if (Device.isDevice) {
+        this.expoPushToken = (await Notifications.getExpoPushTokenAsync()).data;
+        console.log('Expo push token:', this.expoPushToken);
+        
+        // Save token to database
+        await this.savePushToken(this.expoPushToken);
+      } else {
+        console.warn('Must use physical device for push notifications');
+      }
+
+      this.isInitialized = true;
     } catch (error) {
-      console.error('❌ Error getting push token:', error);
-      return null;
+      console.error('Error initializing notifications:', error);
     }
   }
 
-  // Store push token in database
-  private static async storePushToken(token: string) {
+  // Save push token to database
+  private async savePushToken(token: string): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase
+      await supabase
         .from('user_tokens')
         .upsert({
           user_id: user.id,
-          push_token: token,
+          expo_push_token: token,
           platform: Platform.OS,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         });
-
-      if (error) {
-        console.error('❌ Error storing push token:', error);
-      } else {
-        console.log('✅ Push token stored successfully');
-      }
     } catch (error) {
-      console.error('❌ Error in storePushToken:', error);
+      console.error('Error saving push token:', error);
     }
   }
 
-  // Send notification to specific user
-  static async sendNotificationToUser(
-    userId: string, 
-    title: string, 
-    body: string, 
-    data?: any
-  ) {
+  // Send local notification
+  async sendLocalNotification(notification: NotificationData): Promise<void> {
     try {
-      // Get user's push token
-      const { data: tokenData } = await supabase
-        .from('user_tokens')
-        .select('push_token')
-        .eq('user_id', userId)
-        .single();
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: notification.title,
+          body: notification.body,
+          data: notification.data,
+          sound: 'default',
+        },
+        trigger: null, // Show immediately
+      });
+    } catch (error) {
+      console.error('Error sending local notification:', error);
+    }
+  }
 
-      if (!tokenData?.push_token) {
-        console.log('❌ No push token found for user:', userId);
+  // Send push notification to specific user
+  async sendPushNotification(
+    userId: string,
+    notification: NotificationData
+  ): Promise<void> {
+    try {
+      const { data: tokens } = await supabase
+        .from('user_tokens')
+        .select('expo_push_token')
+        .eq('user_id', userId)
+        .not('expo_push_token', 'is', null);
+
+      if (!tokens || tokens.length === 0) {
+        console.warn('No push tokens found for user:', userId);
         return;
       }
 
-      // Send push notification
-      const message = {
-        to: tokenData.push_token,
+      const messages = tokens.map(token => ({
+        to: token.expo_push_token,
         sound: 'default',
-        title,
-        body,
-        data: data || {},
-      };
+        title: notification.title,
+        body: notification.body,
+        data: notification.data,
+      }));
 
+      // Send via Expo push service
       const response = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
@@ -118,108 +135,172 @@ export class NotificationService {
           'Accept-encoding': 'gzip, deflate',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(message),
+        body: JSON.stringify(messages),
       });
 
-      const result = await response.json();
-      console.log('📤 Notification sent:', result);
-      
+      if (!response.ok) {
+        throw new Error(`Push notification failed: ${response.status}`);
+      }
     } catch (error) {
-      console.error('❌ Error sending notification:', error);
+      console.error('Error sending push notification:', error);
     }
   }
 
-  // Send event notification to participants
-  static async sendEventNotification(event: Event, participants: string[]) {
-    console.log('📅 Sending event notification...');
-    
-    const title = `New Event: ${event.activity}`;
-    const body = `${event.description} at ${event.placeName}`;
-    
-    // Send to all participants
-    for (const participantId of participants) {
-      await this.sendNotificationToUser(participantId, title, body, {
-        type: 'event',
-        eventId: event.id,
-        action: 'view_event'
+  // Send notification to event participants
+  async sendEventNotification(
+    eventId: string,
+    notification: NotificationData,
+    excludeUserId?: string
+  ): Promise<void> {
+    try {
+      // Get event participants
+      const { data: participants } = await supabase
+        .from('event_participants')
+        .select('user_id')
+        .eq('event_id', eventId);
+
+      if (!participants) return;
+
+      // Send to each participant (except excluded user)
+      const promises = participants
+        .filter(p => p.user_id !== excludeUserId)
+        .map(participant => 
+          this.sendPushNotification(participant.user_id, notification)
+        );
+
+      await Promise.all(promises);
+    } catch (error) {
+      console.error('Error sending event notification:', error);
+    }
+  }
+
+  // Schedule event reminder
+  async scheduleEventReminder(
+    eventId: string,
+    eventTitle: string,
+    reminderTime: Date
+  ): Promise<void> {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Event Reminder',
+          body: `${eventTitle} is starting soon!`,
+          data: { eventId, type: 'event_reminder' },
+          sound: 'default',
+        },
+        trigger: {
+          date: reminderTime,
+        },
       });
+    } catch (error) {
+      console.error('Error scheduling event reminder:', error);
     }
   }
 
-  // Send friend request notification
-  static async sendFriendRequestNotification(
-    receiverId: string, 
-    senderName: string
-  ) {
-    console.log('👥 Sending friend request notification...');
+  // Cancel event reminder
+  async cancelEventReminder(eventId: string): Promise<void> {
+    try {
+      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      
+      const eventReminders = scheduledNotifications.filter(
+        notification => notification.content.data?.eventId === eventId
+      );
+
+      for (const reminder of eventReminders) {
+        await Notifications.cancelScheduledNotificationAsync(reminder.identifier);
+      }
+    } catch (error) {
+      console.error('Error canceling event reminder:', error);
+    }
+  }
+
+  // Handle notification received
+  async handleNotificationReceived(notification: Notifications.Notification): Promise<void> {
+    const data = notification.request.content.data;
     
-    const title = 'New Friend Request';
-    const body = `${senderName} wants to be your friend`;
+    if (data?.type === 'event_reminder') {
+      // Handle event reminder
+      console.log('Event reminder received:', data);
+    } else if (data?.type === 'participant_joined') {
+      // Handle participant joined
+      console.log('Participant joined notification:', data);
+    }
+  }
+
+  // Handle notification response (when user taps notification)
+  async handleNotificationResponse(response: Notifications.NotificationResponse): Promise<void> {
+    const data = response.notification.request.content.data;
     
-    await this.sendNotificationToUser(receiverId, title, body, {
-      type: 'friend_request',
-      action: 'view_friends'
-    });
+    if (data?.eventId) {
+      // Navigate to event details
+      console.log('Navigate to event:', data.eventId);
+      // Add navigation logic here
+    }
   }
 
-  // Send message notification
-  static async sendMessageNotification(
-    receiverId: string, 
-    senderName: string, 
-    message: string
-  ) {
-    console.log('💬 Sending message notification...');
-    
-    const title = `Message from ${senderName}`;
-    const body = message.length > 50 ? message.substring(0, 50) + '...' : message;
-    
-    await this.sendNotificationToUser(receiverId, title, body, {
-      type: 'message',
-      action: 'view_chat'
-    });
+  // Get notification settings
+  async getNotificationSettings(): Promise<{
+    eventReminders: boolean;
+    participantUpdates: boolean;
+    eventUpdates: boolean;
+  }> {
+    try {
+      const settings = await AsyncStorage.getItem('notification_settings');
+      return settings ? JSON.parse(settings) : {
+        eventReminders: true,
+        participantUpdates: true,
+        eventUpdates: true,
+      };
+    } catch (error) {
+      console.error('Error getting notification settings:', error);
+      return {
+        eventReminders: true,
+        participantUpdates: true,
+        eventUpdates: true,
+      };
+    }
   }
 
-  // Schedule local notification
-  static async scheduleLocalNotification(
-    title: string,
-    body: string,
-    triggerDate: Date,
-    data?: any
-  ) {
-    console.log('⏰ Scheduling local notification...');
-    
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title,
-        body,
-        data: data || {},
-      },
-      trigger: triggerDate,
-    });
+  // Update notification settings
+  async updateNotificationSettings(settings: {
+    eventReminders: boolean;
+    participantUpdates: boolean;
+    eventUpdates: boolean;
+  }): Promise<void> {
+    try {
+      await AsyncStorage.setItem('notification_settings', JSON.stringify(settings));
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+    }
   }
 
-  // Cancel all scheduled notifications
-  static async cancelAllScheduledNotifications() {
-    console.log('❌ Canceling all scheduled notifications...');
-    await Notifications.cancelAllScheduledNotificationsAsync();
+  // Clear all notifications
+  async clearAllNotifications(): Promise<void> {
+    try {
+      await Notifications.dismissAllNotificationsAsync();
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+    }
   }
 
-  // Get notification permissions status
-  static async getNotificationPermissions() {
-    const { status } = await Notifications.getPermissionsAsync();
-    return status;
+  // Get badge count
+  async getBadgeCount(): Promise<number> {
+    try {
+      return await Notifications.getBadgeCountAsync();
+    } catch (error) {
+      console.error('Error getting badge count:', error);
+      return 0;
+    }
   }
 
-  // Check if notifications are enabled
-  static async areNotificationsEnabled(): Promise<boolean> {
-    const status = await this.getNotificationPermissions();
-    return status === 'granted';
-  }
-
-  // Get current push token
-  static getCurrentPushToken(): string | null {
-    return this.expoPushToken;
+  // Set badge count
+  async setBadgeCount(count: number): Promise<void> {
+    try {
+      await Notifications.setBadgeCountAsync(count);
+    } catch (error) {
+      console.error('Error setting badge count:', error);
+    }
   }
 }
 
-export default NotificationService;
+export const notificationService = new NotificationService();

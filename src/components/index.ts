@@ -3,6 +3,10 @@ export { default as InteractiveMap } from './InteractiveMap';
 export { default as MapDiagnostic } from './MapDiagnostic';
 export { default as EventCreationModal } from './EventCreationModal';
 export { default as EventDetailsModal } from './EventDetailsModal';
+export { default as EventPin } from './EventPin';
+export { default as EventSearchFilter } from './EventSearchFilter';
+export { default as LiveEventStatus } from './LiveEventStatus';
+export { default as BackendTestComponent } from './BackendTestComponent';
 export { default as PlaceDetailsMap } from './PlaceDetailsMap';
 export { default as PlaceInfoModal } from './PlaceInfoModal';
 export { default as LoadingSpinner } from './LoadingSpinner';
@@ -22,3 +26,8 @@ export { default as AuthForm } from './AuthForm';
 
 // Auth components
 export * from './auth';
+
+// Professional UI components
+export { ProfessionalButton } from './ui/ProfessionalButton';
+export { ProfessionalCard } from './ui/ProfessionalCard';
+export { ProfessionalInput } from './ui/ProfessionalInput';

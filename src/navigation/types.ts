@@ -19,6 +19,7 @@ export type RootStackParamList = {
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
   EventTest: undefined;
+  BackendTest: undefined;
   
   // Analytics Routes
   AnalyticsDashboard: undefined;
@@ -103,6 +104,7 @@ export const ROUTES = {
   TERMS_OF_SERVICE: 'TermsOfService' as const,
   PRIVACY_POLICY: 'PrivacyPolicy' as const,
   EVENT_TEST: 'EventTest' as const,
+  BACKEND_TEST: 'BackendTest' as const,
   
   // Analytics Routes
   ANALYTICS_DASHBOARD: 'AnalyticsDashboard' as const,
