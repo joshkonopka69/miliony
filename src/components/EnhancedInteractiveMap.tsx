@@ -42,6 +42,7 @@ interface EnhancedInteractiveMapProps {
   searchQuery?: string;
   onMapReady?: (mapRef: React.RefObject<any>) => void;
   onLocationPermissionGranted?: () => void;
+  hideControls?: boolean; // Hide search bar and filter buttons
 }
 
 const { width, height } = Dimensions.get('window');
@@ -51,6 +52,7 @@ export default function EnhancedInteractiveMap({
   searchQuery,
   onMapReady,
   onLocationPermissionGranted,
+  hideControls = false,
 }: EnhancedInteractiveMapProps) {
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [showPlaceDetails, setShowPlaceDetails] = useState(false);
@@ -614,7 +616,8 @@ export default function EnhancedInteractiveMap({
         searchQuery={searchQuery}
       />
 
-      {/* Search and Filter Container */}
+      {/* Search and Filter Container - Only show if hideControls is false */}
+      {!hideControls && (
       <View style={styles.searchFilterContainer} pointerEvents="box-none">
         {/* Search Field */}
         <View style={styles.searchContainer} pointerEvents="auto">
@@ -690,6 +693,7 @@ export default function EnhancedInteractiveMap({
           </TouchableOpacity>
         )}
       </View>
+      )}
 
       {/* Loading Indicator */}
       {loading && (

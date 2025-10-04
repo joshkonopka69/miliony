@@ -31,3 +31,12 @@ export * from './auth';
 export { ProfessionalButton } from './ui/ProfessionalButton';
 export { ProfessionalCard } from './ui/ProfessionalCard';
 export { ProfessionalInput } from './ui/ProfessionalInput';
+
+// Utility components
+export { default as EmptyState } from './EmptyState';
+export { default as ErrorState } from './ErrorState';
+export { default as SectionHeader } from './SectionHeader';
+export { default as EventCard } from './EventCard';
+export { default as StatisticsCard } from './StatisticsCard';
+export { default as FavoriteSports } from './FavoriteSports';
+export { default as ProfileEditModal } from './ProfileEditModal';

@@ -6,8 +6,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
-  ActivityIndicator,
-  Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,14 +15,22 @@ import { ROUTES } from '../navigation/types';
 import { BottomNavBar } from '../components';
 import EnhancedInteractiveMap from '../components/EnhancedInteractiveMap';
 import { useTranslation } from '../contexts/TranslationContext';
-import { theme } from '../styles/theme';
 import * as Location from 'expo-location';
-import DebugNavigation from '../components/DebugNavigation';
+
+// Simple Logo Component
+const SportMapLogo = () => (
+  <View style={styles.logoContainer}>
+    <View style={styles.logoCircle}>
+      <Text style={styles.logoText}>SM</Text>
+    </View>
+    <Text style={styles.logoTitle}>SportMap</Text>
+  </View>
+);
 
 export default function MapScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
-  const [showEventModal, setShowEventModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const mapRef = useRef<any>(null);
 
   useEffect(() => {
@@ -39,124 +46,147 @@ export default function MapScreen() {
     console.log('Location permission granted');
   };
 
+  const handleFilterPress = () => {
+    setShowFilterModal(true);
+    // TODO: Open filter modal
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
+      {/* Map - Full Screen (underneath top bar) */}
       <EnhancedInteractiveMap
         onMapReady={(ref) => {
           mapRef.current = ref;
         }}
         onLocationPermissionGranted={handleLocationPermissionGranted}
+        hideControls={true}
       />
 
-      {/* Top Action Bar */}
-      <View style={styles.topActionBar}>
-        {/* My Location Button */}
-        <TouchableOpacity 
-          style={styles.actionButton} 
-          onPress={() => {
-            // Center map on user location
-            console.log('Center on user location');
-          }}
-        >
-          <Ionicons name="navigate" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
+      {/* Clean Top Bar - Overlaid */}
+      <SafeAreaView style={styles.topBarSafeArea}>
+        <View style={styles.topBar}>
+          {/* Logo on Left */}
+          <SportMapLogo />
 
-        {/* Search Button */}
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.searchButton]} 
-          onPress={() => {
-            // Open search functionality
-            console.log('Open search');
-          }}
-        >
-          <Ionicons name="search" size={20} color="white" />
-          <Text style={styles.searchText}>Search Events</Text>
-        </TouchableOpacity>
+          {/* Action Buttons on Right */}
+          <View style={styles.topBarActions}>
+            <TouchableOpacity 
+              style={styles.topBarButton} 
+              onPress={handleFilterPress}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="options-outline" size={24} color="#000000" />
+            </TouchableOpacity>
 
-        {/* Settings Button */}
-        <TouchableOpacity 
-          style={styles.actionButton} 
-          onPress={() => navigation.navigate(ROUTES.SETTINGS)}
-        >
-          <Ionicons name="settings-outline" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.topBarButton} 
+            onPress={() => navigation.navigate(ROUTES.SETTINGS)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="settings-outline" size={24} color="#000000" />
+          </TouchableOpacity>
+        </View>
       </View>
+    </SafeAreaView>
 
-      {/* Debug Navigation Button - Bottom Right */}
-      <TouchableOpacity
-        style={styles.debugButton}
-        onPress={() => navigation.navigate(ROUTES.BACKEND_TEST)}
-      >
-        <Ionicons name="build" size={20} color="white" />
-      </TouchableOpacity>
-
+    {/* Bottom Navigation */}
+    <View style={styles.bottomNavContainer}>
       <BottomNavBar 
         activeTab="Home"
         onProfilePress={() => navigation.navigate(ROUTES.PROFILE)}
       />
-    </SafeAreaView>
+    </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#fff' 
+    backgroundColor: '#FFFFFF',
   },
-  topActionBar: {
+  // Top Bar Safe Area Wrapper
+  topBarSafeArea: {
     position: 'absolute',
-    top: 10,
-    left: 16,
-    right: 16,
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    zIndex: 1000,
+    // Enhanced shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  // Top Bar Styles (taller and more prominent)
+  topBar: {
+    height: 70,
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    zIndex: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  // Logo Styles (larger)
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-  actionButton: {
-    width: 48,
-    height: 48,
-    backgroundColor: 'white',
-    borderRadius: 24,
+  logoCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FDB924', // Yellow
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    // Slight shadow on logo
+    shadowColor: '#FDB924',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
     elevation: 3,
   },
-  searchButton: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: theme.colors.primary,
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    gap: 8,
+  logoText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+    letterSpacing: -0.5,
   },
-  searchText: {
-    color: 'white',
-    fontSize: 16,
+  logoTitle: {
+    fontSize: 20,
     fontWeight: '600',
+    color: '#000000',
+    letterSpacing: -0.3,
   },
-  debugButton: {
-    position: 'absolute',
-    right: 16,
-    bottom: 100,
+  // Action Buttons on Right
+  topBarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  topBarButton: {
     width: 48,
     height: 48,
-    backgroundColor: theme.colors.accent,
     borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-    zIndex: 10,
+    borderWidth: 1.5,
+    borderColor: '#E5E5E5',
+  },
+  // Bottom Nav Container
+  bottomNavContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
 });

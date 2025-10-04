@@ -27,7 +27,7 @@ const SportMapLogo = () => (
   </View>
 );
 
-export default function MyGroupsScreen() {
+export default function MyEventsScreen() {
   const navigation = useAppNavigation();
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<MyEvent[]>([]);
@@ -399,3 +399,4 @@ const styles = StyleSheet.create({
     right: 0,
   },
 });
+
