@@ -37,12 +37,26 @@ import { errorHandler } from '../utils/errorHandler';
 import { hapticFeedback } from '../utils/hapticFeedback';
 import { performanceOptimizer } from '../utils/performanceOptimizer';
 
+// MapEvent interface for event markers
+interface MapEvent {
+  id: string;
+  name: string;
+  activity: string;
+  latitude: number;
+  longitude: number;
+  participants_count: number;
+  max_participants: number;
+  status: 'live' | 'past' | 'cancelled' | 'active'; // Added 'active' status
+  created_at: string;
+}
+
 interface EnhancedInteractiveMapProps {
   onLocationSelect?: (location: any) => void;
   searchQuery?: string;
   onMapReady?: (mapRef: React.RefObject<any>) => void;
   onLocationPermissionGranted?: () => void;
   hideControls?: boolean; // Hide search bar and filter buttons
+  events?: MapEvent[]; // Events to display as markers
 }
 
 const { width, height } = Dimensions.get('window');
@@ -53,6 +67,7 @@ export default function EnhancedInteractiveMap({
   onMapReady,
   onLocationPermissionGranted,
   hideControls = false,
+  events = [], // Default to empty array
 }: EnhancedInteractiveMapProps) {
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [showPlaceDetails, setShowPlaceDetails] = useState(false);
@@ -66,7 +81,7 @@ export default function EnhancedInteractiveMap({
   });
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [places, setPlaces] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<any[]>([]);
   const [allEvents, setAllEvents] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -171,7 +186,7 @@ export default function EnhancedInteractiveMap({
         event.description?.toLowerCase().includes(localSearchQuery.toLowerCase()) ||
         event.placeName.toLowerCase().includes(localSearchQuery.toLowerCase())
       );
-      setEvents(filteredEvents);
+      setFilteredEvents(filteredEvents);
       
       // Navigate to search results screen if there are results
       if (filteredEvents.length > 0) {
@@ -182,7 +197,7 @@ export default function EnhancedInteractiveMap({
       }
     } else {
       // Show all events when search is cleared
-      setEvents(allEvents);
+      setFilteredEvents(allEvents);
     }
   }, [localSearchQuery, allEvents, navigation]);
 
@@ -237,11 +252,11 @@ export default function EnhancedInteractiveMap({
       
       // Ensure events is an array and filter out any null/undefined events
       const validEvents = Array.isArray(events) ? events.filter(event => event && event.id) : [];
-      setEvents(validEvents);
+      setFilteredEvents(validEvents);
       setAllEvents(validEvents);
     } catch (error) {
       console.error('Error loading events:', error);
-      setEvents([]);
+      setFilteredEvents([]);
       setAllEvents([]);
     } finally {
       setLoading(false);
@@ -275,7 +290,7 @@ export default function EnhancedInteractiveMap({
         }
       );
       setAllEvents(eventsData);
-      setEvents(eventsData);
+      setFilteredEvents(eventsData);
     } catch (error) {
       const appError = errorHandler.handleApiError(error, 'searchPlaces');
       errorHandler.showUserFriendlyError(appError, 'Search');
@@ -368,7 +383,7 @@ export default function EnhancedInteractiveMap({
         coordinates: selectedPlace.coordinates,
       });
 
-      setEvents(prev => [...prev, newEvent]);
+      setFilteredEvents(prev => [...prev, newEvent]);
       setShowEventCreation(false);
       Alert.alert('Success', 'Event created successfully!');
     } catch (error) {
@@ -385,7 +400,7 @@ export default function EnhancedInteractiveMap({
     
     try {
       await firestoreService.deleteEvent(eventId, 'user123');
-      setEvents(prev => prev.filter(event => event && event.id !== eventId));
+      setFilteredEvents(prev => prev.filter(event => event && event.id !== eventId));
       setShowEventDetails(false);
       Alert.alert('Success', 'Event deleted');
     } catch (error) {
@@ -614,6 +629,7 @@ export default function EnhancedInteractiveMap({
         onLocationSelect={onLocationSelect}
         onPlaceSelect={handlePlaceSelect}
         searchQuery={searchQuery}
+        events={events}
       />
 
       {/* Search and Filter Container - Only show if hideControls is false */}

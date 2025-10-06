@@ -1,22 +1,59 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
+
+// MapEvent interface for event markers
+interface MapEvent {
+  id: string;
+  name: string;
+  activity: string;
+  latitude: number;
+  longitude: number;
+  participants_count: number;
+  max_participants: number;
+  status: 'live' | 'past' | 'cancelled' | 'active'; // Added 'active' status
+  created_at: string;
+}
 
 interface GoogleMapsViewProps {
   onPlaceSelect?: (place: any) => void;
   onLocationSelect?: (location: { latitude: number; longitude: number }) => void;
   searchQuery?: string;
   initialLocation?: { latitude: number; longitude: number };
+  events?: MapEvent[]; // Events to display as markers
 }
 
 const { width, height } = Dimensions.get('window');
+
+// Helper function to get sport emoji
+const getSportEmoji = (activity: string): string => {
+  const emojiMap: Record<string, string> = {
+    basketball: '🏀',
+    football: '⚽',
+    soccer: '⚽',
+    running: '🏃‍♂️',
+    tennis: '🎾',
+    cycling: '🚴‍♂️',
+    swimming: '🏊‍♂️',
+    gym: '💪',
+    volleyball: '🏐',
+    climbing: '🧗‍♂️',
+    yoga: '🧘',
+    badminton: '🏸',
+    baseball: '⚾',
+    golf: '⛳',
+    hockey: '🏒',
+  };
+  return emojiMap[activity.toLowerCase()] || '🏃';
+};
 
 export default function GoogleMapsView({ 
   onPlaceSelect, 
   onLocationSelect, 
   searchQuery,
-  initialLocation 
+  initialLocation,
+  events = [] // Default to empty array
 }: GoogleMapsViewProps) {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [mapHtml, setMapHtml] = useState<string>('');
@@ -30,7 +67,7 @@ export default function GoogleMapsView({
     if (location) {
       generateMapHtml();
     }
-  }, [location, searchQuery]);
+  }, [location, searchQuery, events]);
 
   const getCurrentLocation = async () => {
     try {
@@ -112,6 +149,9 @@ export default function GoogleMapsView({
             // Search for places if query provided
             ${searchQuery ? `searchPlaces("${searchQuery}");` : 'searchNearbyPlaces();'}
             
+            // Add event markers
+            ${events.length > 0 ? 'createEventMarkers();' : ''}
+            
             // Add click listener for map
             map.addListener('click', (event) => {
               const lat = event.latLng.lat();
@@ -122,6 +162,100 @@ export default function GoogleMapsView({
                 longitude: lng
               }));
             });
+          }
+          
+          // Create event markers
+          function createEventMarkers() {
+            const sportEvents = ${JSON.stringify(events)};
+            
+            sportEvents.forEach(function(sportEvent) {
+              const emoji = getEmojiForSport(sportEvent.activity);
+              const marker = new google.maps.Marker({
+                position: { lat: sportEvent.latitude, lng: sportEvent.longitude },
+                map: map,
+                title: sportEvent.name,
+                icon: {
+                  url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(\`
+                    <svg width="48" height="64" viewBox="0 0 48 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <g filter="url(#shadow)">
+                        <circle cx="24" cy="24" r="20" fill="#FDB924" stroke="white" stroke-width="4"/>
+                        <text x="24" y="32" font-size="24" text-anchor="middle" fill="black">\${emoji}</text>
+                      </g>
+                      <rect x="18" y="42" width="12" height="18" rx="6" fill="white" stroke="#FDB924" stroke-width="2"/>
+                      <text x="24" y="55" font-size="10" text-anchor="middle" font-weight="bold" fill="#000000">\${sportEvent.participants_count}/\${sportEvent.max_participants}</text>
+                      <defs>
+                        <filter id="shadow">
+                          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+                        </filter>
+                      </defs>
+                    </svg>
+                  \`),
+                  scaledSize: new google.maps.Size(48, 64),
+                  anchor: new google.maps.Point(24, 64)
+                },
+                zIndex: 1000
+              });
+              
+              marker.addListener('click', function() {
+                window.ReactNativeWebView?.postMessage(JSON.stringify({
+                  type: 'event_click',
+                  event: sportEvent
+                }));
+                
+                infowindow.setContent(\`
+                  <div style="padding: 12px; max-width: 250px;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">\${sportEvent.name}</h3>
+                    <p style="margin: 0 0 6px 0; color: #666; font-size: 14px;">
+                      <span style="font-size: 20px; margin-right: 6px;">\${emoji}</span>
+                      \${sportEvent.activity}
+                    </p>
+                    <p style="margin: 0; color: #FDB924; font-weight: 600; font-size: 14px;">
+                      👥 \${sportEvent.participants_count}/\${sportEvent.max_participants} participants
+                    </p>
+                    <button style="
+                      width: 100%;
+                      margin-top: 10px;
+                      padding: 8px;
+                      background: #FDB924;
+                      color: black;
+                      border: none;
+                      border-radius: 8px;
+                      font-weight: 600;
+                      cursor: pointer;
+                      font-size: 14px;
+                    " onclick="window.ReactNativeWebView.postMessage(JSON.stringify({
+                      type: 'event_join',
+                      eventId: '\${sportEvent.id}'
+                    }))">
+                      Join Event
+                    </button>
+                  </div>
+                \`);
+                infowindow.open(map, marker);
+              });
+            });
+          }
+          
+          // Helper function for emoji mapping in browser
+          function getEmojiForSport(sport) {
+            const map = {
+              'basketball': '🏀',
+              'football': '⚽',
+              'soccer': '⚽',
+              'running': '🏃‍♂️',
+              'tennis': '🎾',
+              'cycling': '🚴‍♂️',
+              'swimming': '🏊‍♂️',
+              'gym': '💪',
+              'volleyball': '🏐',
+              'climbing': '🧗‍♂️',
+              'yoga': '🧘',
+              'badminton': '🏸',
+              'baseball': '⚾',
+              'golf': '⛳',
+              'hockey': '🏒'
+            };
+            return map[sport.toLowerCase()] || '🏃';
           }
           
           function searchPlaces(query) {
@@ -237,6 +371,28 @@ export default function GoogleMapsView({
           latitude: data.latitude,
           longitude: data.longitude
         });
+      } else if (data.type === 'event_click') {
+        // Handle event marker click
+        console.log('Event clicked:', data.event);
+        Alert.alert(
+          data.event.name,
+          `${data.event.activity}\n${data.event.participants_count}/${data.event.max_participants} participants`,
+          [
+            { text: 'Close', style: 'cancel' },
+            { text: 'View Details', onPress: () => console.log('View details:', data.event.id) }
+          ]
+        );
+      } else if (data.type === 'event_join') {
+        // Handle join event button click
+        console.log('Join event:', data.eventId);
+        Alert.alert(
+          'Join Event',
+          'Would you like to join this event?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Join', onPress: () => console.log('Joining event:', data.eventId) }
+          ]
+        );
       }
     } catch (error) {
       console.error('Error parsing WebView message:', error);
@@ -246,7 +402,7 @@ export default function GoogleMapsView({
   if (!location && !initialLocation) {
     return (
       <View style={styles.loadingContainer}>
-        <View style={styles.loadingText}>Loading map...</View>
+        <Text style={styles.loadingText}>Loading map...</Text>
       </View>
     );
   }

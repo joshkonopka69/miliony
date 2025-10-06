@@ -528,3 +528,4 @@ const { data: joined } = await supabase
 
 **🎉 Congratulations! Your profile screen is now world-class!** 🎉
 
+

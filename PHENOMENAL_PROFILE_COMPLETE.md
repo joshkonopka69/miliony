@@ -615,3 +615,4 @@ Photo displays ✅
 
 *Now restart the app and log in to see the magic!*
 
+
