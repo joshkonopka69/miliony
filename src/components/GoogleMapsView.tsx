@@ -59,6 +59,10 @@ export default function GoogleMapsView({
   const [mapHtml, setMapHtml] = useState<string>('');
   const webViewRef = useRef<WebView>(null);
 
+  // Debug: Log events when component receives them
+  console.log('🗺️ GoogleMapsView received events:', events);
+  console.log('🗺️ GoogleMapsView events count:', events.length);
+
   useEffect(() => {
     getCurrentLocation();
   }, []);

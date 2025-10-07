@@ -92,7 +92,7 @@ class SupabaseService {
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
@@ -120,7 +120,7 @@ class SupabaseService {
         
         // Fallback to direct insert (this will work if RLS is disabled)
         const { data: fallbackData, error: fallbackError } = await supabase
-          .from('users')
+          .from('profiles')
           .insert({
             ...userData,
             id: userData.id || 'temp-id-' + Date.now() // Use Firebase UID or temp ID
@@ -145,7 +145,7 @@ class SupabaseService {
 
   async updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', userId)
       .select()
@@ -184,11 +184,9 @@ class SupabaseService {
   async getEvents(filters?: EventFilters): Promise<Event[]> {
     let query = supabase
       .from('events')
-      .select(`
-        *,
-        created_by:users!events_created_by_fkey(display_name, avatar_url)
-      `)
-      .order('created_at', { ascending: false });
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false});
 
     if (filters?.status) {
       query = query.eq('status', filters.status);
@@ -227,10 +225,7 @@ class SupabaseService {
   async getEventById(eventId: string): Promise<Event | null> {
     const { data, error } = await supabase
       .from('events')
-      .select(`
-        *,
-        created_by:users!events_created_by_fkey(display_name, avatar_url)
-      `)
+      .select('*')
       .eq('id', eventId)
       .single();
 

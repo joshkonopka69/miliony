@@ -114,12 +114,8 @@ class EnhancedEventService {
     try {
       let query = supabase
         .from('events')
-        .select(`
-          *,
-          creator:users!events_created_by_fkey(display_name, avatar_url),
-          participants:event_participants(user_id)
-        `)
-        .eq('status', 'live');
+        .select('*')
+        .eq('status', 'active');
 
       // Apply filters
       if (filters.activities && filters.activities.length > 0) {
@@ -307,11 +303,7 @@ class EnhancedEventService {
     try {
       const { data, error } = await supabase
         .from('events')
-        .select(`
-          *,
-          creator:users!events_created_by_fkey(display_name, avatar_url),
-          participants:event_participants(user_id)
-        `)
+        .select('*')
         .eq('id', eventId)
         .single();
 
@@ -320,12 +312,7 @@ class EnhancedEventService {
         return null;
       }
 
-      return {
-        ...data,
-        participants: data.participants?.map((p: any) => p.user_id) || [],
-        creator_name: data.creator?.display_name,
-        creator_avatar: data.creator?.avatar_url,
-      };
+      return data;
     } catch (error) {
       console.error('Error in getEventById:', error);
       return null;

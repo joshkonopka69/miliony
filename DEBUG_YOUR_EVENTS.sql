@@ -1,21 +1,12 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- 🔍 CHECK YOUR EVENTS STATUS
+-- 🔍 DEBUG YOUR EXISTING EVENTS
 -- ═══════════════════════════════════════════════════════════════════════════
--- Run this in Supabase SQL Editor and share the results with me
+-- Run this to see what's wrong with your events
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- 1. Check if events table exists
-SELECT 'Table exists: ' || COUNT(*)::text as check_1
-FROM information_schema.tables 
-WHERE table_name = 'events';
-
--- 2. Count total events
-SELECT 'Total events in database: ' || COUNT(*)::text as check_2
-FROM events;
-
--- 3. Show all events with details
+-- 1. Show ALL your events with details
 SELECT 
-  'Event details' as check_3,
+  '📊 ALL YOUR EVENTS' as section,
   id,
   title,
   sport_type,
@@ -29,22 +20,49 @@ SELECT
 FROM events 
 ORDER BY created_at DESC;
 
--- 4. Check what's blocking events from showing
+-- 2. Check what your app is looking for
 SELECT 
-  'Analysis' as check_4,
+  '🎯 WHAT APP LOOKS FOR' as section,
   COUNT(*) as total_events,
   COUNT(*) FILTER (WHERE status = 'active') as with_active_status,
   COUNT(*) FILTER (WHERE scheduled_datetime > NOW()) as with_future_date,
   COUNT(*) FILTER (WHERE status = 'active' AND scheduled_datetime > NOW()) as will_show_in_app
 FROM events;
 
--- 5. Check your user ID (for creating events)
+-- 3. Show only events that WILL show in app
 SELECT 
-  'Your user ID' as check_5,
-  id as user_id,
-  email
-FROM auth.users 
-LIMIT 1;
+  '✅ EVENTS THAT WILL SHOW' as section,
+  id,
+  title,
+  sport_type,
+  status,
+  TO_CHAR(scheduled_datetime, 'YYYY-MM-DD HH24:MI') as scheduled_for,
+  latitude,
+  longitude
+FROM events 
+WHERE status = 'active' 
+  AND scheduled_datetime > NOW()
+ORDER BY scheduled_datetime;
 
+-- 4. Check RLS policies
+SELECT 
+  '🔒 RLS POLICIES' as section,
+  schemaname,
+  tablename,
+  policyname,
+  permissive,
+  roles,
+  cmd,
+  qual
+FROM pg_policies 
+WHERE tablename = 'events';
 
-
+-- 5. Test the exact query your app uses
+SELECT 
+  '🧪 APP QUERY TEST' as section,
+  *
+FROM events
+WHERE status = 'active'
+  AND scheduled_datetime > NOW()
+ORDER BY scheduled_datetime
+LIMIT 100;

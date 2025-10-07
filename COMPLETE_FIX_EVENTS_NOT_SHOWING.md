@@ -387,3 +387,5 @@ After the fix, you should see:
 
 **🚀 Run the SQL script now and restart your app!**
 
+
+

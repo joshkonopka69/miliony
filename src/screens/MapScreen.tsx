@@ -86,6 +86,7 @@ export default function MapScreen() {
   const [events, setEvents] = useState<MapEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState<boolean>(__DEV__); // Show debug in development
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -100,15 +101,19 @@ export default function MapScreen() {
       setError(null);
 
       console.log('🔄 Fetching events from Supabase...');
+      console.log('🔄 MapScreen: Starting fetchEventsFromSupabase function');
 
       // Query events table with filters matching YOUR schema
+      console.log('🔄 MapScreen: About to query events table');
       const { data, error: queryError } = await supabase
         .from('events')
         .select('*')
-        .eq('status', 'active') // Your schema uses 'active' not 'live'
-        .gt('scheduled_datetime', new Date().toISOString()) // Future events only
+        // .eq('status', 'active') // TEMPORARILY DISABLED - RLS might be blocking this
         .order('scheduled_datetime', { ascending: true })
         .limit(100); // Limit to avoid performance issues
+
+      console.log('🔄 MapScreen: Query completed. Data:', data?.length || 0, 'events');
+      console.log('🔄 MapScreen: Query error:', queryError);
 
       if (queryError) {
         console.error('❌ Supabase query error:', queryError);
@@ -121,8 +126,12 @@ export default function MapScreen() {
         return;
       }
 
+      // Filter for active events only (since RLS might block the WHERE clause)
+      const activeEvents = data.filter((event: any) => event.status === 'active');
+      console.log(`🔄 MapScreen: Filtered to ${activeEvents.length} active events from ${data.length} total events`);
+
       // Transform YOUR Supabase schema to MapEvent format
-      const transformedEvents: MapEvent[] = data.map((event: any) => ({
+      const transformedEvents: MapEvent[] = activeEvents.map((event: any) => ({
         id: event.id,
         name: event.title, // YOUR schema: 'title' → 'name'
         activity: event.sport_type, // YOUR schema: 'sport_type' → 'activity'
@@ -176,6 +185,7 @@ export default function MapScreen() {
         console.log('📍 User location obtained:', location.coords);
 
         // Fetch events
+        console.log('🔄 MapScreen: About to call fetchEventsFromSupabase');
         await fetchEventsFromSupabase();
 
       } catch (error) {
@@ -229,6 +239,9 @@ export default function MapScreen() {
     // TODO: Open filter modal
   };
 
+  // Debug: Log events before passing to map
+  console.log('🗺️ MapScreen passing events to EnhancedInteractiveMap:', events.length, 'events');
+  
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -289,8 +302,20 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Debug Info (remove in production) */}
+      {/* Debug Toggle Button */}
       {__DEV__ && (
+        <TouchableOpacity 
+          style={styles.debugToggle}
+          onPress={() => setShowDebug(!showDebug)}
+        >
+          <Text style={styles.debugToggleText}>
+            {showDebug ? 'Hide Debug' : 'Show Debug'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Debug Info */}
+      {showDebug && (
         <View style={styles.debugInfo}>
           <Text style={styles.debugText}>
             Events: {events.length} | Loading: {loading ? 'Yes' : 'No'}
@@ -300,10 +325,21 @@ export default function MapScreen() {
               Sports: {[...new Set(events.map(e => e.activity))].join(', ')}
             </Text>
           )}
+          {error && (
+            <Text style={styles.debugText}>
+              Error: {error}
+            </Text>
+          )}
         </View>
       )}
 
-      {/* Bottom Navigation */}
+      {/* Debug Test Component */}
+      {/* Debug Test Component */}
+      {showDebug && (
+        <View style={styles.debugTestContainer}>
+          <Text style={styles.debugText}>Debug Test Component Placeholder</Text>
+        </View>
+      )}
       <View style={styles.bottomNavContainer}>
         <BottomNavBar 
           activeTab="Home"
@@ -465,5 +501,33 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#FFFFFF',
     marginBottom: 4,
+  },
+  // Debug Toggle Button
+  debugToggle: {
+    position: 'absolute',
+    top: 150,
+    right: 20,
+    backgroundColor: '#FDB924',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 600,
+  },
+  debugToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  // Debug Test Container
+  debugTestContainer: {
+    position: 'absolute',
+    top: 200,
+    left: 10,
+    right: 10,
+    bottom: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 12,
+    zIndex: 600,
+    maxHeight: 400,
   },
 });

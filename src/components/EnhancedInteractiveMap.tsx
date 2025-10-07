@@ -96,6 +96,10 @@ export default function EnhancedInteractiveMap({
   const [loading, setLoading] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery || '');
   
+  // Debug: Log events received as prop
+  console.log('🗺️ EnhancedInteractiveMap received events prop:', events.length, 'events');
+  console.log('🗺️ EnhancedInteractiveMap events data:', events);
+  
   // Custom pin state variables
   const [customPins, setCustomPins] = useState<Array<{
     id: string;
