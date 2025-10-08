@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppNavigation } from '../navigation/hooks';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../navigation/types';
 import { ROUTES } from '../navigation/types';
 import { BottomNavBar } from '../components';
-import { EmptyState, SectionHeader, EventCard } from '../components';
+import { useTranslation } from '../contexts/TranslationContext';
+import { EmptyState, SectionHeader, EventCard, EventCardSkeleton, NoJoinedEventsEmptyState, ErrorBoundary } from '../components';
 import { MyEvent, SportActivity } from '../types/event';
 import { groupEventsByTime } from '../utils/eventGrouping';
+
+// Theme Constants
+const ICON_SIZE = 24;
+const ICON_COLOR = '#000000';
 
 // Logo Component (matches MapScreen)
 const SportMapLogo = () => (
@@ -28,10 +35,12 @@ const SportMapLogo = () => (
 );
 
 export default function MyEventsScreen() {
-  const navigation = useAppNavigation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<MyEvent[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<SportActivity | 'all'>('all');
 
   // Load events on mount
@@ -39,99 +48,172 @@ export default function MyEventsScreen() {
     loadEvents();
   }, []);
 
-  const loadEvents = async () => {
+  // Real-time event updates
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('🔔 MyEventsScreen: Setting up real-time subscriptions...');
+    }
+
+    const setupSubscriptions = async () => {
+      const { supabase } = await import('../services/supabase');
+      
+      // Subscribe to event changes
+      const eventChannel = supabase
+        .channel('my-events-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'events',
+          },
+          (payload: any) => {
+            if (__DEV__) {
+              console.log('🔔 MyEventsScreen: Event change detected:', payload);
+            }
+            // Reload events when changes occur
+            loadEvents();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'event_participants',
+          },
+          (payload: any) => {
+            if (__DEV__) {
+              console.log('🔔 MyEventsScreen: Participant change detected:', payload);
+            }
+            // Reload events when participant changes occur
+            loadEvents();
+          }
+        )
+        .subscribe();
+
+      // Cleanup subscription on unmount
+      return () => {
+        if (__DEV__) {
+          console.log('🔕 MyEventsScreen: Cleaning up real-time subscriptions...');
+        }
+        supabase.removeChannel(eventChannel);
+      };
+    };
+
+    setupSubscriptions();
+  }, []);
+
+  const loadEvents = useCallback(async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const fetchedEvents = await eventService.getMyEvents();
+      setError(null);
+      if (__DEV__) {
+        console.log('🔄 MyEventsScreen: Starting to load events...');
+      }
       
-      // Mock data for demonstration
-      const mockEvents: MyEvent[] = [
-        {
-          id: '1',
-          name: 'Pickup Basketball Game',
-          activity: 'Basketball',
-          startTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-          endTime: new Date(Date.now() + 4 * 60 * 60 * 1000),
+      // Get current user ID
+      const currentUserId = 'd31adacf-886d-4198-859c-2c36695e644c';
+      if (__DEV__) {
+        console.log('👤 MyEventsScreen: Using user ID:', currentUserId);
+      }
+      
+      // Import Supabase service
+      const { supabaseService } = await import('../services/supabase');
+      
+      // Get today's date range for filtering
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      
+      if (__DEV__) {
+        console.log('📅 MyEventsScreen: Today range:', startOfDay.toISOString(), 'to', endOfDay.toISOString());
+      }
+      
+      // Fetch BOTH created and joined events
+      const [joinedEvents, createdEvents] = await Promise.all([
+        supabaseService.getMyEvents(currentUserId), // Joined events
+        supabaseService.getEvents({ status: 'active' }).then(events => 
+          events.filter(event => event.creator_id === currentUserId)
+        ) // Created events
+      ]);
+      
+      if (__DEV__) {
+        console.log('📋 MyEventsScreen: Fetched', joinedEvents.length, 'joined events');
+        console.log('📋 MyEventsScreen: Fetched', createdEvents.length, 'created events');
+      }
+      
+      // Combine and deduplicate events
+      const allEvents = [...joinedEvents, ...createdEvents];
+      const uniqueEvents = allEvents.filter((event, index, self) => 
+        index === self.findIndex(e => e.id === event.id)
+      );
+      
+      // Filter to only show today's events
+      const todayEvents = uniqueEvents.filter(event => {
+        const eventDate = new Date(event.scheduled_datetime);
+        return eventDate >= startOfDay && eventDate < endOfDay;
+      });
+      
+      if (__DEV__) {
+        console.log('📅 MyEventsScreen: Filtered to', todayEvents.length, 'today events');
+      }
+      
+      // Transform Supabase events to MyEvent format with proper role identification
+      const transformedEvents: MyEvent[] = todayEvents.map(event => {
+        const isCreator = event.creator_id === currentUserId;
+        const isJoined = joinedEvents.some(joined => joined.id === event.id);
+        
+        return {
+          id: event.id,
+          name: event.title,
+          activity: event.sport_type as SportActivity,
+          startTime: new Date(event.scheduled_datetime),
+          endTime: new Date(new Date(event.scheduled_datetime).getTime() + 2 * 60 * 60 * 1000),
           location: {
-            name: 'Central Park Courts',
-            address: '123 Park Ave',
-            distance: 2.3,
-            lat: 40.7829,
-            lng: -73.9654,
+            name: (event as any).place_name || 'Unknown Location',
+            address: (event as any).place_name || 'Unknown Address',
+            distance: 0,
+            lat: event.latitude,
+            lng: event.longitude,
           },
           participants: {
-            current: 5,
-            max: 10,
+            current: (event as any).participants_count || 0,
+            max: event.max_participants,
           },
-          status: 'upcoming',
-          role: 'joined',
+          status: event.status === 'active' ? 'upcoming' : 'completed',
+          role: isCreator ? 'created' : (isJoined ? 'joined' : 'invited'),
           chatEnabled: true,
           createdBy: {
-            id: 'user1',
-            name: 'John Doe',
+            id: event.creator_id,
+            name: isCreator ? 'You' : 'Event Creator',
           },
-        },
-        {
-          id: '2',
-          name: 'Evening Football Match',
-          activity: 'Football',
-          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-          endTime: new Date(Date.now() + 26 * 60 * 60 * 1000),
-          location: {
-            name: 'Sports Complex Field',
-            address: '456 Sports Dr',
-            distance: 5.7,
-            lat: 40.7580,
-            lng: -73.9855,
-          },
-          participants: {
-            current: 18,
-            max: 22,
-          },
-          status: 'upcoming',
-          role: 'created',
-          chatEnabled: true,
-          createdBy: {
-            id: 'currentUser',
-            name: 'You',
-          },
-        },
-        {
-          id: '3',
-          name: 'Tennis Practice Session',
-          activity: 'Tennis',
-          startTime: new Date(Date.now() + 72 * 60 * 60 * 1000), // 3 days
-          endTime: new Date(Date.now() + 74 * 60 * 60 * 1000),
-          location: {
-            name: 'City Tennis Club',
-            address: '789 Tennis Rd',
-            distance: 1.2,
-            lat: 40.7489,
-            lng: -73.9680,
-          },
-          participants: {
-            current: 3,
-            max: 4,
-          },
-          status: 'upcoming',
-          role: 'joined',
-          chatEnabled: true,
-          createdBy: {
-            id: 'user3',
-            name: 'Sarah Smith',
-          },
-        },
-      ];
-
-      setEvents(mockEvents);
+        };
+      });
+      
+      setEvents(transformedEvents);
+      if (__DEV__) {
+        console.log('✅ MyEventsScreen: Loaded', transformedEvents.length, 'events from Supabase');
+        console.log('📊 MyEventsScreen: Events breakdown:', {
+          created: transformedEvents.filter(e => e.role === 'created').length,
+          joined: transformedEvents.filter(e => e.role === 'joined').length,
+          invited: transformedEvents.filter(e => e.role === 'invited').length
+        });
+        
+        if (transformedEvents.length === 0) {
+          console.log('ℹ️ MyEventsScreen: No events found for user');
+        }
+      }
     } catch (error) {
-      console.error('Error loading events:', error);
-      Alert.alert('Error', 'Failed to load events');
+      console.error('❌ MyEventsScreen: Error loading events:', error);
+      console.error('❌ MyEventsScreen: Error details:', JSON.stringify(error, null, 2));
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load events';
+      setError(errorMessage);
+      Alert.alert('Error', 'Failed to load events. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -146,10 +228,16 @@ export default function MyEventsScreen() {
 
   const handleChatPress = (event: MyEvent) => {
     // Navigate to event chat
-    navigation.navigate(ROUTES.GAME_CHAT, { game: event });
+    navigation.navigate(ROUTES.EVENT_CHAT, { 
+      event: {
+        id: event.id,
+        title: event.name,
+        sport_type: event.activity
+      }
+    });
   };
 
-  const handleLeaveEvent = (event: MyEvent) => {
+  const handleLeaveEvent = async (event: MyEvent) => {
     Alert.alert(
       'Leave Event',
       `Are you sure you want to leave "${event.name}"?`,
@@ -158,10 +246,22 @@ export default function MyEventsScreen() {
         {
           text: 'Leave',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Call API to leave event
+          onPress: async () => {
+            try {
+              const currentUserId = 'd31adacf-886d-4198-859c-2c36695e644c';
+              const { supabaseService } = await import('../services/supabase');
+              
+              const success = await supabaseService.leaveEvent(event.id, currentUserId);
+              if (success) {
             setEvents(prev => prev.filter(e => e.id !== event.id));
             Alert.alert('Success', 'You have left the event');
+              } else {
+                Alert.alert('Error', 'Failed to leave the event');
+              }
+            } catch (error) {
+              console.error('Error leaving event:', error);
+              Alert.alert('Error', 'Failed to leave the event');
+            }
           },
         },
       ]
@@ -195,7 +295,26 @@ export default function MyEventsScreen() {
     if (loading && events.length === 0) {
       return (
         <View style={styles.centerContainer}>
-          <Text style={styles.loadingText}>Loading your events...</Text>
+          <EventCardSkeleton />
+          <EventCardSkeleton />
+          <EventCardSkeleton />
+        </View>
+      );
+    }
+
+    if (error && events.length === 0) {
+      return (
+        <View style={styles.centerContainer}>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorTitle}>Failed to Load Events</Text>
+            <Text style={styles.errorMessage}>{error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={loadEvents}
+            >
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
@@ -203,13 +322,7 @@ export default function MyEventsScreen() {
     if (events.length === 0) {
       return (
         <View style={styles.centerContainer}>
-          <EmptyState
-            icon="calendar-outline"
-            title="No Events Joined Yet"
-            message="Find exciting events on the map and join to see them here"
-            actionLabel="Browse Events"
-            onAction={handleBrowseEvents}
-          />
+          <NoJoinedEventsEmptyState onBrowseEvents={handleBrowseEvents} />
         </View>
       );
     }
@@ -262,9 +375,11 @@ export default function MyEventsScreen() {
   };
 
   return (
+    <ErrorBoundary>
     <View style={styles.container}>
       {/* Top Bar (matches MapScreen) */}
-      <SafeAreaView style={styles.topBarSafeArea}>
+        <View style={styles.topBarSafeArea}>
+          <SafeAreaView>
         <View style={styles.topBar}>
           {/* Logo on Left */}
           <SportMapLogo />
@@ -275,20 +390,25 @@ export default function MyEventsScreen() {
               style={styles.topBarButton}
               onPress={handleFilterPress}
               activeOpacity={0.7}
+                  accessibilityLabel="Filter events"
+                  accessibilityRole="button"
             >
-              <Ionicons name="options-outline" size={24} color="#000000" />
+                  <Ionicons name="options-outline" size={ICON_SIZE} color={ICON_COLOR} />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.topBarButton}
               onPress={handleMorePress}
               activeOpacity={0.7}
+                  accessibilityLabel="More options"
+                  accessibilityRole="button"
             >
-              <Ionicons name="ellipsis-horizontal" size={24} color="#000000" />
+                  <Ionicons name="ellipsis-horizontal" size={ICON_SIZE} color={ICON_COLOR} />
             </TouchableOpacity>
           </View>
         </View>
       </SafeAreaView>
+        </View>
 
       {/* Main Content */}
       {renderContent()}
@@ -301,6 +421,7 @@ export default function MyEventsScreen() {
         />
       </View>
     </View>
+    </ErrorBoundary>
   );
 }
 
@@ -397,6 +518,34 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+  },
+  // Error Styles
+  errorContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#EF4444',
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#FDB924',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
 

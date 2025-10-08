@@ -1,4 +1,5 @@
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
 import { useCallback, useRef, useEffect } from 'react';
 import { BackHandler } from 'react-native';
 import { 
@@ -9,7 +10,27 @@ import { NavigationUtils } from './utils';
 
 // Type-safe navigation hooks
 export const useAppNavigation = () => {
-  return useNavigation<any>();
+  try {
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+    if (!navigation) {
+      console.warn('Navigation not available, returning fallback');
+      return {
+        navigate: () => console.warn('Navigation not available'),
+        goBack: () => console.warn('Navigation not available'),
+        canGoBack: () => false,
+        reset: () => console.warn('Navigation not available'),
+      };
+    }
+    return navigation;
+  } catch (error) {
+    console.error('Navigation hook error:', error);
+    return {
+      navigate: () => console.warn('Navigation error'),
+      goBack: () => console.warn('Navigation error'),
+      canGoBack: () => false,
+      reset: () => console.warn('Navigation error'),
+    };
+  }
 };
 
 export const useAppRoute = <T extends keyof RootStackParamList>() => {

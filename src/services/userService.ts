@@ -133,7 +133,7 @@ class UserService {
   async createUserProfile(userData: CreateUserProfileData): Promise<UserProfile | null> {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .insert({
           ...userData,
           created_at: new Date().toISOString(),
@@ -167,7 +167,7 @@ class UserService {
   async getUserProfile(userId: string): Promise<UserProfile | null> {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
@@ -177,7 +177,19 @@ class UserService {
         return null;
       }
 
-      return data;
+      // Transform the data to match UserProfile interface
+      return {
+        id: data.id,
+        email: data.email || '',
+        display_name: data.full_name || data.username || 'Unknown User',
+        avatar_url: data.avatar_url,
+        friends: data.friends || [],
+        favorite_sports: data.favorite_sports || [],
+        location_latitude: data.location_latitude,
+        location_longitude: data.location_longitude,
+        created_at: data.created_at,
+        updated_at: data.updated_at || data.created_at
+      };
     } catch (error) {
       console.error('Error fetching user profile:', error);
       return null;
@@ -187,7 +199,7 @@ class UserService {
   async updateUserProfile(userId: string, updates: UpdateUserProfileData): Promise<UserProfile | null> {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({
           ...updates,
           updated_at: new Date().toISOString(),
@@ -211,7 +223,7 @@ class UserService {
   async deleteUserProfile(userId: string): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .delete()
         .eq('id', userId);
 
@@ -232,7 +244,7 @@ class UserService {
   async searchUsers(filters: UserSearchFilters): Promise<UserProfile[]> {
     try {
       let query = supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('is_public', true);
 
@@ -584,7 +596,7 @@ class UserService {
   async verifyUser(userId: string): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({ is_verified: true })
         .eq('id', userId);
 

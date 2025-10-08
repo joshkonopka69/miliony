@@ -16,19 +16,15 @@ export interface User {
 
 export interface Event {
   id: string;
-  name: string;
-  activity: string;
+  title: string; // Changed from 'name' to 'title'
+  sport_type: string; // Changed from 'activity' to 'sport_type'
   description?: string;
-  min_participants: number;
   max_participants: number;
-  media_url?: string;
-  location_name: string;
   latitude: number;
   longitude: number;
-  place_id?: string;
-  created_by: string;
-  status: 'live' | 'past' | 'cancelled';
-  participants_count: number;
+  scheduled_datetime: string; // Added this field
+  status: 'active' | 'cancelled' | 'completed'; // Updated status values
+  creator_id: string; // Changed from 'created_by' to 'creator_id'
   created_at: string;
   updated_at: string;
 }
@@ -56,27 +52,24 @@ export interface EventMessage {
 }
 
 export interface CreateEventData {
-  name: string;
-  activity: string;
+  title: string; // Changed from 'name' to 'title'
+  sport_type: string; // Changed from 'activity' to 'sport_type'
   description?: string;
-  min_participants?: number;
   max_participants: number;
-  media_url?: string;
-  location_name: string;
   latitude: number;
   longitude: number;
-  place_id?: string;
-  created_by: string;
+  scheduled_datetime: string; // Added this field
+  creator_id: string; // Changed from 'created_by' to 'creator_id'
 }
 
 export interface EventFilters {
-  activity?: string;
+  sport_type?: string; // Changed from 'activity' to 'sport_type'
   location?: {
     latitude: number;
     longitude: number;
     radius: number; // in km
   };
-  status?: 'live' | 'past' | 'cancelled';
+  status?: 'active' | 'cancelled' | 'completed'; // Updated status values
 }
 
 // Initialize Supabase client
@@ -165,7 +158,7 @@ class SupabaseService {
       .from('events')
       .insert({
         ...eventData,
-        participants_count: 1, // Creator is automatically a participant
+        status: 'active', // Set default status
       })
       .select()
       .single();
@@ -176,7 +169,7 @@ class SupabaseService {
     }
 
     // Add creator as participant
-    await this.joinEvent(data.id, eventData.created_by);
+    await this.joinEvent(data.id, eventData.creator_id);
 
     return data;
   }
@@ -192,8 +185,8 @@ class SupabaseService {
       query = query.eq('status', filters.status);
     }
 
-    if (filters?.activity) {
-      query = query.eq('activity', filters.activity);
+    if (filters?.sport_type) {
+      query = query.eq('sport_type', filters.sport_type);
     }
 
     if (filters?.location) {
@@ -259,7 +252,7 @@ class SupabaseService {
       .from('events')
       .delete()
       .eq('id', eventId)
-      .eq('created_by', userId);
+      .eq('creator_id', userId);
 
     if (error) {
       console.error('Error deleting event:', error);
@@ -271,31 +264,84 @@ class SupabaseService {
 
   // Event participation
   async joinEvent(eventId: string, userId: string): Promise<boolean> {
-    const { data, error } = await supabase.rpc('join_event', {
-      event_uuid: eventId,
-      user_uuid: userId,
-    });
+    try {
+      console.log('🔗 Joining event:', { eventId, userId });
 
-    if (error) {
-      console.error('Error joining event:', error);
+      // Try direct insert into event_participants table first
+      const { data, error } = await supabase
+        .from('event_participants')
+        .insert({
+          event_id: eventId,
+          user_id: userId,
+          joined_at: new Date().toISOString()
+        })
+        .select();
+
+      if (error) {
+        console.error('❌ Error joining event (direct insert):', error);
+        
+        // If direct insert fails, try RPC function as fallback
+        console.log('🔄 Trying RPC function as fallback...');
+        const { data: rpcData, error: rpcError } = await supabase.rpc('join_event', {
+          event_uuid: eventId,
+          user_uuid: userId,
+        });
+
+        if (rpcError) {
+          console.error('❌ Error joining event (RPC):', rpcError);
+          console.error('❌ Error details:', JSON.stringify(rpcError, null, 2));
+          return false;
+        }
+
+        console.log('✅ Successfully joined event via RPC:', rpcData);
+        return rpcData;
+      }
+
+      console.log('✅ Successfully joined event via direct insert:', data);
+      return true;
+    } catch (error) {
+      console.error('❌ Exception in joinEvent:', error);
       return false;
     }
-
-    return data;
   }
 
   async leaveEvent(eventId: string, userId: string): Promise<boolean> {
-    const { data, error } = await supabase.rpc('leave_event', {
-      event_uuid: eventId,
-      user_uuid: userId,
-    });
+    try {
+      console.log('🚪 Leaving event:', { eventId, userId });
 
-    if (error) {
-      console.error('Error leaving event:', error);
+      // Try direct delete from event_participants table first
+      const { error } = await supabase
+        .from('event_participants')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('❌ Error leaving event (direct delete):', error);
+        
+        // If direct delete fails, try RPC function as fallback
+        console.log('🔄 Trying RPC function as fallback...');
+        const { data: rpcData, error: rpcError } = await supabase.rpc('leave_event', {
+          event_uuid: eventId,
+          user_uuid: userId,
+        });
+
+        if (rpcError) {
+          console.error('❌ Error leaving event (RPC):', rpcError);
+          console.error('❌ Error details:', JSON.stringify(rpcError, null, 2));
+          return false;
+        }
+
+        console.log('✅ Successfully left event via RPC:', rpcData);
+        return rpcData;
+      }
+
+      console.log('✅ Successfully left event via direct delete');
+      return true;
+    } catch (error) {
+      console.error('❌ Exception in leaveEvent:', error);
       return false;
     }
-
-    return data;
   }
 
   async getEventParticipants(eventId: string): Promise<EventParticipant[]> {
@@ -303,7 +349,7 @@ class SupabaseService {
       .from('event_participants')
       .select(`
         *,
-        user:users!event_participants_user_id_fkey(display_name, avatar_url)
+        user:profiles!event_participants_user_id_fkey(display_name, avatar_url)
       `)
       .eq('event_id', eventId);
 
@@ -330,6 +376,54 @@ class SupabaseService {
     return !!data;
   }
 
+  // Get user's joined events
+  async getMyEvents(userId: string): Promise<Event[]> {
+    try {
+      console.log('🔍 Fetching events for user:', userId);
+      
+      // First, get the event IDs that the user has joined
+      const { data: participants, error: participantsError } = await supabase
+        .from('event_participants')
+        .select('event_id')
+        .eq('user_id', userId);
+
+      if (participantsError) {
+        console.error('❌ Error fetching event participants:', participantsError);
+        return [];
+      }
+
+      if (!participants || participants.length === 0) {
+        console.log('📋 No events found for user');
+        return [];
+      }
+
+      console.log('📋 Found participants:', participants);
+
+      // Extract event IDs
+      const eventIds = participants.map(p => p.event_id);
+      console.log('📋 Event IDs:', eventIds);
+
+      // Now fetch the actual events
+      const { data: events, error: eventsError } = await supabase
+        .from('events')
+        .select('*')
+        .in('id', eventIds)
+        .order('created_at', { ascending: false });
+
+      if (eventsError) {
+        console.error('❌ Error fetching events:', eventsError);
+        return [];
+      }
+
+      console.log('📋 Fetched events:', events);
+      return events || [];
+      
+    } catch (error) {
+      console.error('❌ Exception in getMyEvents:', error);
+      return [];
+    }
+  }
+
   // Sports operations
   async getSports(): Promise<Sport[]> {
     const { data, error } = await supabase
@@ -351,7 +445,7 @@ class SupabaseService {
       .from('event_messages')
       .select(`
         *,
-        sender:users!event_messages_sender_id_fkey(display_name, avatar_url)
+        sender:profiles!event_messages_sender_id_fkey(display_name, avatar_url)
       `)
       .eq('event_id', eventId)
       .order('created_at', { ascending: false })

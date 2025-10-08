@@ -10,9 +10,11 @@ import {
   MapScreen,
   ChatScreen,
   EventsScreen,
+  MyEventsScreen,
   EventDetailsScreen,
   SettingsScreen,
   ProfileScreen,
+  SimpleProfileScreen,
   AddFriendScreen,
   CreateGroupScreen,
   MyGroupsScreen,
@@ -20,8 +22,7 @@ import {
   GameChatScreen,
   TermsOfServiceScreen,
   PrivacyPolicyScreen,
-  EventTestScreen,
-  BackendTestScreen,
+  // Removed test screens - no longer needed
   // Analytics screens
   AnalyticsDashboard,
   UserAnalytics,
@@ -41,7 +42,9 @@ import {
   // Notification screens
   NotificationsScreen,
   NotificationSettingsScreen,
-} from '../screens';
+  // Search screens
+  EventSearchResultsScreen,
+} from '../screens/index';
 
 // Import navigation utilities and types
 import { setNavigationRef } from './utils';
@@ -128,6 +131,11 @@ export default function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen 
+          name={ROUTES.MY_EVENTS} 
+          component={MyEventsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
           name={ROUTES.EVENT_DETAILS} 
           component={EventDetailsScreen}
           options={{ headerShown: false }}
@@ -140,6 +148,11 @@ export default function AppNavigator() {
         <Stack.Screen 
           name={ROUTES.PROFILE} 
           component={ProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="SimpleProfile" 
+          component={SimpleProfileScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen 
@@ -177,16 +190,7 @@ export default function AppNavigator() {
           component={PrivacyPolicyScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen 
-          name="EventTest" 
-          component={EventTestScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="BackendTest" 
-          component={BackendTestScreen}
-          options={{ headerShown: false }}
-        />
+        {/* Removed test screens - no longer needed */}
         
         {/* Analytics Screens */}
         <Stack.Screen 

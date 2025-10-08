@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, Alert } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { View, Text, StyleSheet, Dimensions, Alert, TouchableOpacity, Modal } from 'react-native';
+import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { placesApiService, PlaceDetails } from '../services/placesApi';
 
 // MapEvent interface for event markers
 interface MapEvent {
@@ -12,7 +13,7 @@ interface MapEvent {
   longitude: number;
   participants_count: number;
   max_participants: number;
-  status: 'live' | 'past' | 'cancelled' | 'active'; // Added 'active' status
+  status: 'live' | 'past' | 'cancelled' | 'active';
   created_at: string;
 }
 
@@ -21,7 +22,7 @@ interface GoogleMapsViewProps {
   onLocationSelect?: (location: { latitude: number; longitude: number }) => void;
   searchQuery?: string;
   initialLocation?: { latitude: number; longitude: number };
-  events?: MapEvent[]; // Events to display as markers
+  events?: MapEvent[];
 }
 
 const { width, height } = Dimensions.get('window');
@@ -53,11 +54,18 @@ export default function GoogleMapsView({
   onLocationSelect, 
   searchQuery,
   initialLocation,
-  events = [] // Default to empty array
+  events = []
 }: GoogleMapsViewProps) {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [mapHtml, setMapHtml] = useState<string>('');
-  const webViewRef = useRef<WebView>(null);
+  const [mapRegion, setMapRegion] = useState({
+    latitude: 51.1079, // Wroclaw default
+    longitude: 17.0385,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+  const [placeDetails, setPlaceDetails] = useState<PlaceDetails | null>(null);
+  const [showPlaceDetails, setShowPlaceDetails] = useState(false);
+  const mapRef = useRef<MapView>(null);
 
   // Debug: Log events when component receives them
   console.log('🗺️ GoogleMapsView received events:', events);
@@ -69,9 +77,31 @@ export default function GoogleMapsView({
 
   useEffect(() => {
     if (location) {
-      generateMapHtml();
+      const newRegion = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      setMapRegion(newRegion);
+      onLocationSelect?.({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude
+      });
     }
-  }, [location, searchQuery, events]);
+  }, [location]);
+
+  useEffect(() => {
+    if (initialLocation) {
+      const newRegion = {
+        latitude: initialLocation.latitude,
+        longitude: initialLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      setMapRegion(newRegion);
+    }
+  }, [initialLocation]);
 
   const getCurrentLocation = async () => {
     try {
@@ -83,323 +113,89 @@ export default function GoogleMapsView({
 
       const currentLocation = await Location.getCurrentPositionAsync({});
       setLocation(currentLocation);
-      onLocationSelect?.({
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude
-      });
     } catch (error) {
       console.error('Error getting location:', error);
     }
   };
 
-  const generateMapHtml = () => {
-    const lat = initialLocation?.latitude || location?.coords.latitude || 51.1079;
-    const lng = initialLocation?.longitude || location?.coords.longitude || 17.0385;
-    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY';
+  const handleMapPress = async (event: any) => {
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+    console.log('🗺️ Map pressed at:', latitude, longitude);
     
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body, html { margin: 0; padding: 0; height: 100%; }
-          #map { height: 100%; width: 100%; }
-        </style>
-      </head>
-      <body>
-        <div id="map"></div>
-        <script>
-          let map;
-          let service;
-          let infowindow;
-          let markers = [];
-          
-          function initMap() {
-            const center = { lat: ${lat}, lng: ${lng} };
-            
-            map = new google.maps.Map(document.getElementById("map"), {
-              zoom: 15,
-              center: center,
-              mapTypeId: google.maps.MapTypeId.ROADMAP,
-              styles: [
-                {
-                  featureType: "poi",
-                  elementType: "labels",
-                  stylers: [{ visibility: "off" }]
-                }
-              ]
-            });
-            
-            infowindow = new google.maps.InfoWindow();
-            service = new google.maps.places.PlacesService(map);
-            
-            // Add user location marker
-            new google.maps.Marker({
-              position: center,
-              map: map,
-              title: "Your Location",
-              icon: {
-                url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(\`
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="8" fill="#4285F4" stroke="white" stroke-width="2"/>
-                    <circle cx="12" cy="12" r="3" fill="white"/>
-                  </svg>
-                \`),
-                scaledSize: new google.maps.Size(24, 24)
-              }
-            });
-            
-            // Search for places if query provided
-            ${searchQuery ? `searchPlaces("${searchQuery}");` : 'searchNearbyPlaces();'}
-            
-            // Add event markers
-            ${events.length > 0 ? 'createEventMarkers();' : ''}
-            
-            // Add click listener for map
-            map.addListener('click', (event) => {
-              const lat = event.latLng.lat();
-              const lng = event.latLng.lng();
-              window.ReactNativeWebView?.postMessage(JSON.stringify({
-                type: 'location_click',
-                latitude: lat,
-                longitude: lng
-              }));
-            });
-          }
-          
-          // Create event markers
-          function createEventMarkers() {
-            const sportEvents = ${JSON.stringify(events)};
-            
-            sportEvents.forEach(function(sportEvent) {
-              const emoji = getEmojiForSport(sportEvent.activity);
-              const marker = new google.maps.Marker({
-                position: { lat: sportEvent.latitude, lng: sportEvent.longitude },
-                map: map,
-                title: sportEvent.name,
-                icon: {
-                  url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(\`
-                    <svg width="48" height="64" viewBox="0 0 48 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <g filter="url(#shadow)">
-                        <circle cx="24" cy="24" r="20" fill="#FDB924" stroke="white" stroke-width="4"/>
-                        <text x="24" y="32" font-size="24" text-anchor="middle" fill="black">\${emoji}</text>
-                      </g>
-                      <rect x="18" y="42" width="12" height="18" rx="6" fill="white" stroke="#FDB924" stroke-width="2"/>
-                      <text x="24" y="55" font-size="10" text-anchor="middle" font-weight="bold" fill="#000000">\${sportEvent.participants_count}/\${sportEvent.max_participants}</text>
-                      <defs>
-                        <filter id="shadow">
-                          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
-                        </filter>
-                      </defs>
-                    </svg>
-                  \`),
-                  scaledSize: new google.maps.Size(48, 64),
-                  anchor: new google.maps.Point(24, 64)
-                },
-                zIndex: 1000
-              });
-              
-              marker.addListener('click', function() {
-                window.ReactNativeWebView?.postMessage(JSON.stringify({
-                  type: 'event_click',
-                  event: sportEvent
-                }));
-                
-                infowindow.setContent(\`
-                  <div style="padding: 12px; max-width: 250px;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">\${sportEvent.name}</h3>
-                    <p style="margin: 0 0 6px 0; color: #666; font-size: 14px;">
-                      <span style="font-size: 20px; margin-right: 6px;">\${emoji}</span>
-                      \${sportEvent.activity}
-                    </p>
-                    <p style="margin: 0; color: #FDB924; font-weight: 600; font-size: 14px;">
-                      👥 \${sportEvent.participants_count}/\${sportEvent.max_participants} participants
-                    </p>
-                    <button style="
-                      width: 100%;
-                      margin-top: 10px;
-                      padding: 8px;
-                      background: #FDB924;
-                      color: black;
-                      border: none;
-                      border-radius: 8px;
-                      font-weight: 600;
-                      cursor: pointer;
-                      font-size: 14px;
-                    " onclick="window.ReactNativeWebView.postMessage(JSON.stringify({
-                      type: 'event_join',
-                      eventId: '\${sportEvent.id}'
-                    }))">
-                      Join Event
-                    </button>
-                  </div>
-                \`);
-                infowindow.open(map, marker);
-              });
-            });
-          }
-          
-          // Helper function for emoji mapping in browser
-          function getEmojiForSport(sport) {
-            const map = {
-              'basketball': '🏀',
-              'football': '⚽',
-              'soccer': '⚽',
-              'running': '🏃‍♂️',
-              'tennis': '🎾',
-              'cycling': '🚴‍♂️',
-              'swimming': '🏊‍♂️',
-              'gym': '💪',
-              'volleyball': '🏐',
-              'climbing': '🧗‍♂️',
-              'yoga': '🧘',
-              'badminton': '🏸',
-              'baseball': '⚾',
-              'golf': '⛳',
-              'hockey': '🏒'
-            };
-            return map[sport.toLowerCase()] || '🏃';
-          }
-          
-          function searchPlaces(query) {
-            const request = {
-                  query: query,
-                  fields: ['name', 'geometry', 'formatted_address', 'place_id', 'rating', 'price_level', 'photos', 'types'],
-                  locationBias: map.getCenter(),
-                  radius: 5000
-                };
-                
-                service.textSearch(request, (results, status) => {
-                  if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                    clearMarkers();
-                    results.forEach(place => {
-                      if (place.geometry && place.geometry.location) {
-                        createMarker(place);
-                      }
-                    });
-                  }
-                });
-          }
-          
-          function searchNearbyPlaces() {
-            const request = {
-              location: map.getCenter(),
-              radius: 1000,
-              type: ['gym', 'stadium', 'park', 'sports_complex']
-            };
-            
-            service.nearbySearch(request, (results, status) => {
-              if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                clearMarkers();
-                results.forEach(place => {
-                  createMarker(place);
-                });
-              }
-            });
-          }
-          
-          function createMarker(place) {
-            const marker = new google.maps.Marker({
-              position: place.geometry.location,
-              map: map,
-              title: place.name,
-              icon: {
-                url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(\`
-                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 2C10.48 2 6 6.48 6 12c0 7.5 10 18 10 18s10-10.5 10-18c0-5.52-4.48-10-10-10z" fill="#EA4335"/>
-                    <circle cx="16" cy="12" r="4" fill="white"/>
-                  </svg>
-                \`),
-                scaledSize: new google.maps.Size(32, 32)
-              }
-            });
-            
-            markers.push(marker);
-            
-            marker.addListener('click', () => {
-              const placeDetails = {
-                name: place.name,
-                address: place.formatted_address || place.vicinity,
-                placeId: place.place_id,
-                rating: place.rating,
-                priceLevel: place.price_level,
-                photos: place.photos,
-                types: place.types,
-                location: {
-                  latitude: place.geometry.location.lat(),
-                  longitude: place.geometry.location.lng()
-                }
-              };
-              
-              window.ReactNativeWebView?.postMessage(JSON.stringify({
-                type: 'place_click',
-                place: placeDetails
-              }));
-              
-              // Show info window
-              infowindow.setContent(\`
-                <div style="padding: 10px; max-width: 200px;">
-                  <h3 style="margin: 0 0 5px 0; font-size: 16px;">\${place.name}</h3>
-                  <p style="margin: 0; color: #666; font-size: 14px;">\${place.formatted_address || place.vicinity}</p>
-                  \${place.rating ? \`<p style="margin: 5px 0 0 0; color: #FFA500; font-size: 14px;">⭐ \${place.rating}/5</p>\` : ''}
-                </div>
-              \`);
-              infowindow.open(map, marker);
-            });
-          }
-          
-          function clearMarkers() {
-            markers.forEach(marker => marker.setMap(null));
-            markers = [];
-          }
-        </script>
-        <script async defer 
-          src="https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap">
-        </script>
-      </body>
-      </html>
-    `;
-    
-    setMapHtml(html);
-  };
-
-  const handleWebViewMessage = (event: any) => {
     try {
-      const data = JSON.parse(event.nativeEvent.data);
-      
-      if (data.type === 'place_click') {
-        onPlaceSelect?.(data.place);
-      } else if (data.type === 'location_click') {
-        onLocationSelect?.({
-          latitude: data.latitude,
-          longitude: data.longitude
-        });
-      } else if (data.type === 'event_click') {
-        // Handle event marker click
-        console.log('Event clicked:', data.event);
-        Alert.alert(
-          data.event.name,
-          `${data.event.activity}\n${data.event.participants_count}/${data.event.max_participants} participants`,
-          [
-            { text: 'Close', style: 'cancel' },
-            { text: 'View Details', onPress: () => console.log('View details:', data.event.id) }
-          ]
-        );
-      } else if (data.type === 'event_join') {
-        // Handle join event button click
-        console.log('Join event:', data.eventId);
-        Alert.alert(
-          'Join Event',
-          'Would you like to join this event?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Join', onPress: () => console.log('Joining event:', data.eventId) }
-          ]
-        );
+      // Try to get place details for this location
+      const placeDetails = await placesApiService.getPlaceDetails('ChIJ123456789'); // Mock place ID for now
+      if (placeDetails) {
+        setPlaceDetails(placeDetails);
+        setShowPlaceDetails(true);
       }
     } catch (error) {
-      console.error('Error parsing WebView message:', error);
+      console.log('No place details available for this location');
+      // Still call onLocationSelect for event creation
+      onLocationSelect?.({ latitude, longitude });
+    }
+  };
+
+  const handleMapLongPress = (event: any) => {
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+    console.log('🗺️ Long press detected at:', latitude, longitude);
+    onLocationSelect?.({ latitude, longitude });
+  };
+
+  const handleEventPress = async (event: MapEvent) => {
+    // Navigate to event details instead of showing alert
+    try {
+      const { useAppNavigation } = await import('../navigation/hooks');
+      const navigation = useAppNavigation();
+      
+      // Navigate to event details with event data
+      navigation.navigate('EventDetails', {
+        game: {
+          id: event.id,
+          title: event.name,
+          players: event.participants_count,
+          maxPlayers: event.max_participants,
+          location: `${event.latitude}, ${event.longitude}`, // Simple location display
+          time: new Date(event.created_at).toLocaleTimeString(),
+          image: 'https://via.placeholder.com/300x200/FDB924/FFFFFF?text=Sport+Event',
+          isJoined: false,
+          description: `${event.activity} event`,
+          date: new Date(event.created_at).toLocaleDateString(),
+          skillLevel: 'All Levels',
+          equipment: 'Bring your own equipment',
+          rules: 'Standard rules apply',
+          organizer: 'Event Organizer'
+        }
+      });
+    } catch (error) {
+      console.error('Error navigating to event details:', error);
+      // Fallback to alert if navigation fails
+        Alert.alert(
+        event.name,
+        `${event.activity}\n${event.participants_count}/${event.max_participants} participants`,
+          [
+            { text: 'Close', style: 'cancel' },
+          { 
+            text: 'Join Event', 
+            onPress: async () => {
+              try {
+                const { supabaseService } = await import('../services/supabase');
+                const currentUserId = 'd31adacf-886d-4198-859c-2c36695e644c';
+                
+                const success = await supabaseService.joinEvent(event.id, currentUserId);
+                if (success) {
+                  Alert.alert('Success', 'You have joined the event!');
+                } else {
+                  Alert.alert('Error', 'Failed to join event. Please try again.');
+                }
+              } catch (error) {
+                console.error('Error joining event:', error);
+                Alert.alert('Error', 'Failed to join event. Please try again.');
+              }
+            }
+          }
+        ]
+      );
     }
   };
 
@@ -413,17 +209,109 @@ export default function GoogleMapsView({
 
   return (
     <View style={styles.container}>
-      <WebView
-        ref={webViewRef}
-        source={{ html: mapHtml }}
-        style={styles.webview}
-        onMessage={handleWebViewMessage}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        startInLoadingState={true}
-        scalesPageToFit={true}
-        mixedContentMode="compatibility"
-      />
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        provider={PROVIDER_GOOGLE}
+        region={mapRegion}
+        onPress={handleMapPress}
+        onLongPress={handleMapLongPress}
+        showsUserLocation={true}
+        showsMyLocationButton={true}
+        showsCompass={true}
+        showsScale={true}
+        mapType="standard"
+      >
+        {/* User location marker */}
+        {location && (
+          <Marker
+            coordinate={{
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            }}
+            title="Your Location"
+            description="You are here"
+            pinColor="blue"
+          />
+        )}
+
+        {/* Event markers */}
+        {events.map((event) => (
+          <Marker
+            key={event.id}
+            coordinate={{
+              latitude: event.latitude,
+              longitude: event.longitude,
+            }}
+            title={event.name}
+            description={`${event.activity} • ${event.participants_count}/${event.max_participants} participants`}
+            onPress={() => handleEventPress(event)}
+            pinColor="#FDB924"
+          />
+        ))}
+      </MapView>
+
+      {/* Place Details Modal */}
+      <Modal
+        visible={showPlaceDetails}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowPlaceDetails(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.placeDetailsModal}>
+            <View style={styles.placeDetailsHeader}>
+              <Text style={styles.placeDetailsTitle}>Place Details</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowPlaceDetails(false)}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {placeDetails && (
+              <View style={styles.placeDetailsContent}>
+                <Text style={styles.placeName}>{placeDetails.name}</Text>
+                <Text style={styles.placeAddress}>{placeDetails.address}</Text>
+                
+                {placeDetails.rating && (
+                  <Text style={styles.placeRating}>
+                    ⭐ {placeDetails.rating}/5
+                  </Text>
+                )}
+                
+                {placeDetails.phoneNumber && (
+                  <Text style={styles.placeInfo}>
+                    📞 {placeDetails.phoneNumber}
+                  </Text>
+                )}
+                
+                {placeDetails.website && (
+                  <Text style={styles.placeInfo}>
+                    🌐 {placeDetails.website}
+                  </Text>
+                )}
+                
+                <View style={styles.placeActions}>
+                  <TouchableOpacity
+                    style={styles.createEventButton}
+                    onPress={() => {
+                      setShowPlaceDetails(false);
+                      onLocationSelect?.({
+                        latitude: placeDetails.coordinates.lat,
+                        longitude: placeDetails.coordinates.lng
+                      });
+                    }}
+                  >
+                    <Text style={styles.createEventButtonText}>Create Event Here</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -432,7 +320,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  webview: {
+  map: {
     flex: 1,
   },
   loadingContainer: {
@@ -445,5 +333,125 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  eventMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 50,
+    height: 50,
+    backgroundColor: '#FDB924',
+    borderRadius: 25,
+    borderWidth: 3,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  eventEmoji: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  eventInfo: {
+    position: 'absolute',
+    bottom: -8,
+    backgroundColor: 'white',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FDB924',
+  },
+  eventParticipants: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  // Place Details Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeDetailsModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    margin: 20,
+    maxHeight: '80%',
+    width: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  placeDetailsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  placeDetailsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000000',
+  },
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#666666',
+    fontWeight: 'bold',
+  },
+  placeDetailsContent: {
+    padding: 20,
+  },
+  placeName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginBottom: 8,
+  },
+  placeAddress: {
+    fontSize: 16,
+    color: '#666666',
+    marginBottom: 12,
+  },
+  placeRating: {
+    fontSize: 16,
+    color: '#FDB924',
+    marginBottom: 8,
+  },
+  placeInfo: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 4,
+  },
+  placeActions: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  createEventButton: {
+    backgroundColor: '#FDB924',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  createEventButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
 });
-

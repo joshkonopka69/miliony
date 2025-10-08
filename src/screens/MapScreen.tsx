@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
-import { BottomNavBar } from '../components';
+import { BottomNavBar, SimpleEventCreationModal } from '../components';
 import EnhancedInteractiveMap from '../components/EnhancedInteractiveMap';
 import { useTranslation } from '../contexts/TranslationContext';
 import * as Location from 'expo-location';
@@ -91,6 +91,11 @@ export default function MapScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [showEventCreation, setShowEventCreation] = useState(false);
 
   // ===========================
   // FETCH EVENTS FROM SUPABASE
@@ -100,20 +105,34 @@ export default function MapScreen() {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Fetching events from Supabase...');
-      console.log('🔄 MapScreen: Starting fetchEventsFromSupabase function');
-
-      // Query events table with filters matching YOUR schema
-      console.log('🔄 MapScreen: About to query events table');
+      if (__DEV__) {
+        console.log('🔄 Fetching events from Supabase...');
+        console.log('🔄 MapScreen: Starting fetchEventsFromSupabase function');
+        console.log('🔄 MapScreen: About to query events table');
+      }
+      
+      // Get today's date range for filtering
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      
+      if (__DEV__) {
+        console.log('📅 Today range:', startOfDay.toISOString(), 'to', endOfDay.toISOString());
+      }
+      
       const { data, error: queryError } = await supabase
         .from('events')
         .select('*')
-        // .eq('status', 'active') // TEMPORARILY DISABLED - RLS might be blocking this
+        .eq('status', 'active')
+        .gte('scheduled_datetime', startOfDay.toISOString()) // Only today's events
+        .lt('scheduled_datetime', endOfDay.toISOString())   // Before tomorrow
         .order('scheduled_datetime', { ascending: true })
         .limit(100); // Limit to avoid performance issues
 
-      console.log('🔄 MapScreen: Query completed. Data:', data?.length || 0, 'events');
-      console.log('🔄 MapScreen: Query error:', queryError);
+      if (__DEV__) {
+        console.log('🔄 MapScreen: Query completed. Data:', data?.length || 0, 'events');
+        console.log('🔄 MapScreen: Query error:', queryError);
+      }
 
       if (queryError) {
         console.error('❌ Supabase query error:', queryError);
@@ -121,14 +140,18 @@ export default function MapScreen() {
       }
 
       if (!data || data.length === 0) {
-        console.log('ℹ️ No active events found');
+        if (__DEV__) {
+          console.log('ℹ️ No active events found');
+        }
         setEvents([]);
         return;
       }
 
       // Filter for active events only (since RLS might block the WHERE clause)
       const activeEvents = data.filter((event: any) => event.status === 'active');
-      console.log(`🔄 MapScreen: Filtered to ${activeEvents.length} active events from ${data.length} total events`);
+      if (__DEV__) {
+        console.log(`🔄 MapScreen: Filtered to ${activeEvents.length} active events from ${data.length} total events`);
+      }
 
       // Transform YOUR Supabase schema to MapEvent format
       const transformedEvents: MapEvent[] = activeEvents.map((event: any) => ({
@@ -143,8 +166,10 @@ export default function MapScreen() {
         created_at: event.scheduled_datetime, // Using scheduled_datetime for display
       }));
 
-      console.log(`✅ Fetched ${transformedEvents.length} events successfully`);
-      console.log('📊 Events data:', transformedEvents);
+      if (__DEV__) {
+        console.log(`✅ Fetched ${transformedEvents.length} events successfully`);
+        console.log('📊 Events data:', transformedEvents);
+      }
       setEvents(transformedEvents);
 
     } catch (err: any) {
@@ -182,10 +207,10 @@ export default function MapScreen() {
           longitude: location.coords.longitude,
         });
 
-        console.log('📍 User location obtained:', location.coords);
-
-        // Fetch events
-        console.log('🔄 MapScreen: About to call fetchEventsFromSupabase');
+        if (__DEV__) {
+          console.log('📍 User location obtained:', location.coords);
+          console.log('🔄 MapScreen: About to call fetchEventsFromSupabase');
+        }
         await fetchEventsFromSupabase();
 
       } catch (error) {
@@ -202,7 +227,9 @@ export default function MapScreen() {
   // REAL-TIME EVENT UPDATES
   // ===========================
   useEffect(() => {
-    console.log('🔔 Setting up real-time event subscriptions...');
+    if (__DEV__) {
+      console.log('🔔 Setting up real-time event subscriptions...');
+    }
 
     // Subscribe to changes in events table
     const channel = supabase
@@ -214,8 +241,10 @@ export default function MapScreen() {
           schema: 'public',
           table: 'events',
         },
-        (payload) => {
-          console.log('🔔 Event change detected:', payload);
+        (payload: any) => {
+          if (__DEV__) {
+            console.log('🔔 Event change detected:', payload);
+          }
           
           // Refetch events when changes occur
           fetchEventsFromSupabase();
@@ -225,13 +254,17 @@ export default function MapScreen() {
 
     // Cleanup subscription on unmount
     return () => {
-      console.log('🔕 Cleaning up event subscriptions...');
+      if (__DEV__) {
+        console.log('🔕 Cleaning up event subscriptions...');
+      }
       supabase.removeChannel(channel);
     };
   }, [fetchEventsFromSupabase]);
 
   const handleLocationPermissionGranted = () => {
-    console.log('Location permission granted');
+    if (__DEV__) {
+      console.log('Location permission granted');
+    }
   };
 
   const handleFilterPress = () => {
@@ -239,8 +272,88 @@ export default function MapScreen() {
     // TODO: Open filter modal
   };
 
-  // Debug: Log events before passing to map
-  console.log('🗺️ MapScreen passing events to EnhancedInteractiveMap:', events.length, 'events');
+  const handleLocationSelect = (location: { latitude: number; longitude: number }) => {
+    if (__DEV__) {
+      console.log('📍 MapScreen: Location selected for event creation:', location);
+    }
+    setSelectedLocation(location);
+    setShowEventCreation(true);
+  };
+
+  const handleCreateEvent = async (eventData: {
+    sport: string;
+    time: string;
+    description: string;
+    maxParticipants: number;
+  }) => {
+    try {
+      if (__DEV__) {
+        console.log('🎯 Creating event:', eventData);
+      }
+      
+      // Create proper datetime for today with the selected time
+      const today = new Date();
+      const [hours, minutes] = eventData.time.split(':').map(Number);
+      const eventDateTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
+      
+      if (__DEV__) {
+        console.log('📅 Event datetime:', eventDateTime.toISOString());
+        console.log('📅 Today date:', today.toISOString().split('T')[0]);
+        console.log('📅 Event date:', eventDateTime.toISOString().split('T')[0]);
+        console.log('📅 Dates match:', today.toISOString().split('T')[0] === eventDateTime.toISOString().split('T')[0]);
+      }
+      
+      // Create event in Supabase
+      const { data, error } = await supabase
+        .from('events')
+        .insert({
+          title: `${eventData.sport} Event`,
+          sport_type: eventData.sport,
+          description: eventData.description,
+          latitude: selectedLocation?.latitude || 0,
+          longitude: selectedLocation?.longitude || 0,
+          max_participants: eventData.maxParticipants,
+          scheduled_datetime: eventDateTime.toISOString(), // Today with selected time
+          status: 'active',
+          creator_id: 'd31adacf-886d-4198-859c-2c36695e644c', // Real user ID from auth.users
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error creating event:', error);
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
+        throw error;
+      }
+
+      if (__DEV__) {
+        console.log('✅ Event created successfully:', data);
+      }
+      
+      // Close the modal
+      setShowEventCreation(false);
+      setSelectedLocation(null);
+      
+      // Refresh events
+      await fetchEventsFromSupabase();
+      
+      Alert.alert('Success', 'Event created successfully!');
+    } catch (error) {
+      console.error('❌ Error creating event:', error);
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = (error as { message: string }).message;
+      }
+      Alert.alert('Error', `Failed to create event: ${errorMessage}`);
+    }
+  };
+
+  // Debug: Log events before passing to map (only in development)
+  if (__DEV__) {
+    console.log('🗺️ MapScreen passing events to EnhancedInteractiveMap:', events.length, 'events');
+  }
   
   return (
     <View style={styles.container}>
@@ -252,13 +365,15 @@ export default function MapScreen() {
           mapRef.current = ref;
         }}
         onLocationPermissionGranted={handleLocationPermissionGranted}
+        onLocationSelect={handleLocationSelect}
         hideControls={true}
         events={events}
       />
 
       {/* Clean Top Bar - Overlaid */}
-      <SafeAreaView style={styles.topBarSafeArea}>
-        <View style={styles.topBar}>
+      <View style={styles.topBarSafeArea}>
+        <SafeAreaView>
+          <View style={styles.topBar}>
           {/* Logo on Left */}
           <SportMapLogo />
 
@@ -280,8 +395,9 @@ export default function MapScreen() {
               <Ionicons name="settings-outline" size={24} color="#000000" />
             </TouchableOpacity>
           </View>
-        </View>
-      </SafeAreaView>
+          </View>
+        </SafeAreaView>
+      </View>
 
       {/* Loading Indicator */}
       {loading && (
@@ -289,6 +405,22 @@ export default function MapScreen() {
           <View style={styles.loadingCard}>
             <ActivityIndicator size="large" color="#FDB924" />
             <Text style={styles.loadingText}>Loading events...</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <View style={styles.errorOverlay}>
+          <View style={styles.errorCard}>
+            <Ionicons name="alert-circle-outline" size={24} color="#EF4444" />
+            <Text style={styles.errorText}>Failed to load events</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={fetchEventsFromSupabase}
+            >
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -346,6 +478,14 @@ export default function MapScreen() {
           onProfilePress={() => navigation.navigate(ROUTES.PROFILE)}
         />
       </View>
+
+      {/* Event Creation Modal */}
+      <SimpleEventCreationModal
+        visible={showEventCreation}
+        onClose={() => setShowEventCreation(false)}
+        onCreateEvent={handleCreateEvent}
+        location={selectedLocation}
+      />
     </View>
   );
 }
@@ -529,5 +669,46 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     zIndex: 600,
     maxHeight: 400,
+  },
+  // Error State Styles
+  errorOverlay: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    zIndex: 500,
+  },
+  errorCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
+  },
+  errorText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#FDB924',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

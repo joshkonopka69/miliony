@@ -1,111 +1,140 @@
-import React, { Component, ReactNode } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { errorHandler } from '../utils/errorHandler';
+import { Ionicons } from '@expo/vector-icons';
 
-interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
+interface ErrorDisplayProps {
+  error: string;
+  onRetry?: () => void;
+  title?: string;
+  variant?: 'network' | 'server' | 'permission' | 'general';
 }
 
-interface State {
-  hasError: boolean;
-  error?: Error;
-}
-
-export default class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: any) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    errorHandler.handleError(error, 'ErrorBoundary');
-  }
-
-  handleRetry = () => {
-    this.setState({ hasError: false, error: undefined });
+export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
+  error,
+  onRetry,
+  title = 'Something went wrong',
+  variant = 'general',
+}) => {
+  const getErrorIcon = () => {
+    switch (variant) {
+      case 'network': return 'wifi-outline';
+      case 'server': return 'server-outline';
+      case 'permission': return 'lock-closed-outline';
+      default: return 'alert-circle-outline';
+    }
   };
 
-  render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
-      return (
-        <View style={styles.container}>
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorIcon}>⚠️</Text>
-            <Text style={styles.errorTitle}>Something went wrong</Text>
-            <Text style={styles.errorMessage}>
-              We're sorry, but something unexpected happened. Please try again.
-            </Text>
-            <TouchableOpacity style={styles.retryButton} onPress={this.handleRetry}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      );
+  const getErrorColor = () => {
+    switch (variant) {
+      case 'network': return '#F59E0B';
+      case 'server': return '#EF4444';
+      case 'permission': return '#8B5CF6';
+      default: return '#6B7280';
     }
+  };
 
-    return this.props.children;
-  }
-}
+  const getErrorMessage = () => {
+    switch (variant) {
+      case 'network': return 'Check your internet connection and try again.';
+      case 'server': return 'Our servers are having issues. Please try again later.';
+      case 'permission': return 'Permission denied. Please check your settings.';
+      default: return error;
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={[styles.iconContainer, { backgroundColor: getErrorColor() }]}>
+        <Ionicons name={getErrorIcon() as any} size={32} color="#FFFFFF" />
+      </View>
+      
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.message}>{getErrorMessage()}</Text>
+      
+      {onRetry && (
+        <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
+          <Ionicons name="refresh-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
+// Network error component
+export const NetworkError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <ErrorDisplay
+    error=""
+    onRetry={onRetry}
+    title="No Internet Connection"
+    variant="network"
+  />
+);
+
+// Server error component
+export const ServerError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <ErrorDisplay
+    error=""
+    onRetry={onRetry}
+    title="Server Error"
+    variant="server"
+  />
+);
+
+// Permission error component
+export const PermissionError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <ErrorDisplay
+    error=""
+    onRetry={onRetry}
+    title="Permission Required"
+    variant="permission"
+  />
+);
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 20,
+    padding: 32,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 16,
+    margin: 16,
   },
-  errorContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 24,
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    maxWidth: 300,
-  },
-  errorIcon: {
-    fontSize: 48,
     marginBottom: 16,
   },
-  errorTitle: {
+  title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#dc2626',
-    marginBottom: 8,
+    fontWeight: '600',
+    color: '#1F2937',
     textAlign: 'center',
+    marginBottom: 8,
   },
-  errorMessage: {
+  message: {
     fontSize: 16,
-    color: '#6b7280',
+    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#FDB924',
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
+    gap: 8,
   },
   retryButtonText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
 });
-
-

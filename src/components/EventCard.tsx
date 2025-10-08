@@ -112,7 +112,7 @@ export default function EventCard({
       <View style={styles.infoRow}>
         <Ionicons name="time" size={16} color="#6B7280" />
         <Text style={styles.infoText}>
-          {formatEventDate(event.startTime)}, {formatEventTime(event.startTime)}
+          {formatEventDate(event.startTime)}, {formatEventTime(event.startTime)} - {formatEventTime(event.endTime)}
         </Text>
       </View>
 

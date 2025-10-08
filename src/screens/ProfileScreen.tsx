@@ -13,7 +13,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAppNavigation } from '../navigation/hooks';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../navigation/types';
 import { 
   BottomNavBar, 
   StatisticsCard, 
@@ -57,7 +59,7 @@ const SportMapLogo = ({ size = 30 }: { size?: number }) => (
 );
 
 export default function ProfileScreen() {
-  const navigation = useAppNavigation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'Created' | 'Joined'>('Joined');
@@ -79,7 +81,9 @@ export default function ProfileScreen() {
   const fetchProfileData = useCallback(async () => {
     // If no user, use MOCK DATA for preview
     if (!user?.id) {
-      console.log('🎨 NO USER - Using MOCK DATA for preview');
+      if (__DEV__) {
+        console.log('🎨 NO USER - Using MOCK DATA for preview');
+      }
       
       // Set mock profile
       setProfile({
@@ -219,7 +223,9 @@ export default function ProfileScreen() {
 
       // Handle case where profile doesn't exist yet
       if (profileError && profileError.code === 'PGRST116') {
-        console.log('User profile not found, creating placeholder...');
+        if (__DEV__) {
+          console.log('User profile not found, creating placeholder...');
+        }
         // Set a placeholder profile
         setProfile({
           id: user.id,
@@ -241,8 +247,8 @@ export default function ProfileScreen() {
       const { data: created, error: createdError } = await supabase
         .from('events')
         .select('*')
-        .eq('created_by', user.id)
-        .order('start_time', { ascending: true });
+        .eq('creator_id', user.id)
+        .order('scheduled_datetime', { ascending: true });
 
       if (createdError) throw createdError;
 
@@ -260,14 +266,14 @@ export default function ProfileScreen() {
       // Transform data to MyEvent format
       const createdEventsFormatted: MyEvent[] = (created || []).map((event: any) => ({
         id: event.id,
-        name: event.name,
-        activity: event.activity as SportActivity,
+        name: event.title,
+        activity: event.sport_type as SportActivity,
         description: event.description,
-        startTime: new Date(event.start_time),
-        endTime: new Date(event.end_time || event.start_time),
+        startTime: new Date(event.scheduled_datetime),
+        endTime: new Date(event.scheduled_datetime + (2 * 60 * 60 * 1000)), // 2 hours later
         location: {
-          name: event.location_name || 'Unknown',
-          address: event.location_address || '',
+          name: event.place_name || 'Unknown',
+          address: event.place_name || '',
           distance: 0,
           lat: event.latitude || 0,
           lng: event.longitude || 0,
@@ -292,14 +298,14 @@ export default function ProfileScreen() {
           const event = item.events;
           return {
             id: event.id,
-            name: event.name,
-            activity: event.activity as SportActivity,
+            name: event.title,
+            activity: event.sport_type as SportActivity,
             description: event.description,
-            startTime: new Date(event.start_time),
-            endTime: new Date(event.end_time || event.start_time),
+            startTime: new Date(event.scheduled_datetime),
+            endTime: new Date(event.scheduled_datetime + (2 * 60 * 60 * 1000)), // 2 hours later
             location: {
-              name: event.location_name || 'Unknown',
-              address: event.location_address || '',
+              name: event.place_name || 'Unknown',
+              address: event.place_name || '',
               distance: 0,
               lat: event.latitude || 0,
               lng: event.longitude || 0,
@@ -312,7 +318,7 @@ export default function ProfileScreen() {
             role: 'joined',
             chatEnabled: true,
             createdBy: {
-              id: event.created_by,
+              id: event.creator_id,
               name: 'Event Creator',
             },
           };
@@ -373,12 +379,16 @@ export default function ProfileScreen() {
 
   const handleEventPress = (event: MyEvent) => {
     // Navigate to event details
-    console.log('Event pressed:', event.id);
+    if (__DEV__) {
+      console.log('Event pressed:', event.id);
+    }
     // navigation.navigate('EventDetails', { eventId: event.id });
   };
 
   const handleChatPress = (event: MyEvent) => {
-    console.log('Chat pressed:', event.id);
+    if (__DEV__) {
+      console.log('Chat pressed:', event.id);
+    }
     // navigation.navigate('GameChat', { eventId: event.id });
   };
 
@@ -671,7 +681,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700' as const,
     color: theme.colors.textPrimary,
     flex: 1,
     textAlign: 'center',
@@ -702,7 +712,7 @@ const styles = StyleSheet.create({
     ...theme.shadows.sm,
   },
   logoText: {
-    fontWeight: theme.typography.fontWeight.extrabold,
+    fontWeight: '800' as const,
     color: '#000000',
     letterSpacing: 1,
   },
@@ -746,7 +756,7 @@ const styles = StyleSheet.create({
   },
   profileImageText: {
     fontSize: 48,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700' as const,
     color: theme.colors.textPrimary,
   },
   cameraButton: {
@@ -768,7 +778,7 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontSize: theme.typography.fontSize.xxl,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700' as const,
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
   },
@@ -830,12 +840,12 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontWeight: '600' as const,
     color: theme.colors.textSecondary,
   },
   activeTabText: {
     color: theme.colors.textOnPrimary,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700' as const,
   },
   eventsSection: {
     paddingVertical: theme.spacing.sm,
@@ -857,7 +867,7 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700' as const,
     color: theme.colors.accent,
     marginBottom: theme.spacing.xs,
   },
@@ -884,7 +894,7 @@ const styles = StyleSheet.create({
   },
   previewBannerTitle: {
     fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700' as const,
     color: theme.colors.primary,
     marginBottom: theme.spacing.xs,
   },

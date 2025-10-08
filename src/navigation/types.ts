@@ -8,6 +8,7 @@ export type RootStackParamList = {
   Map: undefined;
   Chat: undefined;
   Events: undefined;
+  MyEvents: undefined;
   EventDetails: { game?: any };
   Settings: undefined;
   Profile: undefined;
@@ -16,6 +17,7 @@ export type RootStackParamList = {
   MyGroups: undefined;
   Language: undefined;
   GameChat: { game?: any };
+  EventChat: { event: { id: string; title: string; sport_type: string } };
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
   EventTest: undefined;
@@ -93,6 +95,7 @@ export const ROUTES = {
   MAP: 'Map' as const,
   CHAT: 'Chat' as const,
   EVENTS: 'Events' as const,
+  MY_EVENTS: 'MyEvents' as const,
   SETTINGS: 'Settings' as const,
   PROFILE: 'Profile' as const,
   ADD_FRIEND: 'AddFriend' as const,
@@ -100,6 +103,7 @@ export const ROUTES = {
   MY_GROUPS: 'MyGroups' as const,
   LANGUAGE: 'Language' as const,
   GAME_CHAT: 'GameChat' as const,
+  EVENT_CHAT: 'EventChat' as const,
   EVENT_DETAILS: 'EventDetails' as const,
   TERMS_OF_SERVICE: 'TermsOfService' as const,
   PRIVACY_POLICY: 'PrivacyPolicy' as const,

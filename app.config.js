@@ -31,6 +31,7 @@ export default {
       favicon: "./assets/favicon.png",
       bundler: "metro"
     },
+    jsEngine: "jsc", // Temporarily disable Hermes to fix polyfill conflicts
     plugins: [
       [
         "expo-notifications",
