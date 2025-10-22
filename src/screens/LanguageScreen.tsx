@@ -8,21 +8,13 @@ import {
   ScrollView,
   StatusBar,
   Animated,
-  Dimensions
+  Dimensions,
+  Image
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useTranslation, Language } from '../contexts/TranslationContext';
 
 const { width } = Dimensions.get('window');
-
-// Custom SM Logo Component
-const SMLogo = ({ size = 50 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 export default function LanguageScreen() {
   const navigation = useAppNavigation();
@@ -85,7 +77,11 @@ export default function LanguageScreen() {
         >
           {/* Logo and Title */}
           <View style={styles.titleSection}>
-            <SMLogo size={50} />
+            <Image 
+              source={require('../../assets/logo.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>Language Settings</Text>
             <Text style={styles.subtitle}>
               Choose your preferred language for the entire app
@@ -173,31 +169,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  logo: {
+    width: 50,
+    height: 50,
     marginBottom: 16,
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#fbbf24',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#fbbf24',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  logoText: {
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: 1,
   },
   title: {
     fontSize: 28,

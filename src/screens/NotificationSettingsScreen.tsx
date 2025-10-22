@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,35 @@ import {
   Animated,
   TextInput,
   Modal,
+  Image
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useNotificationManager } from '../hooks/useNotifications';
-import { NotificationPreferences } from '../services/notificationService';
+
+// Define NotificationPreferences locally
+interface NotificationPreferences {
+  push_enabled: boolean;
+  email_enabled: boolean;
+  sms_enabled: boolean;
+  categories: {
+    events: boolean;
+    friends: boolean;
+    messages: boolean;
+    reminders: boolean;
+    system: boolean;
+    marketing: boolean;
+  };
+  quiet_hours: {
+    enabled: boolean;
+    start_time: string;
+    end_time: string;
+  };
+  frequency: {
+    immediate: boolean;
+    daily_digest: boolean;
+    weekly_digest: boolean;
+  };
+}
 
 // Custom SM Logo Component
 const SMLogo = ({ size = 30 }: { size?: number }) => (
@@ -229,7 +254,7 @@ export default function NotificationSettingsScreen() {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notification Settings</Text>
-        <SMLogo size={30} />
+        <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
       </View>
 
       {/* Error Display */}
@@ -346,14 +371,14 @@ export default function NotificationSettingsScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notification Categories</Text>
             
-            {Object.entries(localPreferences.categories).map(([category, enabled]) => (
+            {(Object.entries(localPreferences.categories) as [keyof NotificationPreferences['categories'], boolean][]).map(([category, enabled]) => (
               <View key={category} style={styles.settingItem}>
                 <View style={styles.settingInfo}>
                   <Text style={styles.settingLabel}>
                     {category.charAt(0).toUpperCase() + category.slice(1)}
                   </Text>
                   <Text style={styles.settingDescription}>
-                    {getCategoryDescription(category as keyof typeof localPreferences.categories)}
+                    {getCategoryDescription(category)}
                   </Text>
                 </View>
                 <Switch
@@ -481,19 +506,19 @@ export default function NotificationSettingsScreen() {
               
               <View style={styles.statsContainer}>
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{stats.totalSent}</Text>
+                  <Text style={styles.statValue}>{stats.totalSent || 0}</Text>
                   <Text style={styles.statLabel}>Total Sent</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{stats.totalRead}</Text>
+                  <Text style={styles.statValue}>{stats.totalRead || 0}</Text>
                   <Text style={styles.statLabel}>Total Read</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{stats.readRate.toFixed(1)}%</Text>
+                  <Text style={styles.statValue}>{stats.readRate?.toFixed(1) || 0}%</Text>
                   <Text style={styles.statLabel}>Read Rate</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{stats.unreadCount}</Text>
+                  <Text style={styles.statValue}>{stats.unreadCount || 0}</Text>
                   <Text style={styles.statLabel}>Unread</Text>
                 </View>
               </View>
@@ -587,12 +612,12 @@ export default function NotificationSettingsScreen() {
               <ScrollView style={styles.statsModalContent}>
                 <View style={styles.detailedStats}>
                   <Text style={styles.detailedStatsTitle}>By Type</Text>
-                  {Object.entries(stats.byType).map(([type, count]) => (
+                  {stats.byType && Object.entries(stats.byType).map(([type, count]) => (
                     <View key={type} style={styles.statRow}>
                       <Text style={styles.statRowLabel}>
                         {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       </Text>
-                      <Text style={styles.statRowValue}>{count}</Text>
+                      <Text style={styles.statRowValue}>{String(count)}</Text>
                     </View>
                   ))}
                 </View>

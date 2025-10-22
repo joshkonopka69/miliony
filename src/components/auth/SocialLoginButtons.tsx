@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Animated,
+  Image,
 } from 'react-native';
 import { useAuth, AuthError } from '../../contexts/AuthContext';
 
@@ -92,9 +93,11 @@ export default function SocialLoginButtons({
             <ActivityIndicator color="#333333" size="small" />
           ) : (
             <>
-              <View style={styles.googleIcon}>
-                <Text style={styles.googleIconText}>G</Text>
-              </View>
+              <Image 
+                source={require('../../../assets/google.png')}
+                style={styles.googleIcon}
+                resizeMode="contain"
+              />
               <Text style={styles.socialButtonText}>Continue with Google</Text>
             </>
           )}
@@ -111,9 +114,11 @@ export default function SocialLoginButtons({
             <ActivityIndicator color="#ffffff" size="small" />
           ) : (
             <>
-              <View style={styles.appleIcon}>
-                <Text style={styles.appleIconText}>🍎</Text>
-              </View>
+              <Image 
+                source={require('../../../assets/apple.png')}
+                style={styles.appleIcon}
+                resizeMode="contain"
+              />
               <Text style={[styles.socialButtonText, styles.appleButtonText]}>
                 Continue with Apple
               </Text>
@@ -168,26 +173,13 @@ const styles = StyleSheet.create({
   googleIcon: {
     width: 20,
     height: 20,
-    borderRadius: 10,
-    backgroundColor: '#4285f4',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 12,
-  },
-  googleIconText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   appleIcon: {
     width: 20,
     height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 12,
-  },
-  appleIconText: {
-    fontSize: 16,
+    tintColor: '#FFFFFF',
   },
   socialButtonText: {
     fontSize: 15,

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, SafeAreaView, StatusBar, Animated, Dimensions } from 'react-native';
+﻿import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, SafeAreaView, StatusBar, Animated, Dimensions, Image } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { ROUTES } from '../navigation/types';
 import { useTranslation } from '../contexts/TranslationContext';
@@ -17,7 +17,7 @@ const SMLogo = ({ size = 40 }: { size?: number }) => (
 
 export default function SettingsScreen() {
   const navigation = useAppNavigation();
-  const { t, language, availableLanguages } = useTranslation();
+  const { t, language, setLanguage, availableLanguages } = useTranslation();
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -49,12 +49,12 @@ export default function SettingsScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
+      t.settings.logoutConfirm,
+      t.settings.logoutMessage,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         { 
-          text: 'Log Out', 
+          text: t.settings.logout, 
           style: 'destructive',
           onPress: () => navigation.navigate('Welcome')
         }
@@ -64,15 +64,15 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'This action cannot be undone. Are you sure you want to delete your account?',
+      t.settings.deleteConfirm,
+      t.settings.deleteMessage,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         { 
-          text: 'Delete', 
+          text: t.common.delete, 
           style: 'destructive',
           onPress: () => {
-            Alert.alert('Account Deleted', 'Your account has been deleted.');
+            Alert.alert(t.settings.deleteAccount, t.settings.deleteSuccess);
             navigation.navigate('Welcome');
           }
         }
@@ -113,8 +113,8 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <SMLogo size={40} />
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Image source={require('../../assets/logo.png')} style={{ width: 40, height: 40 }} resizeMode="contain" />
+        <Text style={styles.headerTitle}>{t.settings.title}</Text>
         <View style={styles.headerSpacer} />
       </Animated.View>
 
@@ -129,10 +129,10 @@ export default function SettingsScreen() {
         <View style={styles.content}>
           {/* Account Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account</Text>
+            <Text style={styles.sectionTitle}>{t.settings.account}</Text>
             <View style={styles.sectionContainer}>
               {renderSettingItem(
-                'Favorite Sports',
+                t.settings.favoriteSports,
                 () => console.log('Favorite Sports pressed')
               )}
             </View>
@@ -140,10 +140,10 @@ export default function SettingsScreen() {
 
           {/* Preferences Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Preferences</Text>
+            <Text style={styles.sectionTitle}>{t.settings.preferences}</Text>
             <View style={styles.sectionContainer}>
               {renderSettingItem(
-                'Language',
+                t.settings.language,
                 () => navigation.navigate(ROUTES.LANGUAGE),
                 <View style={styles.languageContainer}>
                   <Text style={styles.languageText}>
@@ -158,25 +158,29 @@ export default function SettingsScreen() {
 
           {/* Legal Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Legal</Text>
+            <Text style={styles.sectionTitle}>{t.settings.legal}</Text>
             <View style={styles.sectionContainer}>
               {renderSettingItem(
-                'Terms of Service',
+                t.settings.termsOfService,
                 () => navigation.navigate(ROUTES.TERMS_OF_SERVICE)
               )}
               {renderSettingItem(
-                'Privacy Policy',
+                t.settings.privacyPolicy,
                 () => navigation.navigate(ROUTES.PRIVACY_POLICY)
+              )}
+              {renderSettingItem(
+                'Privacy Settings',
+                () => navigation.navigate(ROUTES.PRIVACY_SETTINGS)
               )}
             </View>
           </View>
 
           {/* Development Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Development</Text>
+            <Text style={styles.sectionTitle}>{t.settings.development}</Text>
             <View style={styles.sectionContainer}>
               {renderSettingItem(
-                'Backend Test',
+                t.settings.backendTest,
                 () => navigation.navigate('BackendTest'),
                 <Text style={styles.chevronIcon}>›</Text>
               )}
@@ -185,10 +189,10 @@ export default function SettingsScreen() {
 
           {/* Danger Zone Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, styles.dangerTitle]}>Danger Zone</Text>
+            <Text style={[styles.sectionTitle, styles.dangerTitle]}>{t.settings.dangerZone}</Text>
             <View style={styles.dangerContainer}>
               {renderSettingItem(
-                'Delete Account',
+                t.settings.deleteAccount,
                 handleDeleteAccount,
                 <Text style={styles.dangerChevron}>›</Text>,
                 false
@@ -213,7 +217,7 @@ export default function SettingsScreen() {
           onPress={handleLogout}
           activeOpacity={0.8}
         >
-          <Text style={styles.logoutButtonText}>Log Out</Text>
+          <Text style={styles.logoutButtonText}>{t.settings.logout}</Text>
         </TouchableOpacity>
       </Animated.View>
     </SafeAreaView>

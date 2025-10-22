@@ -9,6 +9,7 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useAuth, AuthError } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
@@ -27,15 +28,6 @@ export interface LoginFormData {
   email: string;
   password: string;
 }
-
-// Custom SM Logo Component
-const SMLogo = ({ size = 60 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 export default function LoginForm({
   onSuccess,
@@ -160,7 +152,11 @@ export default function LoginForm({
       >
         {/* Logo and Title */}
         <View style={styles.header}>
-          <SMLogo size={60} />
+          <Image 
+            source={require('../../../assets/logo.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>{t.auth.title}</Text>
           <Text style={styles.subtitle}>{t.auth.subtitle}</Text>
         </View>
@@ -265,32 +261,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  logo: {
+    width: 60,
+    height: 60,
     marginBottom: 20,
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FFD700',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  logoText: {
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: -0.8,
-    fontFamily: 'System',
   },
   title: {
     fontSize: 28,

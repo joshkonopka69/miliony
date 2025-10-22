@@ -6,20 +6,25 @@ import {
   TouchableOpacity, 
   SafeAreaView, 
   ScrollView, 
-  Image 
+  Image,
+  ImageSourcePropType,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation';
 import { ROUTES } from '../navigation/types';
 import { BottomNavBar } from '../components';
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
+// Location images mapping - uses local assets for location photos
+const LOCATION_IMAGES: Record<string, ImageSourcePropType> = {
+  'Central Park': require('../../assets/sports.png'),
+  'Prospect Park': require('../../assets/sports.png'),
+  'Riverside Park': require('../../assets/sports.png'),
+  default: require('../../assets/sports.png'),
+};
+
+const getLocationImage = (locationName: string): ImageSourcePropType => {
+  return LOCATION_IMAGES[locationName] || LOCATION_IMAGES.default;
+};
 
 interface Game {
   id: string;
@@ -27,7 +32,6 @@ interface Game {
   players: number;
   location: string;
   time: string;
-  image: string;
   isJoined?: boolean;
   isCreated?: boolean;
 }
@@ -39,7 +43,6 @@ const joinedGames: Game[] = [
     players: 5,
     location: 'Central Park',
     time: '5:00 PM',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB26Ew9uaRiRRc601eC_dt4k5hvT4db-Jzgc2YlGieDIr_xGvc_S1_fQDMTjpnTcCIGvASMQg-uYJsQejxfwNCAH_6sPnTZs-ufhWnxvlGWKlVYLpbztah8Kfls7OTUIdwAW-68k-geuC1CnDt9FeW0kV4LAhFRTfhR67gj785ENgmqnPBfB2OnVZ-1UHjdNfuzpp-1uIh3JVRiusru_2SLx-q7l6l93TFzVWMN4zRnVROJiVGIYyoLXQimdlYvmjbpOitGDX534Hk',
     isJoined: true,
   },
   {
@@ -48,7 +51,6 @@ const joinedGames: Game[] = [
     players: 10,
     location: 'Prospect Park',
     time: '6:00 PM',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC1OsyI5dE7cD8AYErqWq2r9jNqpRa6tnxkTznlh0uhRJPlMMzPVmaz60972BR8G1Sk0PtDJl_FGBPVQHofeHu29q31sesIQBZLRj2FRZ7ttyV_2BE2SAvCjoaYnCFeAjII6Adpix9mJV3hp8YD9uPFqMIlr-TmZMWy2xT69QHM3PtUNjCU49UOJa3Z3ZNoiaGfWuxTqdGKvZRhS_EKWaPY_lq0CjkQB4Co8gftL-q21saAOZ8kNeaY7DqLQajlNvMDEAAHNT-tkSk',
     isJoined: true,
   },
 ];
@@ -60,7 +62,6 @@ const createdGames: Game[] = [
     players: 8,
     location: 'Riverside Park',
     time: '7:00 PM',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDiZLYsy0twXwMnj_cxtKothtl-PaF1-IVvH-2xjfEeV52VCSN9iHW8in3nUfTsyxDK4uT_4ygfL0WOnav8aHhaGAiYvpJyHtYjQisHD5cKq0hkOy4irfED4CleuM1SRJs338ezq9s6o4SI49E5vyteT3vUfnaObShMVQF4KkupuhrlzgKEz3FFwsDd2WzOx22W6AboL9Qb_45mVDrXD1r9yZdF7IMAE5Wb70LjtaQIjeR90s1t3Rbh2UkSe4ljeIdO1XQ-dmtb5r4',
     isCreated: true,
   },
 ];
@@ -88,7 +89,12 @@ export default function EventsScreen() {
       onPress={() => handleGamePress(game)}
       activeOpacity={0.7}
     >
-      <Image source={{ uri: game.image }} style={styles.gameImage} />
+      {/* Location Photo */}
+      <Image 
+        source={getLocationImage(game.location)} 
+        style={styles.gameImage} 
+        resizeMode="cover"
+      />
       <View style={styles.gameInfo}>
         <Text style={styles.gameTitle}>{game.title}</Text>
         <Text style={styles.gameDetails}>
@@ -100,7 +106,7 @@ export default function EventsScreen() {
         onPress={() => handleChatPress(game)}
         activeOpacity={0.7}
       >
-        <Text style={styles.chatIcon}>💬</Text>
+        <Ionicons name="chatbubble-outline" size={24} color="#9ca3af" />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -110,34 +116,31 @@ export default function EventsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Ionicons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Games</Text>
-        <SMLogo size={30} />
+        <View style={styles.headerPlaceholder} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          {/* Joined Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Joined</Text>
-            <View style={styles.gamesList}>
-              {joinedGames.map((game) => (
-                <GameCard key={game.id} game={game} />
-              ))}
-            </View>
-          </View>
-
-          {/* Created Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Created</Text>
-            <View style={styles.gamesList}>
-              {createdGames.map((game) => (
-                <GameCard key={game.id} game={game} />
-              ))}
-            </View>
-          </View>
+        {/* Joined Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Joined</Text>
+          {joinedGames.map((game) => (
+            <GameCard key={game.id} game={game} />
+          ))}
         </View>
+
+        {/* Created Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Created</Text>
+          {createdGames.map((game) => (
+            <GameCard key={game.id} game={game} />
+          ))}
+        </View>
+
+        {/* Bottom spacing */}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Bottom Navigation */}
@@ -152,124 +155,92 @@ export default function EventsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb', // bg-gray-50
+    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6', // border-gray-100
+    borderBottomColor: '#F0F0F0',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f9fafb',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  backIcon: {
-    fontSize: 24,
-    color: '#374151', // text-gray-700
-    fontWeight: 'bold',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827', // text-gray-900
-    textAlign: 'center',
-    flex: 1,
-    marginRight: 40, // pr-10 equivalent
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#fbbf24',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#fbbf24',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoText: {
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '600',
     color: '#000000',
-    letterSpacing: 1,
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerPlaceholder: {
+    width: 40,
   },
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 16,
-    gap: 24,
-  },
   section: {
-    gap: 16,
+    paddingTop: 32,
   },
   sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827', // text-gray-900
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  gamesList: {
-    gap: 12,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#000000',
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   gameCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 12,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 16,
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 2,
-    gap: 16,
   },
   gameImage: {
-    width: 64,
-    height: 64,
+    width: 80,
+    height: 80,
     borderRadius: 12,
+    marginRight: 16,
+    backgroundColor: '#F5F5F5',
   },
   gameInfo: {
     flex: 1,
   },
   gameTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#111827', // text-gray-900
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 6,
   },
   gameDetails: {
     fontSize: 14,
-    color: '#6b7280', // text-gray-500
+    color: '#999999',
+    lineHeight: 20,
   },
   chatButton: {
-    padding: 8,
-  },
-  chatIcon: {
-    fontSize: 20,
-    color: '#9ca3af', // text-gray-400
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
 });

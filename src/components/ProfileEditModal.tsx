@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { theme } from '../styles/theme';
-import { supabase } from '../services/supabase';
+import { supabase } from '../config/supabase';
 import type { SportActivity } from '../types/event';
 
 interface ProfileEditModalProps {

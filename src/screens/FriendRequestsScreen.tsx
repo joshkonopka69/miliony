@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
-  Image,
+  Image
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useFriends } from '../hooks/useFriends';
@@ -250,7 +250,7 @@ export default function FriendRequestsScreen() {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Friend Requests</Text>
-        <SMLogo size={30} />
+        <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
       </View>
 
       {/* Error Display */}

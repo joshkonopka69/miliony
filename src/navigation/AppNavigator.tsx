@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+﻿import React, { useRef, useEffect } from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
@@ -13,6 +13,7 @@ import {
   EventDetailsScreen,
   SettingsScreen,
   ProfileScreen,
+  EditProfileScreen,
   AddFriendScreen,
   CreateGroupScreen,
   MyGroupsScreen,
@@ -20,6 +21,7 @@ import {
   GameChatScreen,
   TermsOfServiceScreen,
   PrivacyPolicyScreen,
+  PrivacySettingsScreen,
   EventTestScreen,
   BackendTestScreen,
   // Analytics screens
@@ -41,6 +43,8 @@ import {
   // Notification screens
   NotificationsScreen,
   NotificationSettingsScreen,
+  // Badge screens
+  AllBadgesScreen,
 } from '../screens';
 
 // Import navigation utilities and types
@@ -143,6 +147,11 @@ export default function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen 
+          name={ROUTES.EDIT_PROFILE} 
+          component={EditProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
           name={ROUTES.ADD_FRIEND} 
           component={AddFriendScreen}
           options={{ headerShown: false }}
@@ -175,6 +184,11 @@ export default function AppNavigator() {
         <Stack.Screen 
           name={ROUTES.PRIVACY_POLICY} 
           component={PrivacyPolicyScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.PRIVACY_SETTINGS} 
+          component={PrivacySettingsScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen 
@@ -268,6 +282,13 @@ export default function AppNavigator() {
         <Stack.Screen 
           name={ROUTES.NOTIFICATION_SETTINGS} 
           component={NotificationSettingsScreen}
+          options={{ headerShown: false }}
+        />
+        
+        {/* Badge Screens */}
+        <Stack.Screen 
+          name={ROUTES.ALL_BADGES} 
+          component={AllBadgesScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

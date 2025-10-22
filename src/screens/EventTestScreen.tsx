@@ -11,7 +11,7 @@ import {
   FlatList,
 } from 'react-native';
 import { eventService, IntegratedEvent } from '../services/eventService';
-import { supabaseService } from '../services/supabase';
+import { supabaseService } from '../config/supabase';
 import { firebaseService, LiveEvent, LiveMessage } from '../services/firebase';
 
 export default function EventTestScreen() {

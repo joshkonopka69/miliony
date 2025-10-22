@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   Animated,
   TextInput,
   Modal,
-  FlatList,
+  FlatList
 } from 'react-native';
 import { useAppNavigation } from '../../navigation';
 import { useGroupManager } from '../../hooks/useGroups';
@@ -275,7 +275,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Group Members</Text>
-        <SMLogo size={30} />
+        <Image source={require('../../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
       </View>
 
       {/* Error Display */}

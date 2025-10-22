@@ -1,5 +1,5 @@
-import { supabase, User as SupabaseUser } from './supabase';
-import { supabaseService } from './supabase';
+import { supabase } from '../config/supabase';
+import { User as SupabaseUser, supabaseService } from './supabase';
 
 // Extended user types for comprehensive user management
 export interface UserProfile extends SupabaseUser {
@@ -306,7 +306,7 @@ class UserService {
         .from('user_preferences')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching user preferences:', error);

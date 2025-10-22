@@ -1,14 +1,14 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import { supabase } from './supabase';
+import { supabase } from '../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface NotificationData {
   title: string;
   body: string;
   data?: any;
-  type: 'event_reminder' | 'participant_joined' | 'event_cancelled' | 'event_updated' | 'general';
+  type: 'event_invite' | 'friend_request' | 'event_update' | 'event_reminder' | 'event_cancelled' | 'event_updated' | 'general';
 }
 
 class NotificationService {
@@ -274,6 +274,71 @@ class NotificationService {
     }
   }
 
+  // Get user notifications from database
+  async getUserNotifications(userId: string, options: { limit?: number } = {}): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(options.limit || 50);
+
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error getting user notifications:', error);
+      return [];
+    }
+  }
+
+  // Get notification preferences
+  async getNotificationPreferences(userId: string): Promise<any> {
+    try {
+      const settings = await this.getNotificationSettings();
+      return {
+        eventReminders: settings.eventReminders,
+        participantUpdates: settings.participantUpdates,
+        eventUpdates: settings.eventUpdates,
+        pushEnabled: true,
+        emailEnabled: false,
+      };
+    } catch (error) {
+      console.error('Error getting notification preferences:', error);
+      return {
+        eventReminders: true,
+        participantUpdates: true,
+        eventUpdates: true,
+        pushEnabled: true,
+        emailEnabled: false,
+      };
+    }
+  }
+
+  // Get notification stats
+  async getNotificationStats(userId: string): Promise<any> {
+    try {
+      const notifications = await this.getUserNotifications(userId);
+      const unreadCount = notifications.filter(n => !n.read).length;
+      return {
+        total: notifications.length,
+        unread: unreadCount,
+        read: notifications.length - unreadCount,
+      };
+    } catch (error) {
+      console.error('Error getting notification stats:', error);
+      return {
+        total: 0,
+        unread: 0,
+        read: 0,
+      };
+    }
+  }
+
   // Clear all notifications
   async clearAllNotifications(): Promise<void> {
     try {
@@ -299,6 +364,165 @@ class NotificationService {
       await Notifications.setBadgeCountAsync(count);
     } catch (error) {
       console.error('Error setting badge count:', error);
+    }
+  }
+
+  // ===== NEW NOTIFICATIONS TABLE METHODS =====
+
+  // Save notification to database
+  async saveNotificationToDatabase(
+    userId: string,
+    notification: NotificationData
+  ): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          title: notification.title,
+          body: notification.body,
+          type: notification.type,
+          data: notification.data || {},
+          read: false,
+        });
+
+      if (error) {
+        console.error('Error saving notification to database:', error);
+        throw error;
+      }
+
+      console.log('✅ Notification saved to database for user:', userId);
+    } catch (error) {
+      console.error('Error saving notification to database:', error);
+    }
+  }
+
+  // Get user notifications
+  async getUserNotifications(userId: string, limit: number = 50): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching user notifications:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching user notifications:', error);
+      return [];
+    }
+  }
+
+  // Get unread notifications count
+  async getUnreadNotificationsCount(userId: string): Promise<number> {
+    try {
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('read', false);
+
+      if (error) {
+        console.error('Error fetching unread notifications count:', error);
+        return 0;
+      }
+
+      return count || 0;
+    } catch (error) {
+      console.error('Error fetching unread notifications count:', error);
+      return 0;
+    }
+  }
+
+  // Mark notification as read
+  async markNotificationAsRead(notificationId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ 
+          read: true, 
+          read_at: new Date().toISOString() 
+        })
+        .eq('id', notificationId);
+
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        throw error;
+      }
+
+      console.log('✅ Notification marked as read:', notificationId);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  }
+
+  // Mark all notifications as read for user
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ 
+          read: true, 
+          read_at: new Date().toISOString() 
+        })
+        .eq('user_id', userId)
+        .eq('read', false);
+
+      if (error) {
+        console.error('Error marking all notifications as read:', error);
+        throw error;
+      }
+
+      console.log('✅ All notifications marked as read for user:', userId);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  }
+
+  // Delete notification
+  async deleteNotification(notificationId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId);
+
+      if (error) {
+        console.error('Error deleting notification:', error);
+        throw error;
+      }
+
+      console.log('✅ Notification deleted:', notificationId);
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
+  }
+
+  // Send notification with database storage
+  async sendNotificationWithStorage(
+    userId: string,
+    notification: NotificationData
+  ): Promise<void> {
+    try {
+      // Save to database first
+      await this.saveNotificationToDatabase(userId, notification);
+
+      // Then send push notification
+      await this.sendPushNotification(userId, notification);
+
+      // Update badge count
+      const unreadCount = await this.getUnreadNotificationsCount(userId);
+      await this.setBadgeCount(unreadCount);
+
+      console.log('✅ Notification sent and stored for user:', userId);
+    } catch (error) {
+      console.error('Error sending notification with storage:', error);
     }
   }
 }

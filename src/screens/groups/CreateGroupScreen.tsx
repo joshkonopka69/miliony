@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   Image,
   Switch,
   Modal,
-  FlatList,
+  FlatList
 } from 'react-native';
 import { useAppNavigation } from '../../navigation';
 import { useGroupManager } from '../../hooks/useGroups';
@@ -238,7 +238,7 @@ export default function CreateGroupScreen() {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Group</Text>
-        <SMLogo size={30} />
+        <Image source={require('../../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
       </View>
 
       {/* Error Display */}

@@ -9,15 +9,6 @@ import { LoginForm, SocialLoginButtons, PasswordResetModal } from '../components
 
 const { width } = Dimensions.get('window');
 
-// Custom SM Logo Component (same as WelcomeScreen)
-const SMLogo = ({ size = 60 }: { size?: number }) => (
-  <View style={[logoStyles.logoContainer, { width: size, height: size }]}>
-    <View style={logoStyles.logoBackground}>
-      <Text style={[logoStyles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
-
 export default function AuthScreen() {
   const navigation = useNavigation<NavigationProp<any>>();
   const { t } = useTranslation();
@@ -106,34 +97,5 @@ const styles = StyleSheet.create({
   socialButtons: {
     paddingHorizontal: 24,
     paddingBottom: 20,
-  },
-});
-
-const logoStyles = StyleSheet.create({
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FFD700',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  logoText: {
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: -0.8,
-    fontFamily: 'System',
   },
 });

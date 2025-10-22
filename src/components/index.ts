@@ -40,3 +40,7 @@ export { default as EventCard } from './EventCard';
 export { default as StatisticsCard } from './StatisticsCard';
 export { default as FavoriteSports } from './FavoriteSports';
 export { default as ProfileEditModal } from './ProfileEditModal';
+
+// Map enhancement components
+export { LocationDetailsModal } from './LocationDetailsModal';
+export { CreateEventModal } from './CreateEventModal';

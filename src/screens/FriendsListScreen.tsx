@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
-  Image,
+  Image
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useFriends } from '../hooks/useFriends';

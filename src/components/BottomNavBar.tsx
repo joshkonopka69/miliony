@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
 import { useAppNavigation } from '../navigation';
+import { useTranslation } from '../contexts/TranslationContext';
 
 // Custom Map Icon Component - Using your map-pin.png image
 const MapIcon = ({ size = 24 }: { size?: number }) => (
@@ -47,6 +48,7 @@ interface BottomNavBarProps {
 
 export default function BottomNavBar({ activeTab, onProfilePress }: BottomNavBarProps) {
   const navigation = useAppNavigation();
+  const { t } = useTranslation();
 
   const handleNavigation = (screen: string) => {
     // Navigate to the appropriate screen
@@ -55,7 +57,7 @@ export default function BottomNavBar({ activeTab, onProfilePress }: BottomNavBar
         navigation.navigate('Map');
         break;
       case 'MyGames':
-        navigation.navigate('MyGroups');
+        navigation.navigate('Events');
         break;
     }
   };
@@ -93,7 +95,7 @@ export default function BottomNavBar({ activeTab, onProfilePress }: BottomNavBar
                 styles.navLabel,
                 activeTab === 'Home' && styles.activeLabel
               ]}>
-                Map
+                {t.bottomNav.map}
               </Text>
             </TouchableOpacity>
 
@@ -111,7 +113,7 @@ export default function BottomNavBar({ activeTab, onProfilePress }: BottomNavBar
                 styles.navLabel,
                 activeTab === 'MyGames' && styles.activeLabel
               ]}>
-                My Games
+                {t.bottomNav.myGames}
               </Text>
             </TouchableOpacity>
 
@@ -129,7 +131,7 @@ export default function BottomNavBar({ activeTab, onProfilePress }: BottomNavBar
                 styles.navLabel,
                 activeTab === 'MyProfile' && styles.activeLabel
               ]}>
-                My Profile
+                {t.bottomNav.myProfile}
               </Text>
             </TouchableOpacity>
           </View>

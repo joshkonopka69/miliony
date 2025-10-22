@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../config/supabase';
 
 // Types for our database
 export interface User {
@@ -78,12 +78,6 @@ export interface EventFilters {
   };
   status?: 'live' | 'past' | 'cancelled';
 }
-
-// Initialize Supabase client
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'your_supabase_url';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'your_supabase_anon_key';
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 class SupabaseService {
   // User operations

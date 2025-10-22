@@ -13,12 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
-import { BottomNavBar } from '../components';
+import { BottomNavBar, ActivityFilterModal } from '../components';
 import EnhancedInteractiveMap from '../components/EnhancedInteractiveMap';
 import { useTranslation } from '../contexts/TranslationContext';
 import * as Location from 'expo-location';
-import { supabase } from '../services/supabase';
-import type { Event } from '../services/supabase';
+import { BackendService } from '../services/backendService';
+import { useAuth } from '../contexts/AuthContext';
+import CreateEventModal from '../components/CreateEventModal';
+import { supabase } from '../config/supabase';
 
 // ===========================
 // SPORT TYPE TO EMOJI MAPPING
@@ -49,16 +51,6 @@ const getSportEmoji = (sportType: string): string => {
   return SPORT_EMOJI_MAP[normalizedSport] || SPORT_EMOJI_MAP.default;
 };
 
-// Simple Logo Component
-const SportMapLogo = () => (
-  <View style={styles.logoContainer}>
-    <View style={styles.logoCircle}>
-      <Text style={styles.logoText}>SM</Text>
-    </View>
-    <Text style={styles.logoTitle}>SportMap</Text>
-  </View>
-);
-
 // ===========================
 // INTERFACES & TYPES
 // ===========================
@@ -77,7 +69,14 @@ interface MapEvent {
 export default function MapScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [filters, setFilters] = useState({
+    types: [],
+    keywords: [],
+    radius: 3000,
+  });
   const mapRef = useRef<any>(null);
   
   // ===========================
@@ -92,64 +91,66 @@ export default function MapScreen() {
   } | null>(null);
 
   // ===========================
-  // FETCH EVENTS FROM SUPABASE
+  // FETCH EVENTS FROM BACKEND
   // ===========================
-  const fetchEventsFromSupabase = useCallback(async () => {
+  const fetchEventsFromBackend = useCallback(async () => {
+    if (!userLocation) {
+      console.log('⚠️ No user location available');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Fetching events from Supabase...');
+      console.log('🔄 Fetching events from backend...');
 
-      // Query events table with filters matching YOUR schema
-      const { data, error: queryError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('status', 'active') // Your schema uses 'active' not 'live'
-        .gt('scheduled_datetime', new Date().toISOString()) // Future events only
-        .order('scheduled_datetime', { ascending: true })
-        .limit(100); // Limit to avoid performance issues
+      // Use the new backend service to get nearby events
+      const backendEvents = await BackendService.Events.getNearbyEvents(
+        userLocation.latitude,
+        userLocation.longitude,
+        filters.radius / 1000, // Convert meters to kilometers
+        50 // limit
+      );
 
-      if (queryError) {
-        console.error('❌ Supabase query error:', queryError);
-        throw queryError;
-      }
+      console.log('📊 Backend events:', backendEvents);
 
-      if (!data || data.length === 0) {
-        console.log('ℹ️ No active events found');
+      if (!backendEvents || backendEvents.length === 0) {
+        console.log('⚠️ No events found');
         setEvents([]);
         return;
       }
 
-      // Transform YOUR Supabase schema to MapEvent format
-      const transformedEvents: MapEvent[] = data.map((event: any) => ({
-        id: event.id,
-        name: event.title, // YOUR schema: 'title' → 'name'
-        activity: event.sport_type, // YOUR schema: 'sport_type' → 'activity'
-        latitude: event.latitude,
-        longitude: event.longitude,
-        participants_count: 0, // TODO: Calculate from event_participants table
-        max_participants: event.max_participants,
-        status: event.status,
-        created_at: event.scheduled_datetime, // Using scheduled_datetime for display
-      }));
+      // Transform backend events to MapEvent format
+      const transformedEvents: MapEvent[] = await Promise.all(
+        backendEvents.map(async (event) => {
+          // Get participant count for each event
+          const participants = await BackendService.Events.getEventParticipants(event.id);
+          
+          return {
+            id: event.id,
+            name: event.title,
+            activity: event.sport_type,
+            latitude: event.latitude,
+            longitude: event.longitude,
+            participants_count: participants.length,
+            max_participants: event.max_participants,
+            status: event.status as 'live' | 'past' | 'cancelled' | 'active',
+            created_at: event.created_at,
+          };
+        })
+      );
 
-      console.log(`✅ Fetched ${transformedEvents.length} events successfully`);
-      console.log('📊 Events data:', transformedEvents);
+      console.log('✅ Transformed events:', transformedEvents);
       setEvents(transformedEvents);
 
-    } catch (err: any) {
-      console.error('❌ Error fetching events:', err);
-      setError(err.message || 'Failed to load events');
-      Alert.alert(
-        'Error Loading Events',
-        'Could not fetch sport events. Please try again later.',
-        [{ text: 'OK' }]
-      );
+    } catch (error: any) {
+      console.error('❌ Error fetching events:', error);
+      setError(`Failed to load events: ${error.message}`);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userLocation, filters.radius]);
 
   // ===========================
   // LOCATION PERMISSION & SETUP
@@ -162,7 +163,7 @@ export default function MapScreen() {
         if (status !== 'granted') {
           Alert.alert(t.map.permissionDenied, t.map.locationAccessNeeded);
           // Still fetch events even without location
-          await fetchEventsFromSupabase();
+          await fetchEventsFromBackend();
           return;
         }
 
@@ -176,17 +177,17 @@ export default function MapScreen() {
         console.log('📍 User location obtained:', location.coords);
 
         // Fetch events
-        await fetchEventsFromSupabase();
+        await fetchEventsFromBackend();
 
       } catch (error) {
         console.error('Error setting up location:', error);
         // Still try to fetch events
-        await fetchEventsFromSupabase();
+        await fetchEventsFromBackend();
       }
     };
 
     setupLocationAndFetchEvents();
-  }, [fetchEventsFromSupabase, t.map.locationAccessNeeded, t.map.permissionDenied]);
+  }, [fetchEventsFromBackend, t.map.locationAccessNeeded, t.map.permissionDenied]);
 
   // ===========================
   // REAL-TIME EVENT UPDATES
@@ -208,7 +209,7 @@ export default function MapScreen() {
           console.log('🔔 Event change detected:', payload);
           
           // Refetch events when changes occur
-          fetchEventsFromSupabase();
+          fetchEventsFromBackend();
         }
       )
       .subscribe();
@@ -218,7 +219,7 @@ export default function MapScreen() {
       console.log('🔕 Cleaning up event subscriptions...');
       supabase.removeChannel(channel);
     };
-  }, [fetchEventsFromSupabase]);
+  }, [fetchEventsFromBackend]);
 
   const handleLocationPermissionGranted = () => {
     console.log('Location permission granted');
@@ -226,7 +227,46 @@ export default function MapScreen() {
 
   const handleFilterPress = () => {
     setShowFilterModal(true);
-    // TODO: Open filter modal
+  };
+
+  const handleApplyFilters = (newFilters: any) => {
+    console.log('MapScreen: Applying filters:', newFilters);
+    setFilters(newFilters);
+    setShowFilterModal(false);
+  };
+
+  const handleCreateEvent = () => {
+    if (!user) {
+      Alert.alert('Login Required', 'You must be logged in to create an event');
+      return;
+    }
+    setShowCreateEventModal(true);
+  };
+
+  const handleEventCreated = (newEvent: any) => {
+    console.log('New event created:', newEvent);
+    // Refresh events list
+    fetchEventsFromBackend();
+  };
+
+  const handleEventPress = (event: MapEvent) => {
+    // Navigate to event details with chat
+    navigation.navigate('EventDetails', { 
+      eventId: event.id,
+      eventTitle: event.name,
+      event: event 
+    });
+  };
+
+  // Handle map tap to create event at that location
+  const handleMapTap = (location: { latitude: number; longitude: number }) => {
+    console.log('🗺️ Map tapped at:', location);
+    
+    // Update user location to tapped location
+    setUserLocation(location);
+    
+    // Show create event modal
+    setShowCreateEventModal(true);
   };
 
   return (
@@ -239,15 +279,21 @@ export default function MapScreen() {
           mapRef.current = ref;
         }}
         onLocationPermissionGranted={handleLocationPermissionGranted}
+        onLocationSelect={handleMapTap}
         hideControls={true}
         events={events}
+        externalFilters={filters}
       />
 
       {/* Clean Top Bar - Overlaid */}
       <SafeAreaView style={styles.topBarSafeArea}>
         <View style={styles.topBar}>
           {/* Logo on Left */}
-          <SportMapLogo />
+          <Image 
+            source={require('../../assets/logo.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
 
           {/* Action Buttons on Right */}
           <View style={styles.topBarActions}>
@@ -256,7 +302,23 @@ export default function MapScreen() {
               onPress={handleFilterPress}
               activeOpacity={0.7}
             >
-              <Ionicons name="options-outline" size={24} color="#000000" />
+              <Image 
+                source={require('../../assets/filters.png')}
+                style={{ width: 24, height: 24 }}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.topBarButton} 
+              onPress={() => navigation.navigate(ROUTES.NOTIFICATIONS)}
+              activeOpacity={0.7}
+            >
+              <Image 
+                source={require('../../assets/notification.png')}
+                style={{ width: 24, height: 24 }}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -264,7 +326,11 @@ export default function MapScreen() {
               onPress={() => navigation.navigate(ROUTES.SETTINGS)}
               activeOpacity={0.7}
             >
-              <Ionicons name="settings-outline" size={24} color="#000000" />
+              <Image 
+                source={require('../../assets/options.png')}
+                style={{ width: 24, height: 24 }}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -302,6 +368,31 @@ export default function MapScreen() {
           )}
         </View>
       )}
+
+      {/* Create Event Button */}
+      <TouchableOpacity
+        style={styles.createEventButton}
+        onPress={handleCreateEvent}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.createEventButtonText}>+ Create Event</Text>
+      </TouchableOpacity>
+
+      {/* Filter Modal */}
+      <ActivityFilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={handleApplyFilters}
+        currentFilters={filters}
+      />
+
+      {/* Create Event Modal */}
+      <CreateEventModal
+        visible={showCreateEventModal}
+        onClose={() => setShowCreateEventModal(false)}
+        onEventCreated={handleEventCreated}
+        userLocation={userLocation || undefined}
+      />
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNavContainer}>
@@ -346,37 +437,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  // Logo Styles (larger)
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  logoCircle: {
+  // Logo Styles
+  logo: {
     width: 46,
     height: 46,
-    borderRadius: 23,
-    backgroundColor: '#FDB924', // Yellow
-    justifyContent: 'center',
-    alignItems: 'center',
-    // Slight shadow on logo
-    shadowColor: '#FDB924',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000000',
-    letterSpacing: -0.5,
-  },
-  logoTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#000000',
-    letterSpacing: -0.3,
   },
   // Action Buttons on Right
   topBarActions: {
@@ -465,5 +529,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#FFFFFF',
     marginBottom: 4,
+  },
+  // Create Event Button
+  createEventButton: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    backgroundColor: '#4CAF50',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 500,
+  },
+  createEventButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
-  Dimensions,
+  Dimensions
 } from 'react-native';
 import { useAppNavigation } from '../../navigation';
 import { useGroupManager } from '../../hooks/useGroups';
@@ -257,7 +257,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Group Details</Text>
-        <SMLogo size={30} />
+        <Image source={require('../../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
       </View>
 
       {/* Error Display */}

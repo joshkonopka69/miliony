@@ -16,15 +16,6 @@ import { RegisterForm, EmailVerificationModal } from '../components/auth';
 
 const { width } = Dimensions.get('window');
 
-// Custom SM Logo Component (consistent with other screens)
-const SMLogo = ({ size = 50 }: { size?: number }) => (
-  <View style={[logoStyles.logoContainer, { width: size, height: size }]}>
-    <View style={logoStyles.logoBackground}>
-      <Text style={[logoStyles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
-
 export default function RegisterScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
@@ -139,33 +130,5 @@ const styles = StyleSheet.create({
   },
   authForm: {
     flex: 1,
-  },
-});
-
-const logoStyles = StyleSheet.create({
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FFD700',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoText: {
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: 1,
   },
 });

@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
@@ -30,15 +31,6 @@ export interface RegisterFormData {
   confirmPassword: string;
   favoriteSports: string[];
 }
-
-// Custom SM Logo Component
-const SMLogo = ({ size = 50 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 export default function RegisterForm({
   onSuccess,
@@ -206,7 +198,11 @@ export default function RegisterForm({
         >
           {/* Logo and Title */}
           <View style={styles.header}>
-            <SMLogo size={50} />
+            <Image 
+              source={require('../../../assets/logo.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>{t.register.title}</Text>
             <Text style={styles.subtitle}>{t.register.subtitle}</Text>
           </View>
@@ -375,31 +371,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  logo: {
+    width: 50,
+    height: 50,
     marginBottom: 16,
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FFD700',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoText: {
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: 1,
   },
   title: {
     fontSize: 28,

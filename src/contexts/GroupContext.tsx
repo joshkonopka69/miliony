@@ -167,7 +167,7 @@ export function GroupProvider({ children }: GroupProviderProps) {
       setIsLoading(true);
       setError(null);
 
-      const userGroups = await groupService.getUserGroups();
+      const userGroups = await groupService.getUserGroups(user.id);
       setGroups(userGroups);
     } catch (error) {
       console.error('Error loading user groups:', error);
@@ -271,7 +271,7 @@ export function GroupProvider({ children }: GroupProviderProps) {
       setIsLoading(true);
       setError(null);
 
-      const userGroups = await groupService.getUserGroups();
+      const userGroups = await groupService.getUserGroups(user.id);
       setGroups(userGroups);
       return userGroups;
     } catch (error) {

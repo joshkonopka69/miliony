@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Animated,
   RefreshControl,
   TextInput,
+  Image
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useNotificationManager } from '../hooks/useNotifications';
@@ -70,10 +71,6 @@ export default function NotificationsScreen() {
 
   const handleBack = () => {
     navigation.goBack();
-  };
-
-  const handleSettings = () => {
-    navigation.navigate('NotificationSettings');
   };
 
   const handleRefresh = async () => {
@@ -280,10 +277,7 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleSettings}>
-            <Text style={styles.headerButtonIcon}>⚙️</Text>
-          </TouchableOpacity>
-          <SMLogo size={30} />
+          <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
         </View>
       </View>
 

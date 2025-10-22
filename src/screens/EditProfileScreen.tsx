@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
-  Platform,
+  Platform
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useUserProfile } from '../hooks/useUserProfile';
@@ -246,7 +246,7 @@ export default function EditProfileScreen() {
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
-          <SMLogo size={30} />
+          <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
         </View>
 
         <ScrollView 

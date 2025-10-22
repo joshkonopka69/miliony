@@ -1,7 +1,7 @@
 // Simple authentication service that works with Expo Go
 // Uses only Supabase for authentication (no Firebase)
 
-import { supabase } from './supabase';
+import { supabase } from '../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface AuthUser {

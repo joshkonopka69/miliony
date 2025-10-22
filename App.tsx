@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import { TranslationProvider } from './src/contexts/TranslationContext';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { UserProvider } from './src/contexts/UserContext';
 import { AnalyticsProvider } from './src/contexts/AnalyticsContext';
 import { ModerationProvider } from './src/contexts/ModerationContext';
 import { GroupProvider } from './src/contexts/GroupContext';
@@ -14,16 +15,18 @@ export default function App() {
     <SafeAreaProvider>
       <TranslationProvider>
         <AuthProvider>
-          <AnalyticsProvider>
-            <ModerationProvider>
-              <GroupProvider>
-                <NotificationProvider>
-                  <StatusBar style="auto" />
-                  <AppNavigator />
-                </NotificationProvider>
-              </GroupProvider>
-            </ModerationProvider>
-          </AnalyticsProvider>
+          <UserProvider>
+            <AnalyticsProvider>
+              <ModerationProvider>
+                <GroupProvider>
+                  <NotificationProvider>
+                    <StatusBar style="auto" />
+                    <AppNavigator />
+                  </NotificationProvider>
+                </GroupProvider>
+              </ModerationProvider>
+            </AnalyticsProvider>
+          </UserProvider>
         </AuthProvider>
       </TranslationProvider>
     </SafeAreaProvider>

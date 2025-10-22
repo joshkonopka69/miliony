@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../config/supabase';
 
 // Analytics types and interfaces
 export interface UserAnalytics {

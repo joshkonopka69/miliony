@@ -76,78 +76,89 @@ export const GOOGLE_PLACES_TYPES = {
 } as const;
 
 class PlacesApiService {
-  private apiKey: string = 'AIzaSyDBJ65DOu4WMoTRjvz1J6i6VbYbjOoEW2E'; // Using the API key from MyPlaceDetailsScreen
+  private apiKey: string = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyDBJ65DOu4WMoTRjvz1J6i6VbYbjOoEW2E';
   private baseUrl: string = 'https://maps.googleapis.com/maps/api/place';
-  private useMockData: boolean = true; // Set to false to use real API
+  private useMockData: boolean = false; // Set to false to use real API (CHANGED TO FALSE)
   private placeDetailsCache: Map<string, { data: PlaceDetails; timestamp: number }> = new Map();
   private cacheExpiryTime: number = 5 * 60 * 1000; // 5 minutes in milliseconds
   
-  // Mock data for fallback when API fails
+  // Mock data for fallback when API fails (Wrocław, Poland area)
   private mockPlaces: Place[] = [
     {
-      placeId: 'ChIJ123456789',
-      name: 'Central Park',
-      address: 'Central Park, New York, NY 10024',
-      coordinates: { lat: 40.7829, lng: -73.9654 },
+      placeId: 'ChIJ_Wroclaw_Park1',
+      name: 'Park Szczytnicki',
+      address: 'Park Szczytnicki, Wrocław, Poland',
+      coordinates: { lat: 51.1089, lng: 17.0770 },
+      rating: 4.7,
+      types: ['park', 'tourist_attraction'],
+    },
+    {
+      placeId: 'ChIJ_Wroclaw_Gym1',
+      name: 'CityFit Wrocław',
+      address: 'Powstańców Śląskich 95, 53-332 Wrocław',
+      coordinates: { lat: 51.0970, lng: 17.0340 },
+      rating: 4.3,
+      priceLevel: 2,
+      phoneNumber: '+48-71-123-4567',
+      website: 'https://cityfit.pl',
+      types: ['gym', 'health'],
+    },
+    {
+      placeId: 'ChIJ_Wroclaw_Stadium1',
+      name: 'Stadion Wrocław',
+      address: 'Aleja Śląska 1, 54-118 Wrocław',
+      coordinates: { lat: 51.1408, lng: 16.9426 },
+      rating: 4.6,
+      priceLevel: 3,
+      phoneNumber: '+48-71-366-0066',
+      website: 'https://stadionwroclaw.pl',
+      types: ['stadium', 'sports_complex'],
+    },
+    {
+      placeId: 'ChIJ_Wroclaw_Park2',
+      name: 'Park Południowy',
+      address: 'Park Południowy, Wrocław, Poland',
+      coordinates: { lat: 51.0838, lng: 17.0054 },
       rating: 4.5,
       types: ['park', 'tourist_attraction'],
     },
     {
-      placeId: 'ChIJ987654321',
-      name: 'Equinox Gym',
-      address: '123 Main St, New York, NY 10001',
-      coordinates: { lat: 40.7589, lng: -73.9851 },
+      placeId: 'ChIJ_Wroclaw_Gym2',
+      name: 'Fitness Club Wrocław',
+      address: 'Oławska 23, 50-123 Wrocław',
+      coordinates: { lat: 51.0948, lng: 17.0306 },
       rating: 4.2,
-      priceLevel: 3,
-      phoneNumber: '+1-555-0123',
-      website: 'https://equinox.com',
+      priceLevel: 2,
+      phoneNumber: '+48-71-987-6543',
       types: ['gym', 'health'],
     },
     {
-      placeId: 'ChIJ555666777',
-      name: 'Madison Square Garden',
-      address: '4 Pennsylvania Plaza, New York, NY 10001',
-      coordinates: { lat: 40.7505, lng: -73.9934 },
-      rating: 4.7,
-      priceLevel: 4,
-      phoneNumber: '+1-212-465-6741',
-      website: 'https://msg.com',
-      types: ['stadium', 'sports_complex'],
+      placeId: 'ChIJ_Wroclaw_Sports1',
+      name: 'Hala Orbita',
+      address: 'Wejherowska 34, 54-239 Wrocław',
+      coordinates: { lat: 51.1278, lng: 16.9648 },
+      rating: 4.4,
+      priceLevel: 2,
+      types: ['sports_complex', 'gym'],
     },
     {
-      placeId: 'ChIJ888999000',
-      name: 'Brooklyn Bridge Park',
-      address: 'Brooklyn Bridge Park, Brooklyn, NY 11201',
-      coordinates: { lat: 40.6962, lng: -73.9969 },
+      placeId: 'ChIJ_Wroclaw_Park3',
+      name: 'Park Grabiszyński',
+      address: 'Park Grabiszyński, Wrocław, Poland',
+      coordinates: { lat: 51.0730, lng: 17.0050 },
       rating: 4.6,
       types: ['park', 'tourist_attraction'],
     },
     {
-      placeId: 'ChIJ111222333',
-      name: 'NYC Sports Club',
-      address: '456 Broadway, New York, NY 10013',
-      coordinates: { lat: 40.7282, lng: -74.0776 },
-      rating: 4.1,
-      priceLevel: 2,
-      phoneNumber: '+1-555-0456',
-      types: ['gym', 'health'],
-    },
-    {
-      placeId: 'ChIJ444555666',
-      name: 'Chelsea Piers',
-      address: 'Chelsea Piers, New York, NY 10011',
-      coordinates: { lat: 40.7484, lng: -74.0077 },
+      placeId: 'ChIJ_Wroclaw_Pool1',
+      name: 'Aqua Park Wrocław',
+      address: 'Borowska 99, 50-558 Wrocław',
+      coordinates: { lat: 51.0768, lng: 17.0458 },
       rating: 4.3,
       priceLevel: 3,
-      types: ['sports_complex', 'gym'],
-    },
-    {
-      placeId: 'ChIJ777888999',
-      name: 'Prospect Park',
-      address: 'Prospect Park, Brooklyn, NY 11225',
-      coordinates: { lat: 40.6602, lng: -73.9690 },
-      rating: 4.4,
-      types: ['park', 'tourist_attraction'],
+      phoneNumber: '+48-71-798-6590',
+      website: 'https://aquapark.wroc.pl',
+      types: ['swimming_pool', 'sports_complex'],
     },
   ];
 
@@ -155,7 +166,10 @@ class PlacesApiService {
     location: { lat: number; lng: number },
     filter: ActivityFilter
   ): Promise<Place[]> {
-    console.log('Searching nearby places:', { location, filter });
+    console.log('🔍 Searching nearby places:', { location, filter });
+    console.log('🔍 Filter types:', filter.types);
+    console.log('🔍 Filter keywords:', filter.keywords);
+    console.log('🔍 Filter radius:', filter.radius);
 
     // Create cache key for this search
     const cacheKey = `searchNearby_${location.lat}_${location.lng}_${JSON.stringify(filter)}`;
@@ -163,7 +177,7 @@ class PlacesApiService {
     // Check cache first
     const cached = performanceOptimizer.getCache(cacheKey);
     if (cached) {
-      console.log('Returning cached results');
+      console.log('✅ Returning cached results:', cached.length, 'places');
       return cached;
     }
 
@@ -180,31 +194,39 @@ class PlacesApiService {
       
       // If no types specified, search for general establishments
       if (filter.types.length === 0) {
-        console.log('No types specified, using keyword search');
+        console.log('⚠️ No types specified, using keyword search');
         const results = await this.searchByKeyword(location, filter);
+        console.log(`📊 Keyword search found ${results.length} results`);
         allResults.push(...results);
       } else {
-        console.log('Searching by types:', filter.types);
+        console.log('🎯 Searching by types:', filter.types);
         // Search for each type separately (Google Places API limitation)
         for (const type of filter.types) {
           const googleType = GOOGLE_PLACES_TYPES[type as keyof typeof GOOGLE_PLACES_TYPES];
-          console.log(`Searching for type: ${type} -> ${googleType}`);
+          console.log(`🔎 Searching for type: ${type} -> Google type: ${googleType}`);
           if (googleType) {
             const results = await this.searchByType(location, googleType, filter);
-            console.log(`Found ${results.length} results for type ${type}`);
+            console.log(`✅ Found ${results.length} results for type ${type}`);
             allResults.push(...results);
+          } else {
+            console.warn(`⚠️ No Google Places type mapping for: ${type}`);
           }
         }
       }
 
-      console.log(`Total results before deduplication: ${allResults.length}`);
+      console.log(`📊 Total results before deduplication: ${allResults.length}`);
 
       // Remove duplicates based on placeId
       const uniqueResults = allResults.filter((place, index, self) =>
         index === self.findIndex(p => p.placeId === place.placeId)
       );
 
-      console.log(`Results after deduplication: ${uniqueResults.length}`);
+      console.log(`✅ Results after deduplication: ${uniqueResults.length}`);
+      
+      // Log sample of results for debugging
+      if (uniqueResults.length > 0 && uniqueResults.length <= 5) {
+        console.log('📍 Sample results:', uniqueResults.map(p => ({ name: p.name, types: p.types })));
+      }
 
       // Apply keyword filtering if specified
       let filteredResults = uniqueResults;
@@ -287,11 +309,11 @@ class PlacesApiService {
     }
 
     const url = `${this.baseUrl}/nearbysearch/json?${params}`;
-    console.log('Making API request to:', url);
+    console.log(`🌐 Making API request for type "${type}":`, url);
 
     const response = await fetch(url);
 
-    console.log('API response status:', response.status);
+    console.log(`📡 API response status for "${type}":`, response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -300,11 +322,20 @@ class PlacesApiService {
     }
 
     const data = await response.json();
-    console.log('API response data:', data);
+    console.log(`📦 API response for "${type}":`, {
+      status: data.status,
+      resultsCount: data.results?.length || 0,
+      errorMessage: data.error_message
+    });
 
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-      console.error('Google Places API error:', data.status, data.error_message);
+      console.error(`❌ Google Places API error for "${type}":`, data.status, data.error_message);
       throw new Error(`Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+    }
+
+    if (data.status === 'ZERO_RESULTS') {
+      console.log(`⚠️ No results found for type "${type}"`);
+      return [];
     }
 
     const results = data.results.map((result: any) => ({
@@ -320,7 +351,10 @@ class PlacesApiService {
       types: result.types || [],
     }));
 
-    console.log(`Mapped ${results.length} results for type ${type}`);
+    console.log(`✅ Mapped ${results.length} results for type "${type}"`);
+    if (results.length > 0 && results.length <= 3) {
+      console.log(`📍 Sample results for "${type}":`, results.map(r => ({ name: r.name, types: r.types })));
+    }
     return results;
   }
 

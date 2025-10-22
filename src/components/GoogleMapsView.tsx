@@ -22,7 +22,13 @@ interface GoogleMapsViewProps {
   searchQuery?: string;
   initialLocation?: { latitude: number; longitude: number };
   events?: MapEvent[]; // Events to display as markers
+  places?: any[]; // Venue places to display as markers
 }
+
+
+
+
+
 
 const { width, height } = Dimensions.get('window');
 
@@ -53,7 +59,8 @@ export default function GoogleMapsView({
   onLocationSelect, 
   searchQuery,
   initialLocation,
-  events = [] // Default to empty array
+  events = [], // Default to empty array
+  places = [] // Default to empty array
 }: GoogleMapsViewProps) {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [mapHtml, setMapHtml] = useState<string>('');
@@ -67,7 +74,7 @@ export default function GoogleMapsView({
     if (location) {
       generateMapHtml();
     }
-  }, [location, searchQuery, events]);
+  }, [location, searchQuery, events, places]);
 
   const getCurrentLocation = async () => {
     try {
@@ -91,7 +98,12 @@ export default function GoogleMapsView({
   const generateMapHtml = () => {
     const lat = initialLocation?.latitude || location?.coords.latitude || 51.1079;
     const lng = initialLocation?.longitude || location?.coords.longitude || 17.0385;
-    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY';
+    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyD6nUmyKQ_9EqPpv4axk8J5YhZlI9J0fak';
+    
+    console.log('🗺️ GoogleMapsView: Generating map HTML with API key:', apiKey ? '✅ Loaded' : '❌ Missing');
+    console.log('🗺️ GoogleMapsView: Map center:', { lat, lng });
+    console.log('🗺️ GoogleMapsView: Events count:', events.length);
+    console.log('🗺️ GoogleMapsView: Places count:', places.length);
     
     const html = `
       <!DOCTYPE html>
@@ -99,11 +111,51 @@ export default function GoogleMapsView({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          body, html { margin: 0; padding: 0; height: 100%; }
-          #map { height: 100%; width: 100%; }
+          body, html { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            width: 100%;
+            overflow: hidden;
+          }
+          #map { 
+            height: 100vh; 
+            width: 100vw; 
+            position: absolute;
+            top: 0;
+            left: 0;
+          }
+          .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-family: Arial, sans-serif;
+          }
+          .error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: #ffebee;
+            color: #c62828;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-family: Arial, sans-serif;
+            max-width: 300px;
+            text-align: center;
+          }
         </style>
       </head>
       <body>
+        <div class="loading" id="loading">Loading map...</div>
         <div id="map"></div>
         <script>
           let map;
@@ -112,23 +164,42 @@ export default function GoogleMapsView({
           let markers = [];
           
           function initMap() {
+            // Send log to React Native
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              type: 'log',
+              message: '🗺️ WebView: Initializing map...'
+            }));
+            
             const center = { lat: ${lat}, lng: ${lng} };
             
-            map = new google.maps.Map(document.getElementById("map"), {
-              zoom: 15,
-              center: center,
-              mapTypeId: google.maps.MapTypeId.ROADMAP,
-              styles: [
-                {
-                  featureType: "poi",
-                  elementType: "labels",
-                  stylers: [{ visibility: "off" }]
-                }
-              ]
-            });
-            
-            infowindow = new google.maps.InfoWindow();
-            service = new google.maps.places.PlacesService(map);
+            try {
+              map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 15,
+                center: center,
+                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                styles: [
+                  {
+                    featureType: "poi",
+                    elementType: "labels",
+                    stylers: [{ visibility: "off" }]
+                  }
+                ]
+              });
+              
+              // Send log to React Native
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'log',
+                message: '🗺️ WebView: Map created successfully!'
+              }));
+              
+              // Hide loading indicator
+              const loading = document.getElementById('loading');
+              if (loading) {
+                loading.style.display = 'none';
+              }
+              
+              infowindow = new google.maps.InfoWindow();
+              service = new google.maps.places.PlacesService(map);
             
             // Add user location marker
             new google.maps.Marker({
@@ -146,8 +217,8 @@ export default function GoogleMapsView({
               }
             });
             
-            // Search for places if query provided
-            ${searchQuery ? `searchPlaces("${searchQuery}");` : 'searchNearbyPlaces();'}
+            // Create venue markers from passed places data
+            ${places.length > 0 ? 'createVenueMarkers();' : ''}
             
             // Add event markers
             ${events.length > 0 ? 'createEventMarkers();' : ''}
@@ -161,6 +232,81 @@ export default function GoogleMapsView({
                 latitude: lat,
                 longitude: lng
               }));
+            });
+            
+            // Send log to React Native
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              type: 'log',
+              message: '🗺️ WebView: Map initialization complete!'
+            }));
+            
+            } catch (error) {
+              // Send error to React Native
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'error',
+                message: '🗺️ WebView: Error initializing map: ' + error.message
+              }));
+              const loading = document.getElementById('loading');
+              if (loading) {
+                loading.innerHTML = 'Error loading map: ' + error.message;
+                loading.className = 'error';
+              }
+            }
+          }
+          
+          // Error handling
+          window.onerror = function(msg, url, lineNo, columnNo, error) {
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              type: 'error',
+              message: '🗺️ WebView: JavaScript error: ' + msg + ' at ' + url + ':' + lineNo
+            }));
+            return false;
+          };
+          
+          // Log when Google Maps API loads
+          window.gm_authFailure = function() {
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              type: 'error',
+              message: '🗺️ WebView: Google Maps API authentication failed'
+            }));
+            const loading = document.getElementById('loading');
+            if (loading) {
+              loading.innerHTML = 'Google Maps API authentication failed. Please check your API key.';
+              loading.className = 'error';
+            }
+          };
+          
+          // Create venue markers from places data
+          function createVenueMarkers() {
+            const venues = ${JSON.stringify(places)};
+            
+            venues.forEach(function(venue) {
+              if (!venue.coordinates) return;
+              
+              const marker = new google.maps.Marker({
+                position: { lat: venue.coordinates.lat, lng: venue.coordinates.lng },
+                map: map,
+                title: venue.name,
+                icon: {
+                  url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(\`
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="16" cy="16" r="14" fill="#4CAF50" stroke="white" stroke-width="3"/>
+                      <text x="16" y="21" font-size="16" text-anchor="middle" fill="white">🏋️</text>
+                    </svg>
+                  \`),
+                  scaledSize: new google.maps.Size(32, 32),
+                  anchor: new google.maps.Point(16, 16)
+                }
+              });
+              
+              marker.addListener('click', function() {
+                window.ReactNativeWebView?.postMessage(JSON.stringify({
+                  type: 'place_click',
+                  place: venue
+                }));
+              });
+              
+              markers.push(marker);
             });
           }
           
@@ -357,6 +503,7 @@ export default function GoogleMapsView({
       </html>
     `;
     
+    console.log('🗺️ GoogleMapsView: HTML generated, length:', html.length);
     setMapHtml(html);
   };
 
@@ -364,7 +511,12 @@ export default function GoogleMapsView({
     try {
       const data = JSON.parse(event.nativeEvent.data);
       
-      if (data.type === 'place_click') {
+      // Handle logs from WebView
+      if (data.type === 'log') {
+        console.log(data.message);
+      } else if (data.type === 'error') {
+        console.error(data.message);
+      } else if (data.type === 'place_click') {
         onPlaceSelect?.(data.place);
       } else if (data.type === 'location_click') {
         onLocationSelect?.({
@@ -419,6 +571,20 @@ export default function GoogleMapsView({
         startInLoadingState={true}
         scalesPageToFit={true}
         mixedContentMode="compatibility"
+        onLoadStart={() => console.log('🗺️ WebView: Loading started')}
+        onLoadEnd={() => console.log('🗺️ WebView: Loading finished')}
+        onError={(syntheticEvent) => {
+          const { nativeEvent } = syntheticEvent;
+          console.error('🗺️ WebView: Error loading:', nativeEvent);
+        }}
+        onHttpError={(syntheticEvent) => {
+          const { nativeEvent } = syntheticEvent;
+          console.error('🗺️ WebView: HTTP error:', nativeEvent);
+        }}
+        onLoadProgress={(syntheticEvent) => {
+          const { nativeEvent } = syntheticEvent;
+          console.log('🗺️ WebView: Loading progress:', nativeEvent.progress);
+        }}
       />
     </View>
   );
@@ -442,4 +608,3 @@ const styles = StyleSheet.create({
     color: '#666',
   },
 });
-

@@ -18,20 +18,29 @@ export default {
     ],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.sportmap.app"
+      bundleIdentifier: "com.sportmap.app",
+      config: {
+        googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ""
+      }
     },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
-      package: "com.sportmap.app"
+      package: "com.sportmap.app",
+      config: {
+        googleMaps: {
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ""
+        }
+      }
     },
     web: {
       favicon: "./assets/favicon.png",
       bundler: "metro"
     },
     plugins: [
+      "expo-router",
       [
         "expo-notifications",
         {
@@ -45,12 +54,15 @@ export default {
         {
           locationAlwaysAndWhenInUsePermission: "Allow SportMap to use your location to find nearby sports venues and events."
         }
-      ]
+      ],
+      "expo-maps"
     ],
     extra: {
       eas: {
         projectId: "372e8a03-e24f-4695-9ec5-f86f6408a7fa"
-      }
+      },
+      supabaseUrl: "https://ujfeqshqhlplmolfrlvc.supabase.co",
+      supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZmVxc2hxaGxwbG1vbGZybHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzI0NDQsImV4cCI6MjA3NTQwODQ0NH0.vUEi4gl7qsl7fU518CMV79TJG9j3MWgwBQHEzbfuwIA"
     }
   }
 };

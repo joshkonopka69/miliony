@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../config/supabase';
 
 // Privacy settings types
 export interface PrivacySettings {
@@ -95,7 +95,7 @@ class PrivacyService {
         .from('privacy_settings')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching privacy settings:', error);
@@ -280,7 +280,7 @@ class PrivacyService {
         .from('consent_settings')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching consent settings:', error);
@@ -471,9 +471,9 @@ class PrivacyService {
         messages
       ] = await Promise.all([
         supabase.from('users').select('*').eq('id', userId).single(),
-        supabase.from('user_preferences').select('*').eq('user_id', userId).single(),
-        supabase.from('privacy_settings').select('*').eq('user_id', userId).single(),
-        supabase.from('consent_settings').select('*').eq('user_id', userId).single(),
+        supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle(),
+        supabase.from('privacy_settings').select('*').eq('user_id', userId).maybeSingle(),
+        supabase.from('consent_settings').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('user_activities').select('*').eq('user_id', userId),
         supabase.from('friendships').select('*').eq('user_id', userId),
         supabase.from('events').select('*').eq('created_by', userId),

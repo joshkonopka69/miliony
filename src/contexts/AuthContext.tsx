@@ -1,5 +1,25 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { authService, AuthUser, AuthState } from '../services/authService';
+import { BackendService } from '../services/backendService';
+
+// Debug: Check if BackendService is properly imported
+console.log('🔧 AuthContext: BackendService:', BackendService ? 'Loaded' : 'Undefined');
+console.log('🔧 AuthContext: BackendService.Auth:', BackendService?.Auth ? 'Available' : 'Undefined');
+
+interface User {
+  id: string;
+  email: string;
+  display_name?: string;
+  avatar_url?: string;
+  favorite_sports?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+interface AuthState {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+}
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -9,10 +29,9 @@ interface AuthContextType extends AuthState {
     avatar_url?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<AuthUser>) => Promise<{ success: boolean; error?: string }>;
-  updateLocation: (latitude: number, longitude: number) => Promise<void>;
+  updateProfile: (updates: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   getUserId: () => string | null;
-  canPerformAction: (action: string, resourceId?: string) => boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,18 +47,96 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: false,
   });
 
+  // Load user profile
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const profile = await BackendService.Users.getUserProfile(userId);
+      if (profile) {
+        setAuthState({
+          user: profile,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+      } else {
+        setAuthState({
+          user: null,
+          isLoading: false,
+          isAuthenticated: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
+    }
+  };
+
   useEffect(() => {
+    // Check for existing session
+    const checkSession = async () => {
+      try {
+        const session = await BackendService.Auth.getSession();
+        if (session?.user) {
+          await loadUserProfile(session.user.id);
+        } else {
+          setAuthState({
+            user: null,
+            isLoading: false,
+            isAuthenticated: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
+        setAuthState({
+          user: null,
+          isLoading: false,
+          isAuthenticated: false,
+        });
+      }
+    };
+
+    checkSession();
+
     // Listen to auth state changes
-    const unsubscribe = authService.addAuthStateListener((state) => {
-      setAuthState(state);
+    const { data: { subscription } } = BackendService.Auth.addAuthStateListener(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        await loadUserProfile(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setAuthState({
+          user: null,
+          isLoading: false,
+          isAuthenticated: false,
+        });
+      }
     });
 
-    return unsubscribe;
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const result = await authService.signIn(email, password);
-    return result;
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true }));
+      
+      const result = await BackendService.Auth.signIn(email, password);
+      
+      if (result.success && result.user) {
+        await loadUserProfile(result.user.id);
+        return { success: true };
+      } else {
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+        return { success: false, error: result.error };
+      }
+    } catch (error: any) {
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+      return { success: false, error: error.message };
+    }
   };
 
   const signUp = async (email: string, password: string, userData: {
@@ -47,50 +144,89 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     favorite_sports: string[];
     avatar_url?: string;
   }) => {
-    const result = await authService.register(email, password, userData);
-    return result;
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true }));
+      
+      const result = await BackendService.Auth.signUp(email, password, userData);
+      
+      if (result.success && result.user) {
+        await loadUserProfile(result.user.id);
+        return { success: true };
+      } else {
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+        return { success: false, error: result.error };
+      }
+    } catch (error: any) {
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+      return { success: false, error: error.message };
+    }
   };
 
   const signOut = async () => {
-    await authService.signOut();
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true }));
+      
+      await BackendService.Auth.signOut();
+      
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+    }
   };
 
-  const updateProfile = async (updates: Partial<AuthUser>) => {
-    const result = await authService.updateProfile(updates);
-    return result;
-  };
+  const updateProfile = async (updates: Partial<User>) => {
+    try {
+      if (!authState.user) {
+        return { success: false, error: 'No user logged in' };
+      }
 
-  const updateLocation = async (latitude: number, longitude: number) => {
-    await authService.updateLocation(latitude, longitude);
+      const success = await BackendService.Users.updateUserProfile(authState.user.id, updates);
+      
+      if (success) {
+        // Reload user profile to get updated data
+        await loadUserProfile(authState.user.id);
+        return { success: true };
+      } else {
+        return { success: false, error: 'Failed to update profile' };
+      }
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   };
 
   const getUserId = () => {
-    return authService.getUserId();
+    return authState.user?.id || null;
   };
 
-  const canPerformAction = (action: string, resourceId?: string) => {
-    return authService.canPerformAction(action, resourceId);
+  const refreshUser = async () => {
+    if (authState.user) {
+      await loadUserProfile(authState.user.id);
+    }
   };
 
-  const value: AuthContextType = {
+  const contextValue: AuthContextType = {
     ...authState,
     signIn,
     signUp,
     signOut,
     updateProfile,
-    updateLocation,
     getUserId,
-    canPerformAction,
+    refreshUser,
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');

@@ -57,6 +57,7 @@ interface EnhancedInteractiveMapProps {
   onLocationPermissionGranted?: () => void;
   hideControls?: boolean; // Hide search bar and filter buttons
   events?: MapEvent[]; // Events to display as markers
+  externalFilters?: any; // Filters from parent component
 }
 
 const { width, height } = Dimensions.get('window');
@@ -68,6 +69,7 @@ export default function EnhancedInteractiveMap({
   onLocationPermissionGranted,
   hideControls = false,
   events = [], // Default to empty array
+  externalFilters, // Filters from parent
 }: EnhancedInteractiveMapProps) {
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [showPlaceDetails, setShowPlaceDetails] = useState(false);
@@ -93,6 +95,14 @@ export default function EnhancedInteractiveMap({
     keywords: [],
     radius: 3000,
   });
+
+  // Update filters when external filters change
+  useEffect(() => {
+    if (externalFilters) {
+      console.log('EnhancedInteractiveMap: Received external filters:', externalFilters);
+      setCurrentFilters(externalFilters);
+    }
+  }, [externalFilters]);
   const [loading, setLoading] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery || '');
   
@@ -630,6 +640,7 @@ export default function EnhancedInteractiveMap({
         onPlaceSelect={handlePlaceSelect}
         searchQuery={searchQuery}
         events={events}
+        places={places}
       />
 
       {/* Search and Filter Container - Only show if hideControls is false */}

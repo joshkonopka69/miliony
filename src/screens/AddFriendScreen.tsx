@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, SafeAreaView, FlatList } from 'react-native';
+﻿import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, SafeAreaView, FlatList, Image } from 'react-native';
 import { useAppNavigation } from '../navigation';
 
 // Custom SM Logo Component
@@ -178,7 +178,7 @@ export default function AddFriendScreen() {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Friend</Text>
-        <SMLogo size={30} />
+        <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>

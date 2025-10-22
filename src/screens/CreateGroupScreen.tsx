@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, SafeAreaView, FlatList } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation';
+import { useAuth } from '../contexts/AuthContext';
+import { groupService } from '../services/groupService';
+import { ROUTES } from '../navigation/types';
 
 interface Friend {
   id: string;
@@ -10,11 +14,25 @@ interface Friend {
   isSelected: boolean;
 }
 
+// Sport options with icons
+const SPORTS = [
+  { id: 'basketball', name: 'Basketball', icon: 'basketball' as const, emoji: '🏀', color: '#F97316' },
+  { id: 'football', name: 'Football', icon: 'football' as const, emoji: '⚽', color: '#10B981' },
+  { id: 'tennis', name: 'Tennis', icon: 'tennisball' as const, emoji: '🎾', color: '#EAB308' },
+  { id: 'volleyball', name: 'Volleyball', icon: 'basketball' as const, emoji: '🏐', color: '#3B82F6' },
+  { id: 'running', name: 'Running', icon: 'walk' as const, emoji: '🏃‍♂️', color: '#EF4444' },
+  { id: 'cycling', name: 'Cycling', icon: 'bicycle' as const, emoji: '🚴‍♂️', color: '#8B5CF6' },
+  { id: 'swimming', name: 'Swimming', icon: 'water' as const, emoji: '🏊‍♂️', color: '#06B6D4' },
+  { id: 'gym', name: 'Gym', icon: 'fitness' as const, emoji: '💪', color: '#6B7280' },
+];
+
 export default function CreateGroupScreen() {
   const navigation = useAppNavigation();
+  const { user } = useAuth();
   
   const [groupName, setGroupName] = useState('');
   const [groupDescription, setGroupDescription] = useState('');
+  const [selectedSport, setSelectedSport] = useState('basketball');
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -63,7 +81,7 @@ export default function CreateGroupScreen() {
   };
 
   const handleMyGroups = () => {
-    navigation.navigate('MyGroups');
+    navigation.navigate(ROUTES.MY_GROUPS);
   };
 
   const handleFriendToggle = (friendId: string) => {
@@ -76,33 +94,77 @@ export default function CreateGroupScreen() {
     });
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (!groupName.trim()) {
       Alert.alert('Error', 'Please enter a group name');
       return;
     }
 
-    if (selectedFriends.length === 0) {
-      Alert.alert('Error', 'Please select at least one friend');
-      return;
-    }
-
     setIsCreating(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsCreating(false);
-      Alert.alert(
-        'Success!', 
-        `Group "${groupName}" has been created with ${selectedFriends.length} member${selectedFriends.length !== 1 ? 's' : ''}!`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack()
-          }
-        ]
+    try {
+      if (!user?.id) {
+        // Mock behavior for non-authenticated users
+        setTimeout(() => {
+          setIsCreating(false);
+          Alert.alert(
+            'Success!', 
+            `Group "${groupName}" has been created!`,
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate(ROUTES.MY_GROUPS)
+              }
+            ]
+          );
+        }, 1500);
+        return;
+      }
+
+      // Create group using groupService
+      const newGroup = await groupService.createGroup(
+        {
+          name: groupName.trim(),
+          description: groupDescription.trim() || undefined,
+          sport: selectedSport,
+          privacy: 'public',
+          tags: [selectedSport],
+        },
+        user.id
       );
-    }, 1500);
+
+      if (newGroup) {
+        // Add selected friends as members (if any)
+        if (selectedFriends.length > 0) {
+          for (const friendId of selectedFriends) {
+            await groupService.addMember(newGroup.id, friendId, user.id);
+          }
+        }
+
+        setIsCreating(false);
+        Alert.alert(
+          'Success!', 
+          `Group "${groupName}" has been created${selectedFriends.length > 0 ? ` with ${selectedFriends.length} member${selectedFriends.length !== 1 ? 's' : ''}` : ''}!`,
+          [
+            {
+              text: 'View Group',
+              onPress: () => navigation.navigate(ROUTES.GROUP_DETAILS, { groupId: newGroup.id })
+            },
+            {
+              text: 'My Groups',
+              onPress: () => navigation.navigate(ROUTES.MY_GROUPS)
+            }
+          ]
+        );
+      } else {
+        setIsCreating(false);
+        Alert.alert('Error', 'Failed to create group. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating group:', error);
+      setIsCreating(false);
+      Alert.alert('Error', 'An error occurred while creating the group.');
+    }
   };
 
   const renderFriendItem = ({ item }: { item: Friend }) => {
@@ -124,7 +186,7 @@ export default function CreateGroupScreen() {
           <Text style={styles.friendUsername}>{item.username}</Text>
         </View>
         <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && <Text style={styles.checkmark}>✓</Text>}
+          {isSelected && <Ionicons name="checkmark" size={18} color="#000000" />}
         </View>
       </TouchableOpacity>
     );
@@ -137,7 +199,7 @@ export default function CreateGroupScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Ionicons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Group</Text>
         <View style={styles.headerActions}>
@@ -145,11 +207,11 @@ export default function CreateGroupScreen() {
             <Text style={styles.myGroupsButtonText}>My Groups</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={[styles.createButton, (!groupName.trim() || selectedFriends.length === 0 || isCreating) && styles.createButtonDisabled]}
+            style={[styles.createButton, (!groupName.trim() || isCreating) && styles.createButtonDisabled]}
             onPress={handleCreateGroup}
-            disabled={!groupName.trim() || selectedFriends.length === 0 || isCreating}
+            disabled={!groupName.trim() || isCreating}
           >
-            <Text style={[styles.createButtonText, (!groupName.trim() || selectedFriends.length === 0 || isCreating) && styles.createButtonTextDisabled]}>
+            <Text style={[styles.createButtonText, (!groupName.trim() || isCreating) && styles.createButtonTextDisabled]}>
               {isCreating ? 'Creating...' : 'Create'}
             </Text>
           </TouchableOpacity>
@@ -188,6 +250,50 @@ export default function CreateGroupScreen() {
           </View>
         </View>
 
+        {/* Sport Selection Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Select Sport</Text>
+          <View style={styles.sportsGrid}>
+            {SPORTS.map((sport) => {
+              const isSelected = selectedSport === sport.id;
+              return (
+                <TouchableOpacity
+                  key={sport.id}
+                  style={[
+                    styles.sportCard,
+                    isSelected && styles.sportCardSelected,
+                    { borderColor: isSelected ? sport.color : '#E5E5E5' }
+                  ]}
+                  onPress={() => setSelectedSport(sport.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.sportIconContainer,
+                    { backgroundColor: isSelected ? sport.color + '20' : '#F5F5F5' }
+                  ]}>
+                    <Ionicons 
+                      name={sport.icon} 
+                      size={28} 
+                      color={isSelected ? sport.color : '#9CA3AF'} 
+                    />
+                  </View>
+                  <Text style={[
+                    styles.sportName,
+                    isSelected && styles.sportNameSelected
+                  ]}>
+                    {sport.name}
+                  </Text>
+                  {isSelected && (
+                    <View style={styles.selectedBadge}>
+                      <Ionicons name="checkmark-circle" size={20} color={sport.color} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Selected Members Preview */}
         {selectedFriends.length > 0 && (
           <View style={styles.section}>
@@ -207,7 +313,7 @@ export default function CreateGroupScreen() {
                     style={styles.removeMemberButton}
                     onPress={() => handleFriendToggle(friend.id)}
                   >
-                    <Text style={styles.removeMemberIcon}>✕</Text>
+                    <Ionicons name="close-circle" size={20} color="#EF4444" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -217,7 +323,7 @@ export default function CreateGroupScreen() {
 
         {/* Friends List Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Friends</Text>
+          <Text style={styles.sectionTitle}>Select Friends (Optional)</Text>
           <Text style={styles.sectionSubtitle}>
             Choose friends to add to your group
           </Text>
@@ -280,10 +386,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  backIcon: {
-    fontSize: 20,
-    color: '#27272a', // text-zinc-800
   },
   headerTitle: {
     flex: 1,
@@ -470,11 +572,51 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9bc06',
     borderColor: '#f9bc06',
   },
-  checkmark: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#18181b',
+  // Sport Selection Styles
+  sportsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 8,
   },
+  sportCard: {
+    width: '47%',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    position: 'relative',
+  },
+  sportCardSelected: {
+    borderWidth: 2,
+  },
+  sportIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sportName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  sportNameSelected: {
+    color: '#000000',
+    fontWeight: '700',
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+  // Settings
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -508,4 +650,3 @@ const styles = StyleSheet.create({
     color: '#18181b',
   },
 });
-

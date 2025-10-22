@@ -1,41 +1,27 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Animated, Dimensions, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Animated, Dimensions, Modal, Alert, Image } from 'react-native';
 import { useAppNavigation } from '../navigation/hooks-only';
 import { useTranslation, Language } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 80 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
+// Google Icon using PNG from assets
+const GoogleIcon = ({ size = 24 }: { size?: number }) => (
+  <Image 
+    source={require('../../assets/google.png')}
+    style={{ width: size, height: size }}
+    resizeMode="contain"
+  />
 );
 
-// Custom Google Icon Component - Simple and clean
-const GoogleIcon = ({ size = 20 }: { size?: number }) => (
-  <View style={[styles.googleIconContainer, { width: size, height: size }]}>
-    <View style={styles.googleIcon}>
-      <Text style={[styles.googleIconText, { fontSize: size * 0.7 }]}>G</Text>
-    </View>
-  </View>
-);
-
-// Custom Apple Icon Component - Black square icon
-const AppleIcon = ({ size = 20 }: { size?: number }) => (
-  <View style={[styles.appleIconContainer, { width: size, height: size }]}>
-    <View style={styles.appleIcon}>
-      <View style={[styles.appleSquare, {
-        width: size * 0.8,
-        height: size * 0.8,
-        backgroundColor: '#000000',
-        borderRadius: size * 0.1,
-      }]} />
-    </View>
-  </View>
+// Apple Icon using PNG from assets
+const AppleIcon = ({ size = 24 }: { size?: number }) => (
+  <Image 
+    source={require('../../assets/apple.png')}
+    style={{ width: size, height: size, tintColor: '#FFFFFF' }}
+    resizeMode="contain"
+  />
 );
 
 export default function WelcomeScreen() {
@@ -130,7 +116,11 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          <SMLogo size={72} />
+          <Image 
+            source={require('../../assets/logo.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>{t.welcome.title}</Text>
           <Text style={styles.subtitle}>
             {t.welcome.subtitle}
@@ -154,7 +144,7 @@ export default function WelcomeScreen() {
               onPress={handleGoogleAuth}
               activeOpacity={0.7}
             >
-              <GoogleIcon size={20} />
+              <GoogleIcon size={24} />
               <Text style={styles.googleButtonText}>{t.welcome.continueWithGoogle}</Text>
             </TouchableOpacity>
 
@@ -164,7 +154,7 @@ export default function WelcomeScreen() {
               onPress={handleAppleAuth}
               activeOpacity={0.7}
             >
-              <AppleIcon size={20} />
+              <AppleIcon size={24} />
               <Text style={styles.appleButtonText}>{t.welcome.continueWithApple}</Text>
             </TouchableOpacity>
 
@@ -267,32 +257,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 40,
   },
-  logoContainer: {
+  logo: {
+    width: 72,
+    height: 72,
     marginBottom: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FFD700',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  logoText: {
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: -1,
-    fontFamily: 'System',
   },
   title: {
     fontSize: 32,
@@ -330,6 +298,7 @@ const styles = StyleSheet.create({
     borderColor: '#e1e5e9',
     borderRadius: 12,
     paddingHorizontal: 16,
+    gap: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -338,36 +307,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
-  },
-  googleIconContainer: {
-    marginRight: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#dadce0',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-    elevation: 1,
-  },
-  googleIconText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4285F4',
-    textAlign: 'center',
-    lineHeight: 12,
   },
   googleButtonText: {
     fontSize: 15,
@@ -383,6 +322,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
     borderRadius: 12,
     paddingHorizontal: 16,
+    gap: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -391,21 +331,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-  },
-  appleIconContainer: {
-    marginRight: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appleIcon: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appleSquare: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   appleButtonText: {
     fontSize: 15,

@@ -11,6 +11,7 @@ export type RootStackParamList = {
   EventDetails: { game?: any };
   Settings: undefined;
   Profile: undefined;
+  EditProfile: undefined;
   AddFriend: undefined;
   CreateGroup: undefined;
   MyGroups: undefined;
@@ -18,6 +19,7 @@ export type RootStackParamList = {
   GameChat: { game?: any };
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
+  PrivacySettings: undefined;
   EventTest: undefined;
   BackendTest: undefined;
   
@@ -46,6 +48,9 @@ export type RootStackParamList = {
   
   // Search Routes
   EventSearchResults: { searchQuery: string; events: any[] };
+  
+  // Badge Routes
+  AllBadges: undefined;
 };
 
 // Screen Props Types
@@ -95,6 +100,7 @@ export const ROUTES = {
   EVENTS: 'Events' as const,
   SETTINGS: 'Settings' as const,
   PROFILE: 'Profile' as const,
+  EDIT_PROFILE: 'EditProfile' as const,
   ADD_FRIEND: 'AddFriend' as const,
   CREATE_GROUP: 'CreateGroup' as const,
   MY_GROUPS: 'MyGroups' as const,
@@ -103,6 +109,7 @@ export const ROUTES = {
   EVENT_DETAILS: 'EventDetails' as const,
   TERMS_OF_SERVICE: 'TermsOfService' as const,
   PRIVACY_POLICY: 'PrivacyPolicy' as const,
+  PRIVACY_SETTINGS: 'PrivacySettings' as const,
   EVENT_TEST: 'EventTest' as const,
   BACKEND_TEST: 'BackendTest' as const,
   
@@ -131,6 +138,9 @@ export const ROUTES = {
   
   // Search Routes
   EVENT_SEARCH_RESULTS: 'EventSearchResults' as const,
+  
+  // Badge Routes
+  ALL_BADGES: 'AllBadges' as const,
 } as const;
 
 export type RouteNames = typeof ROUTES[keyof typeof ROUTES];

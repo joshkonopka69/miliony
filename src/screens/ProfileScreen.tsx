@@ -9,206 +9,130 @@ import {
   RefreshControl,
   StatusBar,
   ActivityIndicator,
-  Alert
+  Alert,
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAppNavigation } from '../navigation/hooks';
-import { 
-  BottomNavBar, 
-  StatisticsCard, 
-  FavoriteSports, 
-  EventCard,
-  EmptyState,
-  ErrorState 
-} from '../components';
-import ProfileEditModal from '../components/ProfileEditModal';
-import { theme } from '../styles/theme';
+import { BottomNavBar } from '../components';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../services/supabase';
-import type { MyEvent, SportActivity } from '../types/event';
-import { groupEventsByTime, formatEventTime } from '../utils/eventGrouping';
+import { useTranslation } from '../contexts/TranslationContext';
+import { supabase } from '../config/supabase';
+import { ROUTES } from '../navigation/types';
 
 interface UserProfile {
   id: string;
   email: string;
   display_name: string;
   avatar_url?: string;
-  favorite_sports: SportActivity[];
+  favorite_sports: string[];
   created_at: string;
-  bio?: string;
-  phone?: string;
-  location?: string;
 }
-
-interface ProfileStats {
-  eventsCreated: number;
-  eventsJoined: number;
-  friendsCount: number;
-}
-
-// SportMap Logo Component
-const SportMapLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={[styles.logoBackground, { borderRadius: size * 0.2 }]}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 export default function ProfileScreen() {
   const navigation = useAppNavigation();
   const { user } = useAuth();
+  const { t } = useTranslation();
   
-  const [activeTab, setActiveTab] = useState<'Created' | 'Joined'>('Joined');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [editModalVisible, setEditModalVisible] = useState(false);
   
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [stats, setStats] = useState<ProfileStats>({
-    eventsCreated: 0,
-    eventsJoined: 0,
-    friendsCount: 0,
+  
+  // User's game statistics (mock data - would come from backend)
+  const [gameStats] = useState({
+    basketball: 15,
+    football: 8,
+    tennis: 5,
+    volleyball: 3,
+    running: 20,
+    cycling: 7,
+    swimming: 2,
+    gym: 10,
   });
-  const [createdEvents, setCreatedEvents] = useState<MyEvent[]>([]);
-  const [joinedEvents, setJoinedEvents] = useState<MyEvent[]>([]);
+
+  // Define all possible badges
+  const allBadges = [
+    // Basketball Badges
+    { id: 'basketball_rookie', sport: 'basketball', name: 'Basketball Rookie', icon: '🏀', description: 'Play 1 basketball game', required: 1, color: '#F97316' },
+    { id: 'basketball_player', sport: 'basketball', name: 'Basketball Player', icon: '🏀', description: 'Play 5 basketball games', required: 5, color: '#F97316' },
+    { id: 'basketball_pro', sport: 'basketball', name: 'Basketball Pro', icon: '🏀', description: 'Play 10 basketball games', required: 10, color: '#F97316' },
+    { id: 'basketball_legend', sport: 'basketball', name: 'Basketball Legend', icon: '🏆', description: 'Play 20 basketball games', required: 20, color: '#FFD700' },
+    
+    // Football Badges
+    { id: 'football_rookie', sport: 'football', name: 'Football Rookie', icon: '⚽', description: 'Play 1 football game', required: 1, color: '#10B981' },
+    { id: 'football_player', sport: 'football', name: 'Football Player', icon: '⚽', description: 'Play 5 football games', required: 5, color: '#10B981' },
+    { id: 'football_pro', sport: 'football', name: 'Football Pro', icon: '⚽', description: 'Play 10 football games', required: 10, color: '#10B981' },
+    { id: 'football_legend', sport: 'football', name: 'Football Legend', icon: '🏆', description: 'Play 20 football games', required: 20, color: '#FFD700' },
+    
+    // Tennis Badges
+    { id: 'tennis_rookie', sport: 'tennis', name: 'Tennis Rookie', icon: '🎾', description: 'Play 1 tennis game', required: 1, color: '#EAB308' },
+    { id: 'tennis_player', sport: 'tennis', name: 'Tennis Player', icon: '🎾', description: 'Play 5 tennis games', required: 5, color: '#EAB308' },
+    { id: 'tennis_pro', sport: 'tennis', name: 'Tennis Pro', icon: '🎾', description: 'Play 10 tennis games', required: 10, color: '#EAB308' },
+    
+    // Running Badges
+    { id: 'running_rookie', sport: 'running', name: 'Running Rookie', icon: '🏃‍♂️', description: 'Complete 1 run', required: 1, color: '#EF4444' },
+    { id: 'running_player', sport: 'running', name: 'Running Enthusiast', icon: '🏃‍♂️', description: 'Complete 5 runs', required: 5, color: '#EF4444' },
+    { id: 'running_pro', sport: 'running', name: 'Marathon Runner', icon: '🏃‍♂️', description: 'Complete 10 runs', required: 10, color: '#EF4444' },
+    { id: 'running_legend', sport: 'running', name: 'Running Legend', icon: '🏆', description: 'Complete 20 runs', required: 20, color: '#FFD700' },
+    
+    // Volleyball Badges
+    { id: 'volleyball_rookie', sport: 'volleyball', name: 'Volleyball Rookie', icon: '🏐', description: 'Play 1 volleyball game', required: 1, color: '#3B82F6' },
+    { id: 'volleyball_player', sport: 'volleyball', name: 'Volleyball Player', icon: '🏐', description: 'Play 5 volleyball games', required: 5, color: '#3B82F6' },
+    
+    // Cycling Badges
+    { id: 'cycling_rookie', sport: 'cycling', name: 'Cycling Rookie', icon: '🚴‍♂️', description: 'Complete 1 ride', required: 1, color: '#8B5CF6' },
+    { id: 'cycling_player', sport: 'cycling', name: 'Cycling Enthusiast', icon: '🚴‍♂️', description: 'Complete 5 rides', required: 5, color: '#8B5CF6' },
+    { id: 'cycling_pro', sport: 'cycling', name: 'Cycling Pro', icon: '🚴‍♂️', description: 'Complete 10 rides', required: 10, color: '#8B5CF6' },
+    
+    // Gym Badges
+    { id: 'gym_rookie', sport: 'gym', name: 'Gym Rookie', icon: '💪', description: 'Complete 1 gym session', required: 1, color: '#6B7280' },
+    { id: 'gym_player', sport: 'gym', name: 'Gym Regular', icon: '💪', description: 'Complete 5 gym sessions', required: 5, color: '#6B7280' },
+    { id: 'gym_pro', sport: 'gym', name: 'Gym Pro', icon: '💪', description: 'Complete 10 gym sessions', required: 10, color: '#6B7280' },
+    
+    // Swimming Badges
+    { id: 'swimming_rookie', sport: 'swimming', name: 'Swimming Rookie', icon: '🏊‍♂️', description: 'Complete 1 swim', required: 1, color: '#06B6D4' },
+    { id: 'swimming_player', sport: 'swimming', name: 'Swimming Enthusiast', icon: '🏊‍♂️', description: 'Complete 5 swims', required: 5, color: '#06B6D4' },
+    
+    // Special Badges
+    { id: 'all_rounder', sport: 'special', name: 'All-Rounder', icon: '⭐', description: 'Play 3 different sports', required: 3, color: '#FFD700' },
+    { id: 'social_butterfly', sport: 'special', name: 'Social Butterfly', icon: '🦋', description: 'Join 10 events total', required: 10, color: '#EC4899' },
+  ];
+
+  // Calculate earned badges based on game stats
+  const earnedBadges = allBadges.filter(badge => {
+    if (badge.sport === 'special') {
+      if (badge.id === 'all_rounder') {
+        const sportsPlayed = Object.values(gameStats).filter(count => count > 0).length;
+        return sportsPlayed >= badge.required;
+      }
+      if (badge.id === 'social_butterfly') {
+        const totalGames = Object.values(gameStats).reduce((sum, count) => sum + count, 0);
+        return totalGames >= badge.required;
+      }
+      return false;
+    }
+    const sportKey = badge.sport as keyof typeof gameStats;
+    return gameStats[sportKey] >= badge.required;
+  });
 
   // Fetch profile data
   const fetchProfileData = useCallback(async () => {
-    // If no user, use MOCK DATA for preview
     if (!user?.id) {
-      console.log('🎨 NO USER - Using MOCK DATA for preview');
-      
-      // Set mock profile
+      // Mock data for preview
       setProfile({
-        id: 'mock-user-123',
-        email: 'demo@sportmap.com',
-        display_name: 'Ethan Carter',
-        avatar_url: undefined,
-        favorite_sports: ['Football', 'Basketball', 'Tennis'],
-        created_at: new Date().toISOString(),
-        bio: 'Sports enthusiast who loves playing basketball and meeting new people! Always up for a game!',
-        phone: '+1 234 567 8900',
-        location: 'New York, USA',
+        id: 'mock-user',
+        email: 'josh@sportmap.com',
+        display_name: 'josh',
+        favorite_sports: ['Basketball', 'Football'],
+        created_at: '2025-01-01T00:00:00.000Z',
       });
-
-      // Set mock stats
-      setStats({
-        eventsCreated: 5,
-        eventsJoined: 12,
-        friendsCount: 23,
-      });
-
-      // Set mock created events
-      const mockCreated: MyEvent[] = [
-        {
-          id: 'event-1',
-          name: 'Basketball Game',
-          activity: 'Basketball',
-          description: 'Friendly pickup game at the park',
-          startTime: new Date(Date.now() + 3600000), // 1 hour from now
-          endTime: new Date(Date.now() + 7200000), // 2 hours from now
-          location: {
-            name: 'Central Park Basketball Court',
-            address: '123 Park Ave',
-            distance: 2.3,
-            lat: 40.7829,
-            lng: -73.9654,
-          },
-          participants: { current: 7, max: 10 },
-          status: 'upcoming',
-          role: 'created',
-          chatEnabled: true,
-          createdBy: {
-            id: 'mock-user-123',
-            name: 'Ethan Carter',
-          },
-        },
-        {
-          id: 'event-2',
-          name: 'Soccer Match',
-          activity: 'Football',
-          description: '5v5 soccer game',
-          startTime: new Date(Date.now() + 86400000), // Tomorrow
-          endTime: new Date(Date.now() + 90000000),
-          location: {
-            name: 'Prospect Park Soccer Field',
-            address: '456 Park Blvd',
-            distance: 3.1,
-            lat: 40.6602,
-            lng: -73.9690,
-          },
-          participants: { current: 4, max: 10 },
-          status: 'upcoming',
-          role: 'created',
-          chatEnabled: true,
-          createdBy: {
-            id: 'mock-user-123',
-            name: 'Ethan Carter',
-          },
-        },
-      ];
-
-      // Set mock joined events
-      const mockJoined: MyEvent[] = [
-        {
-          id: 'event-3',
-          name: 'Tennis Practice',
-          activity: 'Tennis',
-          description: 'Doubles practice session',
-          startTime: new Date(Date.now() + 7200000), // 2 hours from now
-          endTime: new Date(Date.now() + 10800000),
-          location: {
-            name: 'City Tennis Club',
-            address: '789 Tennis Rd',
-            distance: 1.5,
-            lat: 40.7580,
-            lng: -73.9855,
-          },
-          participants: { current: 3, max: 4 },
-          status: 'upcoming',
-          role: 'joined',
-          chatEnabled: true,
-          createdBy: {
-            id: 'other-user-456',
-            name: 'John Smith',
-          },
-        },
-        {
-          id: 'event-4',
-          name: 'Morning Run',
-          activity: 'Running',
-          description: '5K run through the park',
-          startTime: new Date(Date.now() + 172800000), // 2 days from now
-          endTime: new Date(Date.now() + 176400000),
-          location: {
-            name: 'Riverside Park',
-            address: '321 River St',
-            distance: 4.2,
-            lat: 40.7956,
-            lng: -73.9720,
-          },
-          participants: { current: 15, max: 20 },
-          status: 'upcoming',
-          role: 'joined',
-          chatEnabled: true,
-          createdBy: {
-            id: 'other-user-789',
-            name: 'Sarah Johnson',
-          },
-        },
-      ];
-
-      setCreatedEvents(mockCreated);
-      setJoinedEvents(mockJoined);
       setLoading(false);
       return;
     }
 
     try {
-      setError(null);
+      setLoading(true);
 
       // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
@@ -217,124 +141,17 @@ export default function ProfileScreen() {
         .eq('id', user.id)
         .single();
 
-      // Handle case where profile doesn't exist yet
-      if (profileError && profileError.code === 'PGRST116') {
-        console.log('User profile not found, creating placeholder...');
-        // Set a placeholder profile
-        setProfile({
-          id: user.id,
-          email: user.email || 'No email',
-          display_name: user.email?.split('@')[0] || 'User',
-          avatar_url: undefined,
-          favorite_sports: [],
-          created_at: new Date().toISOString(),
-        });
-        setLoading(false);
-        return;
-      }
-
       if (profileError) throw profileError;
-      
-      setProfile(profileData as UserProfile);
+      setProfile(profileData);
 
-      // Fetch created events
-      const { data: created, error: createdError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('created_by', user.id)
-        .order('start_time', { ascending: true });
+      // TODO: Fetch user's game statistics from backend
+      // This would update the gameStats state
 
-      if (createdError) throw createdError;
-
-      // Fetch joined events
-      const { data: joined, error: joinedError } = await supabase
-        .from('event_participants')
-        .select(`
-          event_id,
-          events (*)
-        `)
-        .eq('user_id', user.id);
-
-      if (joinedError) throw joinedError;
-
-      // Transform data to MyEvent format
-      const createdEventsFormatted: MyEvent[] = (created || []).map((event: any) => ({
-        id: event.id,
-        name: event.name,
-        activity: event.activity as SportActivity,
-        description: event.description,
-        startTime: new Date(event.start_time),
-        endTime: new Date(event.end_time || event.start_time),
-        location: {
-          name: event.location_name || 'Unknown',
-          address: event.location_address || '',
-          distance: 0,
-          lat: event.latitude || 0,
-          lng: event.longitude || 0,
-        },
-        participants: {
-          current: event.participants_count || 0,
-          max: event.max_participants || 10,
-        },
-        status: event.status || 'upcoming',
-        role: 'created',
-        chatEnabled: true,
-        createdBy: {
-          id: user.id,
-          name: profileData?.display_name || 'You',
-          avatarUrl: profileData?.avatar_url,
-        },
-      }));
-
-      const joinedEventsFormatted: MyEvent[] = (joined || [])
-        .filter((item: any) => item.events)
-        .map((item: any) => {
-          const event = item.events;
-          return {
-            id: event.id,
-            name: event.name,
-            activity: event.activity as SportActivity,
-            description: event.description,
-            startTime: new Date(event.start_time),
-            endTime: new Date(event.end_time || event.start_time),
-            location: {
-              name: event.location_name || 'Unknown',
-              address: event.location_address || '',
-              distance: 0,
-              lat: event.latitude || 0,
-              lng: event.longitude || 0,
-            },
-            participants: {
-              current: event.participants_count || 0,
-              max: event.max_participants || 10,
-            },
-            status: event.status || 'upcoming',
-            role: 'joined',
-            chatEnabled: true,
-            createdBy: {
-              id: event.created_by,
-              name: 'Event Creator',
-            },
-          };
-        });
-
-      setCreatedEvents(createdEventsFormatted);
-      setJoinedEvents(joinedEventsFormatted);
-
-      // Calculate stats
-      const friendsCount = profileData?.friends?.length || 0;
-      setStats({
-        eventsCreated: createdEventsFormatted.length,
-        eventsJoined: joinedEventsFormatted.length,
-        friendsCount,
-      });
-
-    } catch (err: any) {
-      console.error('Error fetching profile data:', err);
-      setError(err.message || 'Failed to load profile');
+    } catch (error: any) {
+      console.error('Error fetching profile:', error);
+      Alert.alert(t.common.error, t.profile.errorLoading);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, [user]);
 
@@ -342,74 +159,20 @@ export default function ProfileScreen() {
     fetchProfileData();
   }, [fetchProfileData]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchProfileData();
-  }, [fetchProfileData]);
-
-  const handleBack = () => {
-    navigation.goBack();
+    await fetchProfileData();
+    setRefreshing(false);
   };
 
-  const handleEditProfile = () => {
-    if (!profile) return;
-    
-    // If using mock data, show alert
-    if (!user?.id) {
-      Alert.alert(
-        '🎨 Preview Mode',
-        'This is mock data for preview only. Log in to edit your real profile!',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-    
-    setEditModalVisible(true);
+  const handleAddFriends = () => {
+    // Navigate to Add Friend screen or show modal
+    navigation.navigate(ROUTES.ADD_FRIEND);
   };
 
-  const handleProfileSaved = () => {
-    fetchProfileData(); // Refresh profile data
-  };
-
-  const handleEventPress = (event: MyEvent) => {
-    // Navigate to event details
-    console.log('Event pressed:', event.id);
-    // navigation.navigate('EventDetails', { eventId: event.id });
-  };
-
-  const handleChatPress = (event: MyEvent) => {
-    console.log('Chat pressed:', event.id);
-    // navigation.navigate('GameChat', { eventId: event.id });
-  };
-
-  const handleLeaveEvent = async (event: MyEvent) => {
-    Alert.alert(
-      'Leave Event',
-      `Are you sure you want to leave "${event.name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from('event_participants')
-                .delete()
-                .eq('event_id', event.id)
-                .eq('user_id', user?.id);
-
-              if (error) throw error;
-
-              Alert.alert('Success', 'You left the event');
-              fetchProfileData(); // Refresh
-            } catch (err: any) {
-              Alert.alert('Error', err.message);
-            }
-          },
-        },
-      ]
-    );
+  const handleGroups = () => {
+    // Navigate to Groups screen
+    navigation.navigate(ROUTES.MY_GROUPS);
   };
 
   const getInitials = (name: string): string => {
@@ -421,210 +184,197 @@ export default function ProfileScreen() {
       .slice(0, 2);
   };
 
-  const renderEvents = () => {
-    const events = activeTab === 'Created' ? createdEvents : joinedEvents;
-
-    if (events.length === 0) {
-      return (
-        <EmptyState
-          icon={activeTab === 'Created' ? 'add-circle-outline' : 'calendar-outline'}
-          title={`No Events ${activeTab}`}
-          message={
-            activeTab === 'Created'
-              ? 'Create your first event and invite others to join!'
-              : 'Join events from the map to see them here.'
-          }
-          actionLabel={activeTab === 'Created' ? 'Create Event' : 'Browse Events'}
-          onAction={() => navigation.navigate('Map')}
-        />
-      );
-    }
-
-    return events.map((event) => (
-      <EventCard
-        key={event.id}
-        event={event}
-        onPress={() => handleEventPress(event)}
-        onChatPress={() => handleChatPress(event)}
-        onLeavePress={() => handleLeaveEvent(event)}
-      />
-    ));
+  const getUserHandle = (name: string): string => {
+    return `@${name.toLowerCase().replace(/\s+/g, '')}`;
   };
+
+  const getJoinYear = (dateString: string): number => {
+    return new Date(dateString).getFullYear();
+  };
+
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+          <ActivityIndicator size="large" color="#FFD700" />
+          <Text style={styles.loadingText}>{t.profile.loadingProfile}</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (error && !profile) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
-        <ErrorState
-          message={error}
-          onRetry={fetchProfileData}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
+        <Image 
+          source={require('../../assets/logo.png')} 
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.headerTitle}>{t.profile.title}</Text>
+        <TouchableOpacity 
+          style={styles.editButton}
+          onPress={() => navigation.navigate(ROUTES.EDIT_PROFILE)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="create-outline" size={24} color="#000000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-            <Ionicons name="create-outline" size={24} color={theme.colors.textPrimary} />
-          </TouchableOpacity>
-          <SportMapLogo size={30} />
-        </View>
       </View>
 
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor="#FFD700"
+          />
         }
       >
-        {/* Preview Mode Banner */}
-        {!user?.id && (
-          <View style={styles.previewBanner}>
-            <Ionicons name="eye-outline" size={24} color={theme.colors.primary} />
-            <View style={styles.previewBannerContent}>
-              <Text style={styles.previewBannerTitle}>🎨 Preview Mode</Text>
-              <Text style={styles.previewBannerText}>
-                You're viewing mock data. Log in to see your real profile!
-              </Text>
-            </View>
-          </View>
-        )}
-
         {/* Profile Section */}
         <View style={styles.profileSection}>
-          <View style={styles.profileImageContainer}>
-            {/* Gradient Border */}
-            <LinearGradient
-              colors={[theme.colors.primary, theme.colors.accent, theme.colors.primary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.gradientBorder}
-            >
-              <View style={styles.profileImage}>
-                <Text style={styles.profileImageText}>
+          {/* Profile Photo */}
+          <View style={styles.profilePhotoContainer}>
+            <View style={styles.profilePhoto}>
+              {profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.profileImage} />
+              ) : (
+                <Text style={styles.profileInitials}>
                   {getInitials(profile?.display_name || 'User')}
                 </Text>
+              )}
               </View>
-            </LinearGradient>
             
             {/* Camera Button */}
             <TouchableOpacity style={styles.cameraButton}>
-              <Ionicons name="camera-outline" size={20} color={theme.colors.textOnPrimary} />
+              <Ionicons name="camera" size={20} color="#000000" />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{profile?.display_name || 'User'}</Text>
-            <Text style={styles.profileEmail}>{profile?.email}</Text>
-            
-            {profile?.bio && (
-              <View style={styles.bioContainer}>
-                <Text style={styles.bioText}>{profile.bio}</Text>
-              </View>
-            )}
-            
-            {profile?.location && (
-              <View style={styles.locationContainer}>
-                <Ionicons name="location" size={16} color={theme.colors.textSecondary} />
-                <Text style={styles.locationText}>{profile.location}</Text>
-              </View>
-            )}
-            
-            <Text style={styles.profileJoinDate}>
-              Joined {new Date(profile?.created_at || Date.now()).toLocaleDateString('en-US', { 
-                month: 'long', 
-                year: 'numeric' 
-              })}
-            </Text>
-          </View>
-        </View>
-
-        {/* Statistics */}
-        <View style={styles.statsSection}>
-          <StatisticsCard
-            icon="create-outline"
-            label="Created"
-            value={stats.eventsCreated}
-            color={theme.colors.primary}
-          />
-          <StatisticsCard
-            icon="calendar-outline"
-            label="Joined"
-            value={stats.eventsJoined}
-            color={theme.colors.success}
-          />
-          <StatisticsCard
-            icon="people-outline"
-            label="Friends"
-            value={stats.friendsCount}
-            color={theme.colors.accent}
-          />
-        </View>
-
-        {/* Profile Incomplete Warning */}
-        {profile && (!profile.favorite_sports || profile.favorite_sports.length === 0) && (
-          <View style={styles.infoBox}>
-            <Ionicons name="information-circle-outline" size={24} color={theme.colors.accent} />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>Complete Your Profile</Text>
-              <Text style={styles.infoText}>
-                Add your favorite sports and other details to get better event recommendations!
+          {/* User Info */}
+          <Text style={styles.userName}>{profile?.display_name || 'User'}</Text>
+          <Text style={styles.userHandle}>{getUserHandle(profile?.display_name || 'user')}</Text>
+          <Text style={styles.joinDate}>
+            {t.profile.joined} {getJoinYear(profile?.created_at || new Date().toISOString())}
               </Text>
             </View>
+
+        {/* Badge Stats Summary */}
+        <View style={styles.badgeStatsContainer}>
+          <View style={styles.badgeStat}>
+            <Text style={styles.badgeStatNumber}>{earnedBadges.length}</Text>
+            <Text style={styles.badgeStatLabel}>{t.profile.earned}</Text>
           </View>
-        )}
-
-        {/* Favorite Sports */}
-        {profile?.favorite_sports && profile.favorite_sports.length > 0 && (
-          <FavoriteSports sports={profile.favorite_sports} />
-        )}
-
-        {/* Tabs */}
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'Created' && styles.activeTab]}
-            onPress={() => setActiveTab('Created')}
-          >
-            <Text style={[styles.tabText, activeTab === 'Created' && styles.activeTabText]}>
-              Created
+          <View style={styles.badgeStatDivider} />
+          <View style={styles.badgeStat}>
+            <Text style={styles.badgeStatNumber}>{allBadges.length - earnedBadges.length}</Text>
+            <Text style={styles.badgeStatLabel}>{t.profile.toUnlock}</Text>
+          </View>
+          <View style={styles.badgeStatDivider} />
+          <View style={styles.badgeStat}>
+            <Text style={styles.badgeStatNumber}>
+              {Math.round((earnedBadges.length / allBadges.length) * 100)}%
             </Text>
-          </TouchableOpacity>
+            <Text style={styles.badgeStatLabel}>{t.profile.progress}</Text>
+          </View>
+        </View>
+          
+        {/* Achievements Section Header */}
+        <View style={styles.achievementsHeader}>
+          <Text style={styles.achievementsTitle}>{t.profile.achievements}</Text>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'Joined' && styles.activeTab]}
-            onPress={() => setActiveTab('Joined')}
+            style={styles.viewAllButton}
+            onPress={() => navigation.navigate(ROUTES.ALL_BADGES)}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.tabText, activeTab === 'Joined' && styles.activeTabText]}>
-              Joined
-            </Text>
+            <Text style={styles.viewAllText}>{t.profile.viewAll}</Text>
+            <Ionicons name="chevron-forward" size={18} color="#FFD700" />
           </TouchableOpacity>
         </View>
 
-        {/* Events List */}
-        <View style={styles.eventsSection}>
-          {renderEvents()}
+        {/* Earned Badges Carousel */}
+        {earnedBadges.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.badgesCarousel}
+            contentContainerStyle={styles.badgesCarouselContent}
+          >
+            {earnedBadges.map(badge => (
+              <View key={badge.id} style={styles.carouselBadgeCard}>
+                <View style={[
+                  styles.carouselBadgeIcon,
+                  { backgroundColor: badge.color + '20' }
+                ]}>
+                  <Text style={styles.carouselBadgeEmoji}>{badge.icon}</Text>
+                  <View style={styles.carouselEarnedBadge}>
+                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                  </View>
+                </View>
+                <Text style={styles.carouselBadgeName} numberOfLines={2}>
+                  {badge.name}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyBadges}>
+            <Ionicons name="trophy-outline" size={48} color="#CCCCCC" />
+            <Text style={styles.emptyBadgesText}>{t.profile.noBadges}</Text>
+            <Text style={styles.emptyBadgesSubtext}>{t.profile.noBadgesSubtext}</Text>
+        </View>
+        )}
+
+        {/* Friends Section */}
+        <View style={styles.friendsSection}>
+          <View style={styles.friendsHeader}>
+            <Text style={styles.friendsTitle}>{t.profile.friends}</Text>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={handleAddFriends}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="person-add" size={18} color="#FFD700" />
+              <Text style={styles.addButtonText}>{t.profile.addFriends}</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.friendsPlaceholder}>
+            <Ionicons name="people-outline" size={48} color="#CCCCCC" />
+            <Text style={styles.friendsPlaceholderText}>{t.profile.noFriends}</Text>
+            <Text style={styles.friendsPlaceholderSubtext}>
+              {t.profile.noFriendsSubtext}
+            </Text>
+          </View>
+        </View>
+
+        {/* Groups Section */}
+        <View style={styles.groupsSection}>
+          <View style={styles.groupsHeader}>
+            <Text style={styles.groupsTitle}>{t.profile.groups}</Text>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={handleGroups}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle" size={18} color="#FFD700" />
+              <Text style={styles.addButtonText}>{t.profile.viewGroups}</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.groupsPlaceholder}>
+            <Ionicons name="people-circle-outline" size={48} color="#CCCCCC" />
+            <Text style={styles.groupsPlaceholderText}>{t.profile.noGroups}</Text>
+            <Text style={styles.groupsPlaceholderSubtext}>
+              {t.profile.noGroupsSubtext}
+            </Text>
+          </View>
         </View>
 
         {/* Bottom Spacing */}
@@ -633,16 +383,6 @@ export default function ProfileScreen() {
 
       {/* Bottom Navigation */}
       <BottomNavBar activeTab="MyProfile" />
-
-      {/* Edit Profile Modal */}
-      {profile && (
-        <ProfileEditModal
-          visible={editModalVisible}
-          onClose={() => setEditModalVisible(false)}
-          profile={profile}
-          onSave={handleProfileSaved}
-        />
-      )}
     </SafeAreaView>
   );
 }
@@ -650,61 +390,36 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    ...theme.shadows.sm,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   headerTitle: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textPrimary,
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000000',
   },
   editButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E5E5',
   },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadows.sm,
-  },
-  logoText: {
-    fontWeight: theme.typography.fontWeight.extrabold,
-    color: '#000000',
-    letterSpacing: 1,
+  logo: {
+    width: 40,
+    height: 40,
   },
   scrollView: {
     flex: 1,
@@ -713,41 +428,38 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: theme.spacing.md,
+    gap: 12,
   },
   loadingText: {
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.textSecondary,
+    fontSize: 16,
+    color: '#666666',
   },
   profileSection: {
-    paddingVertical: theme.spacing.xl,
+    paddingVertical: 32,
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#FFFFFF',
   },
-  profileImageContainer: {
+  profilePhotoContainer: {
     position: 'relative',
-    marginBottom: theme.spacing.md,
+    marginBottom: 16,
   },
-  gradientBorder: {
-    width: 136,
-    height: 136,
-    borderRadius: 68,
-    padding: 4,
+  profilePhoto: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#F0F0F0',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   profileImage: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
-    backgroundColor: theme.colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: '100%',
+    height: '100%',
   },
-  profileImageText: {
+  profileInitials: {
     fontSize: 48,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textPrimary,
+    fontWeight: '700',
+    color: '#666666',
   },
   cameraButton: {
     position: 'absolute',
@@ -756,141 +468,259 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
-    ...theme.shadows.md,
-    borderWidth: 3,
-    borderColor: theme.colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  profileInfo: {
+  userName: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  userHandle: {
+    fontSize: 16,
+    color: '#999999',
+    marginBottom: 8,
+  },
+  joinDate: {
+    fontSize: 14,
+    color: '#999999',
+  },
+  // Badge Stats
+  badgeStatsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  badgeStat: {
+    flex: 1,
     alignItems: 'center',
   },
-  profileName: {
-    fontSize: theme.typography.fontSize.xxl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xs,
+  badgeStatNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 4,
   },
-  profileEmail: {
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xs,
+  badgeStatLabel: {
+    fontSize: 12,
+    color: '#999999',
+    fontWeight: '500',
   },
-  profileJoinDate: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textSecondary,
+  badgeStatDivider: {
+    width: 1,
+    backgroundColor: '#F0F0F0',
+    marginHorizontal: 12,
   },
-  bioContainer: {
-    marginTop: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.lg,
-    maxWidth: '90%',
+  // Achievements Section
+  achievementsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 16,
+    backgroundColor: '#F5F5F5',
   },
-  bioText: {
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.textPrimary,
+  achievementsTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFD700',
+  },
+  // Badges Carousel
+  badgesCarousel: {
+    backgroundColor: '#F5F5F5',
+  },
+  badgesCarouselContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 12,
+  },
+  carouselBadgeCard: {
+    width: 120,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  carouselBadgeIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    position: 'relative',
+  },
+  carouselBadgeEmoji: {
+    fontSize: 40,
+  },
+  carouselEarnedBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+  },
+  carouselBadgeName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#000000',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 16,
   },
-  locationContainer: {
+  // Empty Badges
+  emptyBadges: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    backgroundColor: '#F5F5F5',
+  },
+  emptyBadgesText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666666',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptyBadgesSubtext: {
+    fontSize: 13,
+    color: '#999999',
+    textAlign: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#999999',
+    textAlign: 'center',
+  },
+  friendsSection: {
+    paddingHorizontal: 20,
+    paddingTop: 32,
+  },
+  friendsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  friendsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: theme.spacing.sm,
-    gap: theme.spacing.xs,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFF9E6',
+    gap: 6,
   },
-  locationText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textSecondary,
+  addButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFD700',
   },
-  statsSection: {
-    flexDirection: 'row',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.lg,
-    gap: theme.spacing.sm,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    gap: theme.spacing.sm,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+  friendsPlaceholder: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 32,
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
-    borderWidth: 2,
-    borderColor: theme.colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  activeTab: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+  friendsPlaceholderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666666',
+    marginTop: 12,
+    marginBottom: 4,
   },
-  tabText: {
-    fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.textSecondary,
+  friendsPlaceholderSubtext: {
+    fontSize: 13,
+    color: '#999999',
+    textAlign: 'center',
   },
-  activeTabText: {
-    color: theme.colors.textOnPrimary,
-    fontWeight: theme.typography.fontWeight.bold,
+  groupsSection: {
+    paddingHorizontal: 20,
+    paddingTop: 32,
   },
-  eventsSection: {
-    paddingVertical: theme.spacing.sm,
-  },
-  infoBox: {
+  groupsHeader: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.accent + '15',
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.accent,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    marginHorizontal: theme.spacing.md,
-    marginVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    gap: theme.spacing.sm,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  infoContent: {
-    flex: 1,
+  groupsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#000000',
   },
-  infoTitle: {
-    fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.accent,
-    marginBottom: theme.spacing.xs,
+  groupsPlaceholder: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  infoText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textSecondary,
-    lineHeight: 20,
+  groupsPlaceholderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666666',
+    marginTop: 12,
+    marginBottom: 4,
   },
-  previewBanner: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.primary + '15',
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    gap: theme.spacing.sm,
-    ...theme.shadows.sm,
-  },
-  previewBannerContent: {
-    flex: 1,
-  },
-  previewBannerTitle: {
-    fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  previewBannerText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textSecondary,
-    lineHeight: 18,
+  groupsPlaceholderSubtext: {
+    fontSize: 13,
+    color: '#999999',
+    textAlign: 'center',
   },
 });

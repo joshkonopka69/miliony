@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,127 +7,146 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
 import { BottomNavBar } from '../components';
-import { EmptyState, SectionHeader, EventCard } from '../components';
-import { MyEvent, SportActivity } from '../types/event';
-import { groupEventsByTime } from '../utils/eventGrouping';
+import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../contexts/TranslationContext';
+import { groupService, Group } from '../services/groupService';
 
-// Logo Component (matches MapScreen)
-const SportMapLogo = () => (
-  <View style={styles.logoContainer}>
-    <View style={styles.logoCircle}>
-      <Text style={styles.logoText}>SM</Text>
-    </View>
-    <Text style={styles.logoTitle}>SportMap</Text>
-  </View>
-);
+// Sport emoji mapping
+const SPORT_EMOJI_MAP: Record<string, string> = {
+  basketball: 'đźŹ€',
+  football: 'âš˝',
+  soccer: 'âš˝',
+  tennis: 'đźŽľ',
+  running: 'đźŹâ€Ťâ™‚ď¸Ź',
+  cycling: 'đźš´â€Ťâ™‚ď¸Ź',
+  swimming: 'đźŹŠâ€Ťâ™‚ď¸Ź',
+  gym: 'đź’Ş',
+  volleyball: 'đźŹ',
+  baseball: 'âšľ',
+  golf: 'â›ł',
+  hockey: 'đźŹ’',
+  default: 'đźŹ…',
+};
+
+const getSportEmoji = (sportType: string): string => {
+  return SPORT_EMOJI_MAP[sportType?.toLowerCase()] || SPORT_EMOJI_MAP.default;
+};
+
+interface GroupWithRole extends Group {
+  userRole?: 'admin' | 'moderator' | 'member';
+}
 
 export default function MyGroupsScreen() {
   const navigation = useAppNavigation();
-  const [loading, setLoading] = useState(false);
-  const [events, setEvents] = useState<MyEvent[]>([]);
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<SportActivity | 'all'>('all');
+  const [groups, setGroups] = useState<GroupWithRole[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'admin' | 'member'>('all');
 
-  // Load events on mount
+  // Load groups on mount
   useEffect(() => {
-    loadEvents();
+    loadGroups();
   }, []);
 
-  const loadEvents = async () => {
+  const loadGroups = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const fetchedEvents = await eventService.getMyEvents();
-      
-      // Mock data for demonstration
-      const mockEvents: MyEvent[] = [
-        {
-          id: '1',
-          name: 'Pickup Basketball Game',
-          activity: 'Basketball',
-          startTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-          endTime: new Date(Date.now() + 4 * 60 * 60 * 1000),
-          location: {
-            name: 'Central Park Courts',
-            address: '123 Park Ave',
-            distance: 2.3,
-            lat: 40.7829,
-            lng: -73.9654,
-          },
-          participants: {
-            current: 5,
-            max: 10,
-          },
-          status: 'upcoming',
-          role: 'joined',
-          chatEnabled: true,
-          createdBy: {
-            id: 'user1',
-            name: 'John Doe',
-          },
-        },
-        {
-          id: '2',
-          name: 'Evening Football Match',
-          activity: 'Football',
-          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-          endTime: new Date(Date.now() + 26 * 60 * 60 * 1000),
-          location: {
-            name: 'Sports Complex Field',
-            address: '456 Sports Dr',
-            distance: 5.7,
-            lat: 40.7580,
-            lng: -73.9855,
-          },
-          participants: {
-            current: 18,
-            max: 22,
-          },
-          status: 'upcoming',
-          role: 'created',
-          chatEnabled: true,
-          createdBy: {
-            id: 'currentUser',
-            name: 'You',
-          },
-        },
-        {
-          id: '3',
-          name: 'Tennis Practice Session',
-          activity: 'Tennis',
-          startTime: new Date(Date.now() + 72 * 60 * 60 * 1000), // 3 days
-          endTime: new Date(Date.now() + 74 * 60 * 60 * 1000),
-          location: {
-            name: 'City Tennis Club',
-            address: '789 Tennis Rd',
-            distance: 1.2,
-            lat: 40.7489,
-            lng: -73.9680,
-          },
-          participants: {
-            current: 3,
-            max: 4,
-          },
-          status: 'upcoming',
-          role: 'joined',
-          chatEnabled: true,
-          createdBy: {
-            id: 'user3',
-            name: 'Sarah Smith',
-          },
-        },
-      ];
 
-      setEvents(mockEvents);
+      if (!user?.id) {
+        // Mock data for preview
+        const mockGroups: GroupWithRole[] = [
+          {
+            id: '1',
+            name: 'Basketball Enthusiasts',
+            description: 'Weekly basketball games in Central Park',
+            sport: 'basketball',
+            privacy: 'public',
+            member_count: 24,
+            created_by: user?.id || 'mock-user',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            is_active: true,
+            tags: ['basketball', 'casual', 'weekly'],
+            userRole: 'admin',
+          },
+          {
+            id: '2',
+            name: 'Sunday Runners',
+            description: 'Morning running group every Sunday',
+            sport: 'running',
+            privacy: 'public',
+            member_count: 18,
+            created_by: 'other-user',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            is_active: true,
+            tags: ['running', 'morning', 'fitness'],
+            userRole: 'member',
+          },
+          {
+            id: '3',
+            name: 'Tennis Club NYC',
+            description: 'Competitive tennis players looking for matches',
+            sport: 'tennis',
+            privacy: 'private',
+            member_count: 12,
+            created_by: user?.id || 'mock-user',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            is_active: true,
+            tags: ['tennis', 'competitive'],
+            userRole: 'admin',
+          },
+          {
+            id: '4',
+            name: 'Cycling Adventures',
+            description: 'Explore the city on two wheels',
+            sport: 'cycling',
+            privacy: 'public',
+            member_count: 31,
+            created_by: 'other-user',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            is_active: true,
+            tags: ['cycling', 'adventure', 'outdoors'],
+            userRole: 'member',
+          },
+        ];
+
+        setGroups(mockGroups);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch user's groups
+      const userGroups = await groupService.getUserGroups(user.id);
+      
+      // Fetch user role for each group
+      const groupsWithRoles = await Promise.all(
+        userGroups.map(async (group) => {
+          const role = await groupService.getUserRole(group.id, user.id);
+          return {
+            ...group,
+            userRole: role || 'member',
+          };
+        })
+      );
+
+      setGroups(groupsWithRoles);
     } catch (error) {
-      console.error('Error loading events:', error);
-      Alert.alert('Error', 'Failed to load events');
+      console.error('Error loading groups:', error);
+      Alert.alert('Error', 'Failed to load groups');
     } finally {
       setLoading(false);
     }
@@ -135,95 +154,185 @@ export default function MyGroupsScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadEvents();
+    await loadGroups();
     setRefreshing(false);
   };
 
-  const handleEventPress = (event: MyEvent) => {
-    // Navigate to event details
-    navigation.navigate(ROUTES.EVENT_DETAILS, { game: event });
+  const handleGroupPress = (group: GroupWithRole) => {
+    // Navigate to group details
+    navigation.navigate(ROUTES.GROUP_DETAILS, { groupId: group.id });
   };
 
-  const handleChatPress = (event: MyEvent) => {
-    // Navigate to event chat
-    navigation.navigate(ROUTES.GAME_CHAT, { game: event });
+  const handleCreateGroup = () => {
+    // Navigate to create group screen
+    navigation.navigate(ROUTES.CREATE_GROUP);
   };
 
-  const handleLeaveEvent = (event: MyEvent) => {
+  const handleLeaveGroup = (group: GroupWithRole) => {
+    if (group.userRole === 'admin') {
+      Alert.alert(
+        'Cannot Leave Group',
+        'You are the admin of this group. Please transfer ownership or delete the group first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     Alert.alert(
-      'Leave Event',
-      `Are you sure you want to leave "${event.name}"?`,
+      'Leave Group',
+      `Are you sure you want to leave "${group.name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Leave',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Call API to leave event
-            setEvents(prev => prev.filter(e => e.id !== event.id));
-            Alert.alert('Success', 'You have left the event');
+          onPress: async () => {
+            try {
+              if (user?.id) {
+                const success = await groupService.removeMember(group.id, user.id);
+                if (success) {
+                  setGroups(prev => prev.filter(g => g.id !== group.id));
+                  Alert.alert('Success', 'You have left the group');
+                } else {
+                  Alert.alert('Error', 'Failed to leave group');
+                }
+              } else {
+                // Mock behavior
+                setGroups(prev => prev.filter(g => g.id !== group.id));
+                Alert.alert('Success', 'You have left the group');
+              }
+            } catch (error) {
+              console.error('Error leaving group:', error);
+              Alert.alert('Error', 'Failed to leave group');
+            }
           },
         },
       ]
     );
   };
 
-  const handleFilterPress = () => {
-    // TODO: Show filter modal
-    Alert.alert('Filters', 'Filter modal coming soon');
-  };
+  // Filter groups
+  const filteredGroups = selectedFilter === 'all' 
+    ? groups 
+    : selectedFilter === 'admin'
+    ? groups.filter(g => g.userRole === 'admin')
+    : groups.filter(g => g.userRole === 'member');
 
-  const handleMorePress = () => {
-    // TODO: Show more options (Sort, Past Events, etc.)
-    Alert.alert('More Options', 'Sort, Past Events, Settings');
-  };
+  // Group by role
+  const adminGroups = filteredGroups.filter(g => g.userRole === 'admin');
+  const memberGroups = filteredGroups.filter(g => g.userRole === 'member');
 
-  const handleBrowseEvents = () => {
-    navigation.navigate(ROUTES.MAP);
-  };
+  const renderGroupCard = (group: GroupWithRole) => (
+    <TouchableOpacity
+      key={group.id}
+      style={styles.groupCard}
+      onPress={() => handleGroupPress(group)}
+      activeOpacity={0.7}
+    >
+      {/* Group Icon */}
+      <View style={styles.groupIconContainer}>
+        <Text style={styles.groupIcon}>{getSportEmoji(group.sport)}</Text>
+      </View>
 
-  // Filter events
-  const filteredEvents = selectedFilter === 'all' 
-    ? events 
-    : events.filter(e => e.activity === selectedFilter);
+      {/* Group Info */}
+      <View style={styles.groupInfo}>
+        <View style={styles.groupHeader}>
+          <Text style={styles.groupName} numberOfLines={1}>
+            {group.name}
+          </Text>
+          {group.userRole === 'admin' && (
+            <View style={styles.adminBadge}>
+              <Text style={styles.adminBadgeText}>Admin</Text>
+            </View>
+          )}
+        </View>
+        
+        {group.description && (
+          <Text style={styles.groupDescription} numberOfLines={1}>
+            {group.description}
+          </Text>
+        )}
 
-  // Group events by time
-  const groupedEvents = groupEventsByTime(filteredEvents);
+        <View style={styles.groupMeta}>
+          <View style={styles.memberCount}>
+            <Ionicons name="people" size={14} color="#6B7280" />
+            <Text style={styles.memberCountText}>{group.member_count} members</Text>
+          </View>
+          
+          <View style={styles.privacyBadge}>
+            <Ionicons 
+              name={group.privacy === 'public' ? 'globe-outline' : 'lock-closed-outline'} 
+              size={12} 
+              color="#6B7280" 
+            />
+            <Text style={styles.privacyText}>{group.privacy}</Text>
+          </View>
+        </View>
+      </View>
 
-  // Render content based on state
+      {/* Actions */}
+      <TouchableOpacity
+        style={styles.leaveButton}
+        onPress={(e) => {
+          e.stopPropagation();
+          handleLeaveGroup(group);
+        }}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="exit-outline" size={20} color="#EF4444" />
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+
   const renderContent = () => {
-    if (loading && events.length === 0) {
+    if (loading) {
       return (
         <View style={styles.centerContainer}>
-          <Text style={styles.loadingText}>Loading your events...</Text>
+          <ActivityIndicator size="large" color="#FDB924" />
+          <Text style={styles.loadingText}>Loading your groups...</Text>
         </View>
       );
     }
 
-    if (events.length === 0) {
+    if (groups.length === 0) {
       return (
         <View style={styles.centerContainer}>
-          <EmptyState
-            icon="calendar-outline"
-            title="No Events Joined Yet"
-            message="Find exciting events on the map and join to see them here"
-            actionLabel="Browse Events"
-            onAction={handleBrowseEvents}
-          />
+          <View style={styles.emptyState}>
+            <Ionicons name="people-circle-outline" size={80} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>No Groups Yet</Text>
+            <Text style={styles.emptyMessage}>
+              Create or join groups to connect with other sports enthusiasts
+            </Text>
+            <TouchableOpacity 
+              style={styles.createGroupButton}
+              onPress={handleCreateGroup}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add-circle" size={20} color="#000000" />
+              <Text style={styles.createGroupButtonText}>Create Your First Group</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
 
-    if (filteredEvents.length === 0) {
+    if (filteredGroups.length === 0) {
       return (
         <View style={styles.centerContainer}>
-          <EmptyState
-            icon="search-outline"
-            title="No Events Found"
-            message={`No ${selectedFilter} events in your list`}
-            actionLabel="Clear Filter"
-            onAction={() => setSelectedFilter('all')}
-          />
+          <View style={styles.emptyState}>
+            <Ionicons name="search-outline" size={60} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>No Groups Found</Text>
+            <Text style={styles.emptyMessage}>
+              No {selectedFilter} groups in your list
+            </Text>
+            <TouchableOpacity 
+              style={styles.clearFilterButton}
+              onPress={() => setSelectedFilter('all')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.clearFilterButtonText}>Clear Filter</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
@@ -240,21 +349,68 @@ export default function MyGroupsScreen() {
           />
         }
       >
-        {groupedEvents.map(({ group, events: groupEvents }) => (
-          <View key={group}>
-            <SectionHeader title={group} count={groupEvents.length} />
-            {groupEvents.map(event => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onPress={() => handleEventPress(event)}
-                onChatPress={() => handleChatPress(event)}
-                onLeavePress={() => handleLeaveEvent(event)}
-              />
-            ))}
+        {/* Filter Tabs */}
+        <View style={styles.filterContainer}>
+          <TouchableOpacity
+            style={[styles.filterTab, selectedFilter === 'all' && styles.filterTabActive]}
+            onPress={() => setSelectedFilter('all')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.filterTabText, selectedFilter === 'all' && styles.filterTabTextActive]}>
+              All ({groups.length})
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.filterTab, selectedFilter === 'admin' && styles.filterTabActive]}
+            onPress={() => setSelectedFilter('admin')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.filterTabText, selectedFilter === 'admin' && styles.filterTabTextActive]}>
+              Admin ({adminGroups.length})
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.filterTab, selectedFilter === 'member' && styles.filterTabActive]}
+            onPress={() => setSelectedFilter('member')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.filterTabText, selectedFilter === 'member' && styles.filterTabTextActive]}>
+              Member ({memberGroups.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Admin Groups */}
+        {adminGroups.length > 0 && selectedFilter === 'all' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Groups You Manage</Text>
+              <Text style={styles.sectionCount}>{adminGroups.length}</Text>
+            </View>
+            {adminGroups.map(renderGroupCard)}
           </View>
-        ))}
-        
+        )}
+
+        {/* Member Groups */}
+        {memberGroups.length > 0 && selectedFilter === 'all' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Groups You're In</Text>
+              <Text style={styles.sectionCount}>{memberGroups.length}</Text>
+            </View>
+            {memberGroups.map(renderGroupCard)}
+          </View>
+        )}
+
+        {/* Filtered View */}
+        {selectedFilter !== 'all' && (
+          <View style={styles.section}>
+            {filteredGroups.map(renderGroupCard)}
+          </View>
+        )}
+
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -263,40 +419,45 @@ export default function MyGroupsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Top Bar (matches MapScreen) */}
+      {/* Top Bar */}
       <SafeAreaView style={styles.topBarSafeArea}>
         <View style={styles.topBar}>
-          {/* Logo on Left */}
-          <SportMapLogo />
-
-          {/* Action Buttons on Right */}
-          <View style={styles.topBarActions}>
-            <TouchableOpacity
-              style={styles.topBarButton}
-              onPress={handleFilterPress}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="options-outline" size={24} color="#000000" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.topBarButton}
-              onPress={handleMorePress}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="ellipsis-horizontal" size={24} color="#000000" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#000000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t.myGroups.title}</Text>
+          <TouchableOpacity
+            style={styles.createIconButton}
+            onPress={handleCreateGroup}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add-circle" size={28} color="#FDB924" />
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       {/* Main Content */}
       {renderContent()}
 
+      {/* Floating Action Button */}
+      {!loading && groups.length > 0 && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={handleCreateGroup}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={28} color="#000000" />
+        </TouchableOpacity>
+      )}
+
       {/* Bottom Navigation */}
       <View style={styles.bottomNavContainer}>
         <BottomNavBar
-          activeTab="MyGames"
+          activeTab="MyProfile"
           onProfilePress={() => navigation.navigate(ROUTES.PROFILE)}
         />
       </View>
@@ -309,7 +470,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  // Top Bar Styles (match MapScreen)
+  // Top Bar Styles
   topBarSafeArea: {
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
@@ -329,50 +490,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  logoCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#FDB924',
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FDB924',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  logoText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000000',
-    letterSpacing: -0.5,
-  },
-  logoTitle: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#000000',
-    letterSpacing: -0.3,
   },
-  topBarActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  topBarButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+  createIconButton: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E5E5E5',
   },
   // Content Styles
   scrollView: {
@@ -387,9 +521,222 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#6B7280',
+    marginTop: 12,
+  },
+  emptyState: {
+    alignItems: 'center',
+    maxWidth: 300,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  emptyMessage: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  createGroupButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDB924',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  createGroupButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  clearFilterButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#FDB924',
+  },
+  clearFilterButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FDB924',
+  },
+  // Filter Tabs
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  filterTab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+  },
+  filterTabActive: {
+    backgroundColor: '#FDB924',
+  },
+  filterTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  filterTabTextActive: {
+    color: '#000000',
+  },
+  // Section Styles
+  section: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  sectionCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  // Group Card Styles
+  groupCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  groupIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  groupIcon: {
+    fontSize: 28,
+  },
+  groupInfo: {
+    flex: 1,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  groupName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    flex: 1,
+  },
+  adminBadge: {
+    backgroundColor: '#FDB924',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  adminBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  groupDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  groupMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  memberCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  memberCountText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  privacyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 6,
+  },
+  privacyText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  leaveButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  // FAB
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 100,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FDB924',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   bottomSpacing: {
-    height: 100, // Space for bottom nav
+    height: 100,
   },
   // Bottom Nav Container
   bottomNavContainer: {
@@ -399,3 +746,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
 });
+
+
+
+
