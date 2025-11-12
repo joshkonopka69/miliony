@@ -37,3 +37,4 @@ supabase.auth.getSession().then(({ data, error }) => {
     console.log('Current session:', data.session ? 'Active' : 'None');
   }
 });
+

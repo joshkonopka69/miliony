@@ -107,3 +107,4 @@ SELECT '🎉 All done! Your app is ready!' as result,
        '📱 Press "r" in terminal to restart your app' as next_step,
        '🗺️ Open Map screen to see 5 events' as what_to_do,
        '💬 Tap Basketball Game to see chat with Hubo' as test_chat;
+

@@ -247,3 +247,4 @@ SELECT events.id, 'f6385377-f738-4486-8692-853dd25b08d8', 'Looking forward to th
 FROM events
 WHERE events.title = 'Football Match'
 ON CONFLICT DO NOTHING;
+

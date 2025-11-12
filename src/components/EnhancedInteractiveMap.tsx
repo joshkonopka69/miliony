@@ -12,7 +12,6 @@ import {
   ActivityIndicator
 } from 'react-native';
 import GoogleMapsView from './GoogleMapsView';
-import PlaceDetailsModal from './PlaceDetailsModal';
 import EventPin from './EventPin';
 import EventSearchFilter, { EventSearchFilters } from './EventSearchFilter';
 import LiveEventStatus from './LiveEventStatus';
@@ -72,7 +71,6 @@ export default function EnhancedInteractiveMap({
   externalFilters, // Filters from parent
 }: EnhancedInteractiveMapProps) {
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
-  const [showPlaceDetails, setShowPlaceDetails] = useState(false);
   const navigation = useAppNavigation();
   const mapRef = useRef<any>(null);
   const [region, setRegion] = useState<any>({
@@ -573,8 +571,50 @@ export default function EnhancedInteractiveMap({
   };
 
   const handlePlaceSelect = (place: any) => {
-    setSelectedPlace(place);
-    setShowPlaceDetails(true);
+    console.log('📍 EnhancedInteractiveMap: Place selected, forwarding to parent:', place);
+    // Forward to parent (MapScreen) to show PlaceInfoModal
+    if (onLocationSelect) {
+      onLocationSelect(place);
+    } else {
+      // No fallback - parent should always provide handler
+      console.warn('EnhancedInteractiveMap: No onLocationSelect handler provided');
+    }
+  };
+
+  const handleLocationLongPress = (location: { latitude: number; longitude: number }) => {
+    console.log('🖐️ EnhancedInteractiveMap: Long press detected at:', location);
+    
+    // Create a place object for the random location
+    const randomPlace = {
+      name: 'Custom Location',
+      address: `Lat: ${location.latitude.toFixed(5)}, Lng: ${location.longitude.toFixed(5)}`,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      placeId: null,
+      rating: null,
+      types: ['custom_location'],
+      isCustomLocation: true, // Flag to identify this as a random location
+    };
+    
+    // Forward to parent (MapScreen) to show PlaceInfoModal
+    if (onLocationSelect) {
+      onLocationSelect(randomPlace);
+    } else {
+      // Fallback alert if no parent handler
+      Alert.alert(
+        'Create Event Here?',
+        `Would you like to create an event at this location?\n\nLat: ${location.latitude.toFixed(5)}\nLng: ${location.longitude.toFixed(5)}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Create Event', 
+            onPress: () => {
+              Alert.alert('Feature Coming Soon', 'Event creation at custom locations will be available in the next update!');
+            }
+          }
+        ]
+      );
+    }
   };
 
   const handlePlanEvent = (place: any) => {
@@ -638,6 +678,7 @@ export default function EnhancedInteractiveMap({
       <GoogleMapsView
         onLocationSelect={onLocationSelect}
         onPlaceSelect={handlePlaceSelect}
+        onLocationLongPress={handleLocationLongPress}
         searchQuery={searchQuery}
         events={events}
         places={places}
@@ -794,12 +835,7 @@ export default function EnhancedInteractiveMap({
         loading={placeDetailsLoading}
       />
 
-      <PlaceDetailsModal
-        visible={showPlaceDetails}
-        onClose={() => setShowPlaceDetails(false)}
-        place={selectedPlace}
-        onPlanEvent={handlePlanEvent}
-      />
+      {/* PlaceDetailsModal removed - MapScreen uses PlaceInfoModal instead */}
 
       {/* Event Details Modal */}
       {selectedEvent && (

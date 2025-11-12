@@ -282,3 +282,4 @@ INSERT INTO events (title, sport_type, description, max_participants, latitude, 
 ON CONFLICT DO NOTHING;
 
 -- ✅ YOUR BACKEND IS NOW READY!
+

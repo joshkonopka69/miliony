@@ -78,3 +78,4 @@ INSERT INTO events (title, sport_type, max_participants, latitude, longitude, cr
 ('Test Event - No More Crashes!', 'Basketball', 10, 51.1079, 17.0385, 'c46dec97-bfd3-4d30-9cc8-178b1a2b66a7', NOW() + INTERVAL '1 day', 'active');
 
 SELECT '🎉 ALL CRASHES FIXED! Your app should work perfectly now!' as result;
+

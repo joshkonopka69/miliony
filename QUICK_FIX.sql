@@ -49,3 +49,4 @@ CREATE POLICY "Users can view event messages" ON event_messages FOR SELECT USING
 CREATE POLICY "Users can send event messages" ON event_messages FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 SELECT 'Quick fix completed! Your app should now work!' as result;
+

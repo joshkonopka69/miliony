@@ -88,3 +88,4 @@ WHERE e.title = 'Football Match';
 SELECT 'Events created:' as status, COUNT(*) as count FROM events;
 SELECT 'Event participants created:' as status, COUNT(*) as count FROM event_participants;
 SELECT 'Event messages created:' as status, COUNT(*) as count FROM event_messages;
+

@@ -99,3 +99,4 @@ supabase.from('users').select('*').then(({ data, error }) => {
     console.log('👥 Found users:', data.length);
   }
 });
+

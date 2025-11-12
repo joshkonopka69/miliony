@@ -14,12 +14,15 @@ import {
   Platform,
 } from 'react-native';
 import { PlaceDetails } from '../services/placesApi';
+import { supabaseService } from '../services/supabase';
 
 interface PlaceInfoModalProps {
   visible: boolean;
   onClose: () => void;
   placeDetails: PlaceDetails | null;
   onCreateMeetup: (placeDetails: PlaceDetails) => void;
+  onEventPress?: (event: any) => void;
+  userLocation?: { latitude: number; longitude: number } | null;
   loading?: boolean;
 }
 
@@ -30,16 +33,57 @@ export default function PlaceInfoModal({
   onClose,
   placeDetails,
   onCreateMeetup,
+  onEventPress,
+  userLocation,
   loading = false,
 }: PlaceInfoModalProps) {
   console.log('🏢 PlaceInfoModal rendered:', { visible, loading, placeDetails: !!placeDetails });
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [events, setEvents] = useState<any[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
 
   useEffect(() => {
     if (placeDetails?.photos && placeDetails.photos.length > 0) {
       setCurrentPhotoIndex(0);
     }
   }, [placeDetails]);
+
+  // Fetch events when modal opens
+  useEffect(() => {
+    if (visible && placeDetails) {
+      fetchEventsAtLocation();
+    } else {
+      setEvents([]);
+    }
+  }, [visible, placeDetails]);
+
+  const fetchEventsAtLocation = async () => {
+    if (!placeDetails) return;
+    
+    setIsLoadingEvents(true);
+    try {
+      // Handle different coordinate structures
+      const lat = placeDetails.coordinates?.lat || placeDetails.latitude;
+      const lng = placeDetails.coordinates?.lng || placeDetails.longitude;
+      
+      if (!lat || !lng) {
+        console.warn('⚠️ PlaceInfoModal: No valid coordinates found', placeDetails);
+        setIsLoadingEvents(false);
+        return;
+      }
+
+      const eventsData = await supabaseService.fetchEventsAtLocation(
+        placeDetails.placeId || null,
+        lat,
+        lng
+      );
+      setEvents(eventsData);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -85,7 +129,14 @@ export default function PlaceInfoModal({
   };
 
   const handleDirections = () => {
-    const { lat, lng } = placeDetails.coordinates;
+    const lat = placeDetails.coordinates?.lat || placeDetails.latitude;
+    const lng = placeDetails.coordinates?.lng || placeDetails.longitude;
+    
+    if (!lat || !lng) {
+      Alert.alert('Error', 'Location coordinates not available');
+      return;
+    }
+    
     const label = encodeURIComponent(placeDetails.name);
     const url = Platform.select({
       ios: `maps:0,0?q=${lat},${lng}(${label})`,
@@ -277,6 +328,139 @@ export default function PlaceInfoModal({
     );
   };
 
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): string => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    
+    if (distance < 1) {
+      return `${Math.round(distance * 1000)}m`;
+    }
+    return `${distance.toFixed(1)}km`;
+  };
+
+  const formatEventDateTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const isToday = date.toDateString() === now.toDateString();
+    const isTomorrow = date.toDateString() === tomorrow.toDateString();
+
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    if (isToday) return `Today • ${timeStr}`;
+    if (isTomorrow) return `Tomorrow • ${timeStr}`;
+
+    const dateStr = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+    return `${dateStr} • ${timeStr}`;
+  };
+
+  const getSportEmoji = (sportType: string): string => {
+    const emojiMap: { [key: string]: string } = {
+      basketball: '🏀',
+      football: '⚽',
+      running: '🏃‍♂️',
+      tennis: '🎾',
+      cycling: '🚴‍♂️',
+      swimming: '🏊‍♂️',
+      gym: '💪',
+      volleyball: '🏐',
+      climbing: '🧗‍♂️',
+      boxing: '🥊',
+    };
+    return emojiMap[sportType] || '🏅';
+  };
+
+  const renderEventsSection = () => {
+    return (
+      <View style={styles.eventsSection}>
+        <View style={styles.eventsSectionHeader}>
+          <Text style={styles.sectionTitle}>Upcoming Events</Text>
+          <Text style={styles.eventsCount}>
+            {events.length} {events.length === 1 ? 'event' : 'events'}
+          </Text>
+        </View>
+
+        {isLoadingEvents ? (
+          <View style={styles.eventsLoadingContainer}>
+            <ActivityIndicator size="small" color="#3b82f6" />
+            <Text style={styles.loadingText}>Loading events...</Text>
+          </View>
+        ) : events.length > 0 ? (
+          events.map((event) => (
+            <TouchableOpacity
+              key={event.id}
+              style={styles.eventCard}
+              onPress={() => onEventPress?.(event)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.eventHeader}>
+                <Text style={styles.eventEmoji}>{getSportEmoji(event.activity)}</Text>
+                <View style={styles.eventTitleContainer}>
+                  <Text style={styles.eventTitle} numberOfLines={1}>
+                    {event.name}
+                  </Text>
+                  <Text style={styles.eventCreator} numberOfLines={1}>
+                    by {event.creator?.display_name || 'Unknown'}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.eventDateTime}>
+                📅 {formatEventDateTime(event.scheduled_datetime)}
+              </Text>
+
+              <View style={styles.participantsRow}>
+                <Text style={styles.participantsText}>
+                  👥 {event.currentParticipants}/{event.max_participants} players
+                </Text>
+                <View style={styles.progressBarContainer}>
+                  <View
+                    style={[
+                      styles.progressBar,
+                      {
+                        width: `${(event.currentParticipants / event.max_participants) * 100}%`,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              {event.description && (
+                <Text style={styles.eventDescription} numberOfLines={2}>
+                  {event.description}
+                </Text>
+              )}
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateEmoji}>📅</Text>
+            <Text style={styles.emptyStateTitle}>No events yet</Text>
+            <Text style={styles.emptyStateDescription}>
+              Be the first to create an event at this location!
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.container}>
@@ -309,6 +493,18 @@ export default function PlaceInfoModal({
                 <Text style={styles.priceText}>{renderPriceLevel(placeDetails.priceLevel)}</Text>
               )}
             </View>
+
+            {/* Distance */}
+            {userLocation && (placeDetails.coordinates?.lat || placeDetails.latitude) && (
+              <Text style={styles.distanceText}>
+                📍 {calculateDistance(
+                  userLocation.latitude,
+                  userLocation.longitude,
+                  placeDetails.coordinates?.lat || placeDetails.latitude,
+                  placeDetails.coordinates?.lng || placeDetails.longitude
+                )} away
+              </Text>
+            )}
           </View>
 
           {/* Action Buttons */}
@@ -344,6 +540,9 @@ export default function PlaceInfoModal({
 
           {/* Reviews */}
           {renderReviews()}
+
+          {/* Events Section */}
+          {renderEventsSection()}
 
           {/* Create Meetup Button */}
           <TouchableOpacity style={styles.createMeetupButton} onPress={handleCreateMeetup}>
@@ -630,5 +829,112 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 30,
+  },
+  distanceText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  eventsSection: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  eventsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  eventsCount: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+  },
+  eventsLoadingContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  eventCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  eventHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  eventEmoji: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  eventTitleContainer: {
+    flex: 1,
+  },
+  eventTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 2,
+  },
+  eventCreator: {
+    fontSize: 13,
+    color: '#666',
+  },
+  eventDateTime: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  participantsRow: {
+    marginBottom: 8,
+  },
+  participantsText: {
+    fontSize: 13,
+    color: '#333',
+    marginBottom: 6,
+    fontWeight: '500',
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#10b981',
+    borderRadius: 3,
+  },
+  eventDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyStateEmoji: {
+    fontSize: 50,
+    marginBottom: 12,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 6,
+  },
+  emptyStateDescription: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
 });

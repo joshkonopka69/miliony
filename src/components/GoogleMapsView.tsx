@@ -19,16 +19,12 @@ interface MapEvent {
 interface GoogleMapsViewProps {
   onPlaceSelect?: (place: any) => void;
   onLocationSelect?: (location: { latitude: number; longitude: number }) => void;
+  onLocationLongPress?: (location: { latitude: number; longitude: number }) => void;
   searchQuery?: string;
   initialLocation?: { latitude: number; longitude: number };
   events?: MapEvent[]; // Events to display as markers
   places?: any[]; // Venue places to display as markers
 }
-
-
-
-
-
 
 const { width, height } = Dimensions.get('window');
 
@@ -56,7 +52,8 @@ const getSportEmoji = (activity: string): string => {
 
 export default function GoogleMapsView({ 
   onPlaceSelect, 
-  onLocationSelect, 
+  onLocationSelect,
+  onLocationLongPress,
   searchQuery,
   initialLocation,
   events = [], // Default to empty array
@@ -86,10 +83,8 @@ export default function GoogleMapsView({
 
       const currentLocation = await Location.getCurrentPositionAsync({});
       setLocation(currentLocation);
-      onLocationSelect?.({
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude
-      });
+      // Don't call onLocationSelect here - it's only for when user actively selects a place
+      // onLocationSelect is for filtered locations/place markers, not initial user location
     } catch (error) {
       console.error('Error getting location:', error);
     }
@@ -223,15 +218,54 @@ export default function GoogleMapsView({
             // Add event markers
             ${events.length > 0 ? 'createEventMarkers();' : ''}
             
-            // Add click listener for map
-            map.addListener('click', (event) => {
-              const lat = event.latLng.lat();
-              const lng = event.latLng.lng();
-              window.ReactNativeWebView?.postMessage(JSON.stringify({
-                type: 'location_click',
-                latitude: lat,
-                longitude: lng
-              }));
+            // Add LONG-PRESS listener for map (2 seconds)
+            let longPressTimer = null;
+            let longPressPosition = null;
+            
+            map.addListener('mousedown', (event) => {
+              longPressPosition = event.latLng;
+              longPressTimer = setTimeout(() => {
+                if (longPressPosition) {
+                  const lat = longPressPosition.lat();
+                  const lng = longPressPosition.lng();
+                  window.ReactNativeWebView?.postMessage(JSON.stringify({
+                    type: 'location_longpress',
+                    latitude: lat,
+                    longitude: lng
+                  }));
+                  // Visual feedback - show a pulse animation
+                  const pulseMarker = new google.maps.Marker({
+                    position: { lat, lng },
+                    map: map,
+                    icon: {
+                      path: google.maps.SymbolPath.CIRCLE,
+                      fillColor: '#6366f1',
+                      fillOpacity: 0.6,
+                      strokeColor: '#6366f1',
+                      strokeWeight: 2,
+                      scale: 15
+                    },
+                    animation: google.maps.Animation.BOUNCE
+                  });
+                  // Remove marker after 1 second
+                  setTimeout(() => pulseMarker.setMap(null), 1000);
+                }
+              }, 2000); // 2 seconds
+            });
+            
+            map.addListener('mouseup', () => {
+              if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+              }
+            });
+            
+            map.addListener('mousemove', () => {
+              if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+                longPressPosition = null;
+              }
             });
             
             // Send log to React Native
@@ -518,6 +552,12 @@ export default function GoogleMapsView({
         console.error(data.message);
       } else if (data.type === 'place_click') {
         onPlaceSelect?.(data.place);
+      } else if (data.type === 'location_longpress') {
+        console.log('🖐️ Long press detected at:', data.latitude, data.longitude);
+        onLocationLongPress?.({
+          latitude: data.latitude,
+          longitude: data.longitude
+        });
       } else if (data.type === 'location_click') {
         onLocationSelect?.({
           latitude: data.latitude,
@@ -608,3 +648,4 @@ const styles = StyleSheet.create({
     color: '#666',
   },
 });
+

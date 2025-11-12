@@ -93,3 +93,4 @@ SELECT 'Participants:' as type, event_id, user_id FROM event_participants;
 SELECT 'Messages:' as type, event_id, user_id, message FROM event_messages ORDER BY created_at;
 
 SELECT '🎉 All done! Your app should now work perfectly! Open your app and test it!' as result;
+

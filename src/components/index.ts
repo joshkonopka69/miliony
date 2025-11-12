@@ -42,5 +42,5 @@ export { default as FavoriteSports } from './FavoriteSports';
 export { default as ProfileEditModal } from './ProfileEditModal';
 
 // Map enhancement components
-export { LocationDetailsModal } from './LocationDetailsModal';
+// LocationDetailsModal was merged into PlaceInfoModal
 export { CreateEventModal } from './CreateEventModal';

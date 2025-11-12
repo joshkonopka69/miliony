@@ -118,3 +118,4 @@ CREATE POLICY "Users can view group members" ON group_members FOR SELECT USING (
 CREATE POLICY "Users can join groups" ON group_members FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 SELECT 'All done! Your app should now work perfectly!' as result;
+

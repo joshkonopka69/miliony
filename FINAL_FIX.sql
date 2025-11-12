@@ -66,3 +66,4 @@ SELECT 'Event participants created:' as status, COUNT(*) as count FROM event_par
 SELECT 'Event messages created:' as status, COUNT(*) as count FROM event_messages;
 
 SELECT 'All done! Your app should now work perfectly!' as result;
+

@@ -122,3 +122,4 @@ INSERT INTO events (title, sport_type, description, max_participants, latitude, 
 ('Test Event', 'Basketball', 'Test event to verify functionality', 10, 51.1079, 17.0385, 'Test Location', 'c46dec97-bfd3-4d30-9cc8-178b1a2b66a7', NOW() + INTERVAL '1 day', 'active');
 
 SELECT 'Test event created successfully!' as result;
+

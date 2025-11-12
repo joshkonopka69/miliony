@@ -16,6 +16,8 @@ import { BottomNavBar } from '../components';
 import { EmptyState, SectionHeader, EventCard } from '../components';
 import { MyEvent, SportActivity } from '../types/event';
 import { groupEventsByTime } from '../utils/eventGrouping';
+import { supabase, supabaseService } from '../services/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 // Logo Component (matches MapScreen)
 const SportMapLogo = () => (
@@ -29,108 +31,112 @@ const SportMapLogo = () => (
 
 export default function MyGroupsScreen() {
   const navigation = useAppNavigation();
+  const { getUserId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<MyEvent[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<SportActivity | 'all'>('all');
 
-  // Load events on mount
+  // Load events on mount and set up real-time subscription
   useEffect(() => {
+    console.log('🚀 MyGamesScreen: Component mounted, loading events...');
     loadEvents();
+
+    // Subscribe to real-time changes for events and participants
+    const eventsSubscription = supabase
+      .channel('my-events-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'events',
+        },
+        (payload) => {
+          console.log('📡 Event change detected:', payload);
+          loadEvents(); // Reload events when any event changes
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_participants',
+        },
+        (payload) => {
+          console.log('📡 Participant change detected:', payload);
+          loadEvents(); // Reload events when participants change
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      eventsSubscription.unsubscribe();
+    };
   }, []);
 
   const loadEvents = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const fetchedEvents = await eventService.getMyEvents();
       
-      // Mock data for demonstration
-      const mockEvents: MyEvent[] = [
-        {
-          id: '1',
-          name: 'Pickup Basketball Game',
-          activity: 'Basketball',
-          startTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-          endTime: new Date(Date.now() + 4 * 60 * 60 * 1000),
-          location: {
-            name: 'Central Park Courts',
-            address: '123 Park Ave',
-            distance: 2.3,
-            lat: 40.7829,
-            lng: -73.9654,
-          },
-          participants: {
-            current: 5,
-            max: 10,
-          },
-          status: 'upcoming',
-          role: 'joined',
-          chatEnabled: true,
-          createdBy: {
-            id: 'user1',
-            name: 'John Doe',
-          },
-        },
-        {
-          id: '2',
-          name: 'Evening Football Match',
-          activity: 'Football',
-          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-          endTime: new Date(Date.now() + 26 * 60 * 60 * 1000),
-          location: {
-            name: 'Sports Complex Field',
-            address: '456 Sports Dr',
-            distance: 5.7,
-            lat: 40.7580,
-            lng: -73.9855,
-          },
-          participants: {
-            current: 18,
-            max: 22,
-          },
-          status: 'upcoming',
-          role: 'created',
-          chatEnabled: true,
-          createdBy: {
-            id: 'currentUser',
-            name: 'You',
-          },
-        },
-        {
-          id: '3',
-          name: 'Tennis Practice Session',
-          activity: 'Tennis',
-          startTime: new Date(Date.now() + 72 * 60 * 60 * 1000), // 3 days
-          endTime: new Date(Date.now() + 74 * 60 * 60 * 1000),
-          location: {
-            name: 'City Tennis Club',
-            address: '789 Tennis Rd',
-            distance: 1.2,
-            lat: 40.7489,
-            lng: -73.9680,
-          },
-          participants: {
-            current: 3,
-            max: 4,
-          },
-          status: 'upcoming',
-          role: 'joined',
-          chatEnabled: true,
-          createdBy: {
-            id: 'user3',
-            name: 'Sarah Smith',
-          },
-        },
-      ];
+      // Get current user ID
+      const userId = getUserId();
+      if (!userId) {
+        console.log('⚠️ No user logged in');
+        setEvents([]);
+        return;
+      }
 
-      setEvents(mockEvents);
+      console.log('\n📱 Loading events for MyGamesScreen...');
+      
+      // Fetch user's events from Supabase
+      const userEvents = await supabaseService.getUserEvents(userId);
+
+      console.log(`✅ Loaded ${userEvents.length} events`);
+
+      // Transform Supabase events to MyEvent format
+      const transformedEvents: MyEvent[] = userEvents.map((event: any) => ({
+        id: event.id,
+        name: event.name,
+        activity: capitalizeFirstLetter(event.activity),
+        startTime: new Date(event.scheduled_datetime),
+        endTime: new Date(new Date(event.scheduled_datetime).getTime() + 2 * 60 * 60 * 1000), // +2 hours default
+        location: {
+          name: event.location_name,
+          address: event.location_name, // Use location name as address for now
+          distance: 0, // TODO: Calculate distance if user location available
+          lat: event.latitude,
+          lng: event.longitude,
+        },
+        participants: {
+          current: event.participants_count || event.currentParticipants || 0,
+          max: event.max_participants,
+        },
+        status: 'upcoming',
+        role: event.isCreator ? 'created' : 'joined',
+        chatEnabled: true,
+        createdBy: {
+          id: event.creator?.id || event.created_by,
+          name: event.creator?.display_name || 'Unknown',
+        },
+      }));
+
+      console.log('📊 Transformed events:', transformedEvents);
+      setEvents(transformedEvents);
+
     } catch (error) {
-      console.error('Error loading events:', error);
+      console.error('❌ Error loading events:', error);
       Alert.alert('Error', 'Failed to load events');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to capitalize first letter
+  const capitalizeFirstLetter = (str: string): string => {
+    return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
   const handleRefresh = async () => {
@@ -192,7 +198,10 @@ export default function MyGroupsScreen() {
 
   // Render content based on state
   const renderContent = () => {
+    console.log('🎨 Rendering content, state:', { loading, eventsCount: events.length, filteredCount: filteredEvents.length });
+    
     if (loading && events.length === 0) {
+      console.log('   → Showing loading state');
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.loadingText}>Loading your events...</Text>
@@ -201,6 +210,7 @@ export default function MyGroupsScreen() {
     }
 
     if (events.length === 0) {
+      console.log('   → Showing empty state (no events)');
       return (
         <View style={styles.centerContainer}>
           <EmptyState

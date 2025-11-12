@@ -39,3 +39,4 @@ supabase.from('events').select('*').limit(1).then(({ data, error }) => {
     }
   }
 });
+

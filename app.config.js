@@ -60,9 +60,7 @@ export default {
     extra: {
       eas: {
         projectId: "372e8a03-e24f-4695-9ec5-f86f6408a7fa"
-      },
-      supabaseUrl: "https://ujfeqshqhlplmolfrlvc.supabase.co",
-      supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZmVxc2hxaGxwbG1vbGZybHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzI0NDQsImV4cCI6MjA3NTQwODQ0NH0.vUEi4gl7qsl7fU518CMV79TJG9j3MWgwBQHEzbfuwIA"
+      }
     }
   }
 };

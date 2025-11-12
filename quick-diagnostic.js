@@ -117,3 +117,4 @@ supabase.from('users').select('*').limit(1).then(({ data, error }) => {
     });
   }
 });
+

@@ -57,7 +57,7 @@ export default function BottomNavBar({ activeTab, onProfilePress }: BottomNavBar
         navigation.navigate('Map');
         break;
       case 'MyGames':
-        navigation.navigate('Events');
+        navigation.navigate('MyGames');
         break;
     }
   };

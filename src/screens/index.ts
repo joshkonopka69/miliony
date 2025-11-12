@@ -12,6 +12,7 @@ export { default as EditProfileScreen } from './EditProfileScreen';
 export { default as AddFriendScreen } from './AddFriendScreen';
 export { default as CreateGroupScreen } from './CreateGroupScreen';
 export { default as MyGroupsScreen } from './MyGroupsScreen';
+export { default as MyGamesScreen } from './MyGamesScreen';
 export { default as LanguageScreen } from './LanguageScreen';
 export { default as GameChatScreen } from './GameChatScreen';
 export { default as TermsOfServiceScreen } from './TermsOfServiceScreen';

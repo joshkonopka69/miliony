@@ -183,3 +183,4 @@ SELECT e.id, 'f6385377-f738-4486-8692-853dd25b08d8', 'Looking forward to the mat
 FROM events e 
 WHERE e.title = 'Football Match'
 ON CONFLICT DO NOTHING;
+

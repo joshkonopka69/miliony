@@ -36,3 +36,4 @@ function fixSupabaseImports(dir) {
 console.log('🔧 Fixing all Supabase imports...');
 fixSupabaseImports(srcDir);
 console.log('✅ All Supabase imports fixed!');
+

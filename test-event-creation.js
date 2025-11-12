@@ -63,3 +63,4 @@ supabase.from('event_messages').select('*').limit(1).then(({ data, error }) => {
     console.log('✅ Event messages table accessible');
   }
 });
+

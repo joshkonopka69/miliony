@@ -139,7 +139,7 @@ export const getPlaceDetails = async (placeId: string): Promise<any> => {
     
     const params = {
       place_id: placeId,
-      fields: 'name,formatted_address,geometry,rating,photos,opening_hours,formatted_phone_number,website',
+      fields: 'name,formatted_address,geometry,rating,user_ratings_total,photos,opening_hours,formatted_phone_number,website,types',
       key: GOOGLE_PLACES_API_KEY,
     };
 
@@ -148,6 +148,7 @@ export const getPlaceDetails = async (placeId: string): Promise<any> => {
     const data = await response.json();
 
     if (data.status !== 'OK') {
+      console.error(`Google Places Details API error: ${data.status}`);
       throw new Error(`Google Places API error: ${data.status}`);
     }
 

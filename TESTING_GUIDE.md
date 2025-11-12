@@ -172,3 +172,4 @@ LIMIT 10;
 5. **Deploy to Google Play!**
 
 Your app should now be fully functional with real-time chat and event synchronization! 🎉
+

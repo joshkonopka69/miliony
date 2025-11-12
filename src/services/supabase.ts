@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 // Types for our database
 export interface User {
@@ -79,6 +79,14 @@ export interface EventFilters {
   status?: 'live' | 'past' | 'cancelled';
 }
 
+// Initialize Supabase client - CONFIGURED
+const supabaseUrl = 'https://ujfeqshqhlplmolfrlvc.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZmVxc2hxaGxwbG1vbGZybHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzI0NDQsImV4cCI6MjA3NTQwODQ0NH0.vUEi4gl7qsl7fU518CMV79TJG9j3MWgwBQHEzbfuwIA';
+
+console.log('✅ Supabase connected to:', supabaseUrl);
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 class SupabaseService {
   // User operations
   async getCurrentUser(): Promise<User | null> {
@@ -154,6 +162,135 @@ class SupabaseService {
   }
 
   // Event operations
+  /**
+   * Fetch all active events at a specific location
+   * Matches by place_id (if available) or by proximity (within 100m)
+   */
+  async fetchEventsAtLocation(
+    placeId: string | null,
+    latitude: number,
+    longitude: number
+  ): Promise<any[]> {
+    try {
+      console.log(`\n📍 Fetching events at location:`);
+      console.log(`   Place ID: ${placeId || 'none'}`);
+      console.log(`   Coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+
+      // Match by place_id if available
+      if (placeId) {
+        const { data, error } = await supabase
+          .from('events')
+          .select(`
+            *,
+            created_by:users!events_created_by_fkey(id, display_name, avatar_url)
+          `)
+          .in('status', ['live', 'active', 'upcoming'])
+          .eq('place_id', placeId)
+          .gte('scheduled_datetime', new Date().toISOString())
+          .order('scheduled_datetime', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          console.log(`✓ Found ${data.length} events by place_id`);
+          return this.formatEventsWithParticipants(data);
+        }
+        
+        console.log(`⚠️  No events found by place_id, checking proximity...`);
+      }
+
+      // Fallback: Match by proximity (within ~100m = 0.001 degrees)
+      const proximityThreshold = 0.001;
+      
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          created_by:users!events_created_by_fkey(id, display_name, avatar_url)
+        `)
+        .in('status', ['live', 'active', 'upcoming'])
+        .gte('scheduled_datetime', new Date().toISOString())
+        .gte('latitude', latitude - proximityThreshold)
+        .lte('latitude', latitude + proximityThreshold)
+        .gte('longitude', longitude - proximityThreshold)
+        .lte('longitude', longitude + proximityThreshold)
+        .order('scheduled_datetime', { ascending: true});
+
+      if (error) throw error;
+
+      console.log(`✓ Found ${data?.length || 0} events by proximity`);
+      
+      return this.formatEventsWithParticipants(data || []);
+
+    } catch (error) {
+      console.error('❌ Error fetching events at location:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Format events with participant counts
+   */
+  private formatEventsWithParticipants(events: any[]): any[] {
+    return events.map(event => ({
+      ...event,
+      currentParticipants: event.participants_count || 0,
+      creator: event.created_by,
+    }));
+  }
+
+  /**
+   * Update user profile with new avatar URL
+   */
+  async updateProfilePhoto(userId: string, avatarUrl: string): Promise<void> {
+    try {
+      console.log('💾 Updating profile photo in database...');
+      console.log('   User ID:', userId);
+      console.log('   New URL:', avatarUrl);
+
+      const { error } = await supabase
+        .from('users')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', userId);
+
+      if (error) {
+        console.error('❌ Database update error:', error);
+        throw error;
+      }
+
+      console.log('✅ Profile updated successfully');
+    } catch (error) {
+      console.error('❌ Error updating profile:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get current user profile
+   */
+  async getCurrentUserProfile(): Promise<User | null> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  }
+
   async createEvent(eventData: CreateEventData): Promise<Event | null> {
     const { data, error } = await supabase
       .from('events')
@@ -329,6 +466,90 @@ class SupabaseService {
     return !!data;
   }
 
+  /**
+   * Get all events for a user (both created and joined)
+   * Returns upcoming events sorted by scheduled_datetime
+   */
+  async getUserEvents(userId: string): Promise<Event[]> {
+    try {
+      console.log(`\n👤 Fetching events for user: ${userId}`);
+
+      // Get event IDs where user is a participant
+      const { data: participantData, error: participantError } = await supabase
+        .from('event_participants')
+        .select('event_id')
+        .eq('user_id', userId);
+
+      if (participantError) {
+        console.error('❌ Error fetching participant events:', participantError);
+        // Don't throw - user might just not have joined any events yet
+      }
+
+      const participantEventIds = participantData?.map(p => p.event_id) || [];
+      console.log(`   Found ${participantEventIds.length} joined events`);
+      console.log(`   Participant event IDs:`, participantEventIds);
+
+      // Build query for events where user is creator OR participant
+      let query = supabase
+        .from('events')
+        .select('*')
+        .in('status', ['live', 'upcoming', 'active'])
+        .gte('scheduled_datetime', new Date().toISOString())
+        .order('scheduled_datetime', { ascending: true });
+
+      // Add creator OR participant filter
+      if (participantEventIds.length > 0) {
+        // User has joined events - get created OR joined
+        query = query.or(`created_by.eq.${userId},id.in.(${participantEventIds.join(',')})`);
+      } else {
+        // User has no joined events - get only created events
+        query = query.eq('created_by', userId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('❌ Error fetching user events:', error);
+        throw error;
+      }
+
+      console.log(`✅ Found ${data?.length || 0} total events for user`);
+      console.log(`   Events:`, data?.map(e => ({ id: e.id, name: e.name, created_by: e.created_by })));
+
+      // Get creator details for each event
+      const eventsWithCreators = await Promise.all(
+        (data || []).map(async (event) => {
+          let creatorData = null;
+          
+          // Fetch creator details from users table
+          if (event.created_by) {
+            const { data: userData } = await supabase
+              .from('users')
+              .select('id, display_name, avatar_url')
+              .eq('id', event.created_by)
+              .single();
+            
+            creatorData = userData;
+          }
+
+          return {
+            ...event,
+            currentParticipants: event.participants_count || 0,
+            creator: creatorData,
+            isCreator: event.created_by === userId,
+            isParticipant: participantEventIds.includes(event.id),
+          };
+        })
+      );
+
+      return eventsWithCreators;
+
+    } catch (error) {
+      console.error('❌ Error in getUserEvents:', error);
+      return [];
+    }
+  }
+
   // Sports operations
   async getSports(): Promise<Sport[]> {
     const { data, error } = await supabase
@@ -467,6 +688,226 @@ class SupabaseService {
         }
       )
       .subscribe();
+  }
+
+  /**
+   * ============================================
+   * FRIENDS & SOCIAL FEATURES
+   * ============================================
+   */
+
+  /**
+   * Search for users by display name
+   */
+  async searchUsers(query: string, currentUserId: string): Promise<any[]> {
+    try {
+      console.log('🔍 Searching for users:', query);
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, display_name, avatar_url, created_at')
+        .ilike('display_name', `%${query}%`)
+        .neq('id', currentUserId) // Exclude current user
+        .limit(20);
+
+      if (error) throw error;
+
+      console.log(`✅ Found ${data.length} users`);
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error searching users:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send a friend request
+   */
+  async sendFriendRequest(userId: string, friendId: string): Promise<void> {
+    try {
+      console.log('📤 Sending friend request:', { userId, friendId });
+
+      const { error } = await supabase
+        .from('user_friendships')
+        .insert({
+          user_id: userId,
+          friend_id: friendId,
+          status: 'pending',
+        });
+
+      if (error) throw error;
+
+      console.log('✅ Friend request sent');
+    } catch (error) {
+      console.error('❌ Error sending friend request:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Accept a friend request
+   */
+  async acceptFriendRequest(userId: string, friendId: string): Promise<void> {
+    try {
+      console.log('✅ Accepting friend request:', { userId, friendId });
+
+      // Update the original request
+      const { error } = await supabase
+        .from('user_friendships')
+        .update({ status: 'accepted', updated_at: new Date().toISOString() })
+        .eq('user_id', friendId)
+        .eq('friend_id', userId);
+
+      if (error) throw error;
+
+      // Create reciprocal friendship
+      const { error: reciprocalError } = await supabase
+        .from('user_friendships')
+        .insert({
+          user_id: userId,
+          friend_id: friendId,
+          status: 'accepted',
+        });
+
+      if (reciprocalError) {
+        // If reciprocal already exists, just update it
+        if (reciprocalError.code === '23505') {
+          await supabase
+            .from('user_friendships')
+            .update({ status: 'accepted', updated_at: new Date().toISOString() })
+            .eq('user_id', userId)
+            .eq('friend_id', friendId);
+        } else {
+          throw reciprocalError;
+        }
+      }
+
+      console.log('✅ Friend request accepted');
+    } catch (error) {
+      console.error('❌ Error accepting friend request:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a friend or reject a friend request
+   */
+  async removeFriend(userId: string, friendId: string): Promise<void> {
+    try {
+      console.log('🗑️ Removing friend:', { userId, friendId });
+
+      // Delete both directions of the friendship
+      const { error: error1 } = await supabase
+        .from('user_friendships')
+        .delete()
+        .eq('user_id', userId)
+        .eq('friend_id', friendId);
+
+      const { error: error2 } = await supabase
+        .from('user_friendships')
+        .delete()
+        .eq('user_id', friendId)
+        .eq('friend_id', userId);
+
+      if (error1 || error2) {
+        console.warn('⚠️ Errors removing friendships:', { error1, error2 });
+      }
+
+      console.log('✅ Friend removed');
+    } catch (error) {
+      console.error('❌ Error removing friend:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get friendship status between two users
+   */
+  async getFriendshipStatus(userId: string, friendId: string): Promise<'none' | 'pending' | 'accepted' | 'blocked'> {
+    try {
+      const { data, error } = await supabase
+        .from('user_friendships')
+        .select('status')
+        .or(`and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`)
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows found
+
+      return data?.status || 'none';
+    } catch (error) {
+      console.error('❌ Error getting friendship status:', error);
+      return 'none';
+    }
+  }
+
+  /**
+   * Get all friends for a user
+   */
+  async getFriends(userId: string): Promise<any[]> {
+    try {
+      console.log('👥 Fetching friends for user:', userId);
+
+      const { data, error } = await supabase
+        .from('user_friendships')
+        .select(`
+          friend_id,
+          status,
+          users:friend_id (
+            id,
+            display_name,
+            avatar_url,
+            created_at
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'accepted');
+
+      if (error) throw error;
+
+      const friends = data?.map(f => f.users).filter(Boolean) || [];
+      console.log(`✅ Found ${friends.length} friends`);
+      return friends;
+    } catch (error) {
+      console.error('❌ Error fetching friends:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get pending friend requests for a user
+   */
+  async getPendingRequests(userId: string): Promise<any[]> {
+    try {
+      console.log('📬 Fetching pending requests for user:', userId);
+
+      const { data, error } = await supabase
+        .from('user_friendships')
+        .select(`
+          user_id,
+          created_at,
+          users:user_id (
+            id,
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('friend_id', userId)
+        .eq('status', 'pending');
+
+      if (error) throw error;
+
+      const requests = data?.map(r => ({
+        ...r.users,
+        request_date: r.created_at
+      })).filter(Boolean) || [];
+
+      console.log(`✅ Found ${requests.length} pending requests`);
+      return requests;
+    } catch (error) {
+      console.error('❌ Error fetching pending requests:', error);
+      throw error;
+    }
   }
 }
 

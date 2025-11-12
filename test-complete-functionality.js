@@ -153,3 +153,4 @@ setTimeout(() => {
   supabase.removeChannel(channel);
   console.log('✅ Test completed!');
 }, 30000);
+

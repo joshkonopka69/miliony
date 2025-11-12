@@ -17,6 +17,7 @@ import {
   AddFriendScreen,
   CreateGroupScreen,
   MyGroupsScreen,
+  MyGamesScreen,
   LanguageScreen,
   GameChatScreen,
   TermsOfServiceScreen,
@@ -164,6 +165,11 @@ export default function AppNavigator() {
         <Stack.Screen 
           name={ROUTES.MY_GROUPS} 
           component={MyGroupsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name={ROUTES.MY_GAMES} 
+          component={MyGamesScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen 

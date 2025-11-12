@@ -75,3 +75,4 @@ supabase.from('events').insert(testEvent).then(({ data, error }) => {
     console.log('📋 Created event:', data);
   }
 });
+

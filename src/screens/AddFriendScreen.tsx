@@ -1,6 +1,9 @@
-﻿import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, SafeAreaView, FlatList, Image } from 'react-native';
+﻿import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, SafeAreaView, FlatList, Image, ActivityIndicator } from 'react-native';
 import { useAppNavigation } from '../navigation';
+import { useAuth } from '../contexts/AuthContext';
+import { supabaseService } from '../services/supabase';
+import { useFocusEffect } from '@react-navigation/native';
 
 // Custom SM Logo Component
 const SMLogo = ({ size = 30 }: { size?: number }) => (
@@ -13,82 +16,94 @@ const SMLogo = ({ size = 30 }: { size?: number }) => (
 
 interface User {
   id: string;
-  name: string;
-  username: string;
-  avatar?: string;
+  display_name: string;
+  avatar_url?: string;
   isFriend: boolean;
+  friendshipStatus?: 'none' | 'pending' | 'accepted' | 'blocked';
   mutualFriends?: number;
 }
 
 export default function AddFriendScreen() {
   const navigation = useAppNavigation();
+  const { getUserId } = useAuth();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [friends, setFriends] = useState<Set<string>>(new Set());
 
-  // Mock users data
-  const mockUsers: User[] = [
-    {
-      id: '1',
-      name: 'Alex Johnson',
-      username: '@alex.johnson',
-      isFriend: false,
-      mutualFriends: 3,
-    },
-    {
-      id: '2',
-      name: 'Sarah Wilson',
-      username: '@sarah.wilson',
-      isFriend: false,
-      mutualFriends: 1,
-    },
-    {
-      id: '3',
-      name: 'Mike Chen',
-      username: '@mike.chen',
-      isFriend: true,
-      mutualFriends: 5,
-    },
-    {
-      id: '4',
-      name: 'Emma Davis',
-      username: '@emma.davis',
-      isFriend: false,
-      mutualFriends: 2,
-    },
-    {
-      id: '5',
-      name: 'David Brown',
-      username: '@david.brown',
-      isFriend: false,
-      mutualFriends: 0,
-    },
-  ];
+  // Load friends when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      loadFriends();
+    }, [])
+  );
+
+  const loadFriends = async () => {
+    const userId = getUserId();
+    if (!userId) return;
+
+    try {
+      const friendsList = await supabaseService.getFriends(userId);
+      const friendIds = new Set(friendsList.map((f: any) => f.id));
+      setFriends(friendIds);
+    } catch (error) {
+      console.error('Error loading friends:', error);
+    }
+  };
 
   const handleBack = () => {
     navigation.goBack();
   };
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
     if (query.length > 2) {
+      const userId = getUserId();
+      if (!userId) {
+        Alert.alert('Error', 'You must be logged in to search for friends');
+        return;
+      }
+
       setIsSearching(true);
-      // Simulate search delay
-      setTimeout(() => {
-        const filtered = mockUsers.filter(user => 
-          user.name.toLowerCase().includes(query.toLowerCase()) ||
-          user.username.toLowerCase().includes(query.toLowerCase())
+      try {
+        // Search for users
+        const users = await supabaseService.searchUsers(query, userId);
+        
+        // Check friendship status for each user
+        const usersWithStatus = await Promise.all(
+          users.map(async (user: any) => {
+            const status = await supabaseService.getFriendshipStatus(userId, user.id);
+            return {
+              id: user.id,
+              display_name: user.display_name,
+              avatar_url: user.avatar_url,
+              isFriend: status === 'accepted',
+              friendshipStatus: status,
+              mutualFriends: 0, // TODO: Calculate mutual friends
+            };
+          })
         );
-        setSearchResults(filtered);
+
+        setSearchResults(usersWithStatus);
+      } catch (error: any) {
+        console.error('Error searching users:', error);
+        Alert.alert('Error', error.message || 'Failed to search users');
+      } finally {
         setIsSearching(false);
-      }, 500);
+      }
     } else {
       setSearchResults([]);
     }
   };
 
-  const handleAddFriend = (userId: string, userName: string) => {
+  const handleAddFriend = async (friendId: string, userName: string) => {
+    const userId = getUserId();
+    if (!userId) {
+      Alert.alert('Error', 'You must be logged in to add friends');
+      return;
+    }
+
     Alert.alert(
       'Add Friend',
       `Send friend request to ${userName}?`,
@@ -96,16 +111,36 @@ export default function AddFriendScreen() {
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Send Request', 
-          onPress: () => {
-            Alert.alert('Success', `Friend request sent to ${userName}!`);
-            // Update user status to pending or friend
+          onPress: async () => {
+            try {
+              await supabaseService.sendFriendRequest(userId, friendId);
+              Alert.alert('Success', `Friend request sent to ${userName}!`);
+              
+              // Update search results to show pending status
+              setSearchResults(prev =>
+                prev.map(user =>
+                  user.id === friendId
+                    ? { ...user, friendshipStatus: 'pending' as const }
+                    : user
+                )
+              );
+            } catch (error: any) {
+              console.error('Error sending friend request:', error);
+              Alert.alert('Error', error.message || 'Failed to send friend request');
+            }
           }
         }
       ]
     );
   };
 
-  const handleRemoveFriend = (userId: string, userName: string) => {
+  const handleRemoveFriend = async (friendId: string, userName: string) => {
+    const userId = getUserId();
+    if (!userId) {
+      Alert.alert('Error', 'You must be logged in');
+      return;
+    }
+
     Alert.alert(
       'Remove Friend',
       `Remove ${userName} from your friends?`,
@@ -114,51 +149,98 @@ export default function AddFriendScreen() {
         { 
           text: 'Remove', 
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('Success', `${userName} has been removed from your friends.`);
-            // Update user status
+          onPress: async () => {
+            try {
+              await supabaseService.removeFriend(userId, friendId);
+              Alert.alert('Success', `${userName} has been removed from your friends.`);
+              
+              // Update search results and friends list
+              setSearchResults(prev =>
+                prev.map(user =>
+                  user.id === friendId
+                    ? { ...user, isFriend: false, friendshipStatus: 'none' as const }
+                    : user
+                )
+              );
+              setFriends(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(friendId);
+                return newSet;
+              });
+            } catch (error: any) {
+              console.error('Error removing friend:', error);
+              Alert.alert('Error', error.message || 'Failed to remove friend');
+            }
           }
         }
       ]
     );
   };
 
-  const renderUserItem = ({ item }: { item: User }) => (
-    <View style={styles.userItem}>
-      <View style={styles.userAvatar}>
-        <Text style={styles.userAvatarText}>
-          {item.name.split(' ').map(n => n[0]).join('')}
-        </Text>
-      </View>
-      <View style={styles.userInfo}>
-        <Text style={styles.userName}>{item.name}</Text>
-        <Text style={styles.userUsername}>{item.username}</Text>
-        {item.mutualFriends !== undefined && item.mutualFriends > 0 && (
-          <Text style={styles.mutualFriends}>
-            {item.mutualFriends} mutual friend{item.mutualFriends !== 1 ? 's' : ''}
-          </Text>
+  const renderUserItem = ({ item }: { item: User }) => {
+    const getInitials = (name: string) => {
+      return name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    };
+
+    const getButtonText = () => {
+      if (item.friendshipStatus === 'pending') return 'Pending';
+      if (item.isFriend) return 'Remove';
+      return 'Add';
+    };
+
+    const getButtonStyle = () => {
+      if (item.friendshipStatus === 'pending') return styles.pendingButton;
+      if (item.isFriend) return styles.removeButton;
+      return styles.addButton;
+    };
+
+    const getButtonTextStyle = () => {
+      if (item.friendshipStatus === 'pending') return styles.pendingButtonText;
+      if (item.isFriend) return styles.removeButtonText;
+      return styles.addButtonText;
+    };
+
+    return (
+      <View style={styles.userItem}>
+        {item.avatar_url ? (
+          <Image source={{ uri: item.avatar_url }} style={styles.userAvatarImage} />
+        ) : (
+          <View style={styles.userAvatar}>
+            <Text style={styles.userAvatarText}>
+              {getInitials(item.display_name)}
+            </Text>
+          </View>
         )}
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{item.display_name}</Text>
+          <Text style={styles.userUsername}>@{item.display_name.toLowerCase().replace(/\s+/g, '')}</Text>
+          {item.mutualFriends !== undefined && item.mutualFriends > 0 && (
+            <Text style={styles.mutualFriends}>
+              {item.mutualFriends} mutual friend{item.mutualFriends !== 1 ? 's' : ''}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity
+          style={[styles.actionButton, getButtonStyle()]}
+          onPress={() => 
+            item.isFriend 
+              ? handleRemoveFriend(item.id, item.display_name)
+              : handleAddFriend(item.id, item.display_name)
+          }
+          disabled={item.friendshipStatus === 'pending'}
+        >
+          <Text style={[styles.actionButtonText, getButtonTextStyle()]}>
+            {getButtonText()}
+          </Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={[
-          styles.actionButton,
-          item.isFriend ? styles.removeButton : styles.addButton
-        ]}
-        onPress={() => 
-          item.isFriend 
-            ? handleRemoveFriend(item.id, item.name)
-            : handleAddFriend(item.id, item.name)
-        }
-      >
-        <Text style={[
-          styles.actionButtonText,
-          item.isFriend ? styles.removeButtonText : styles.addButtonText
-        ]}>
-          {item.isFriend ? 'Remove' : 'Add'}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -427,6 +509,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
+  userAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+  },
   userAvatarText: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -464,6 +552,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderColor: '#ef4444', // border-red-500
   },
+  pendingButton: {
+    backgroundColor: '#f9fafb',
+    borderColor: '#9ca3af',
+    opacity: 0.6,
+  },
   actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
@@ -473,6 +566,9 @@ const styles = StyleSheet.create({
   },
   removeButtonText: {
     color: '#ef4444', // text-red-500
+  },
+  pendingButtonText: {
+    color: '#6b7280',
   },
   emptyState: {
     alignItems: 'center',

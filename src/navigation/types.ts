@@ -15,6 +15,7 @@ export type RootStackParamList = {
   AddFriend: undefined;
   CreateGroup: undefined;
   MyGroups: undefined;
+  MyGames: undefined;
   Language: undefined;
   GameChat: { game?: any };
   TermsOfService: undefined;
@@ -104,6 +105,7 @@ export const ROUTES = {
   ADD_FRIEND: 'AddFriend' as const,
   CREATE_GROUP: 'CreateGroup' as const,
   MY_GROUPS: 'MyGroups' as const,
+  MY_GAMES: 'MyGames' as const,
   LANGUAGE: 'Language' as const,
   GAME_CHAT: 'GameChat' as const,
   EVENT_DETAILS: 'EventDetails' as const,

@@ -13,157 +13,160 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
-import { BottomNavBar, ActivityFilterModal } from '../components';
+import { BottomNavBar, ActivityFilterModal, CreateEventModal } from '../components';
 import EnhancedInteractiveMap from '../components/EnhancedInteractiveMap';
+import PlaceInfoModal from '../components/PlaceInfoModal';
 import { useTranslation } from '../contexts/TranslationContext';
 import * as Location from 'expo-location';
-import { BackendService } from '../services/backendService';
-import { useAuth } from '../contexts/AuthContext';
-import CreateEventModal from '../components/CreateEventModal';
-import { supabase } from '../config/supabase';
+import { supabase } from '../services/supabase';
+import type { Event } from '../services/supabase';
 
 // ===========================
 // SPORT TYPE TO EMOJI MAPPING
 // ===========================
-const SPORT_EMOJI_MAP: Record<string, string> = {
-  basketball: '🏀',
-  football: '⚽',
-  soccer: '⚽',
-  running: '🏃‍♂️',
-  tennis: '🎾',
-  cycling: '🚴‍♂️',
-  swimming: '🏊‍♂️',
-  gym: '💪',
-  volleyball: '🏐',
-  climbing: '🧗‍♂️',
-  yoga: '🧘',
-  badminton: '🏸',
-  baseball: '⚾',
-  golf: '⛳',
-  hockey: '🏒',
-  // Fallback
-  default: '🏃',
-};
+// NOTE: Unused now that events don't show on map
+// const SPORT_EMOJI_MAP: Record<string, string> = {
+//   basketball: '🏀',
+//   football: '⚽',
+//   soccer: '⚽',
+//   running: '🏃‍♂️',
+//   tennis: '🎾',
+//   cycling: '🚴‍♂️',
+//   swimming: '🏊‍♂️',
+//   gym: '💪',
+//   volleyball: '🏐',
+//   climbing: '🧗‍♂️',
+//   yoga: '🧘',
+//   badminton: '🏸',
+//   baseball: '⚾',
+//   golf: '⛳',
+//   hockey: '🏒',
+//   // Fallback
+//   default: '🏃',
+// };
 
-// Helper function to get sport emoji
-const getSportEmoji = (sportType: string): string => {
-  const normalizedSport = sportType.toLowerCase().trim();
-  return SPORT_EMOJI_MAP[normalizedSport] || SPORT_EMOJI_MAP.default;
-};
+// // Helper function to get sport emoji
+// const getSportEmoji = (sportType: string): string => {
+//   const normalizedSport = sportType.toLowerCase().trim();
+//   return SPORT_EMOJI_MAP[normalizedSport] || SPORT_EMOJI_MAP.default;
+// };
 
 // ===========================
 // INTERFACES & TYPES
 // ===========================
-interface MapEvent {
-  id: string;
-  name: string; // Will be mapped from 'title'
-  activity: string; // Will be mapped from 'sport_type'
-  latitude: number;
-  longitude: number;
-  participants_count: number;
-  max_participants: number;
-  status: 'live' | 'past' | 'cancelled' | 'active'; // Added 'active' for your schema
-  created_at: string;
-}
+// NOTE: Unused now that events don't show on map
+// interface MapEvent {
+//   id: string;
+//   name: string; // Will be mapped from 'title'
+//   activity: string; // Will be mapped from 'sport_type'
+//   latitude: number;
+//   longitude: number;
+//   participants_count: number;
+//   max_participants: number;
+//   status: 'live' | 'past' | 'cancelled' | 'active'; // Added 'active' for your schema
+//   created_at: string;
+// }
 
 export default function MapScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
-  const { user } = useAuth();
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [filters, setFilters] = useState({
     types: [],
     keywords: [],
     radius: 3000,
   });
+  const [selectedPlace, setSelectedPlace] = useState<any>(null);
+  const [isPlaceModalVisible, setIsPlaceModalVisible] = useState(false);
+  const [isLoadingPlaceDetails, setIsLoadingPlaceDetails] = useState(false);
+  const [isCreateEventModalVisible, setIsCreateEventModalVisible] = useState(false);
+  const [selectedLocationForEvent, setSelectedLocationForEvent] = useState<any>(null);
   const mapRef = useRef<any>(null);
   
   // ===========================
   // STATE MANAGEMENT
   // ===========================
-  const [events, setEvents] = useState<MapEvent[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  // NOTE: Event state disabled - events now only show in PlaceInfoModal
+  // const [events, setEvents] = useState<MapEvent[]>([]);
+  // const [loading, setLoading] = useState<boolean>(true);
+  // const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
 
   // ===========================
-  // FETCH EVENTS FROM BACKEND
+  // FETCH EVENTS FROM SUPABASE
   // ===========================
-  const fetchEventsFromBackend = useCallback(async () => {
-    if (!userLocation) {
-      console.log('⚠️ No user location available');
-      return;
-    }
+  // NOTE: Event fetching disabled - events now only show in PlaceInfoModal
+  // when clicking on filtered locations, not as map markers
+  // const fetchEventsFromSupabase = useCallback(async () => {
+  //   try {
+  //     setLoading(true);
+  //     setError(null);
 
-    try {
-      setLoading(true);
-      setError(null);
+  //     console.log('🔄 Fetching events from Supabase...');
 
-      console.log('🔄 Fetching events from backend...');
+  //     // Query events table with filters matching YOUR schema
+  //     const { data, error: queryError } = await supabase
+  //       .from('events')
+  //       .select('*')
+  //       .in('status', ['live', 'active', 'upcoming']) // Support multiple status values
+  //       .gte('scheduled_datetime', new Date().toISOString()) // Future events only
+  //       .order('scheduled_datetime', { ascending: true })
+  //       .limit(100); // Limit to avoid performance issues
 
-      // Use the new backend service to get nearby events
-      const backendEvents = await BackendService.Events.getNearbyEvents(
-        userLocation.latitude,
-        userLocation.longitude,
-        filters.radius / 1000, // Convert meters to kilometers
-        50 // limit
-      );
+  //     if (queryError) {
+  //       console.error('❌ Supabase query error:', queryError);
+  //       throw queryError;
+  //     }
 
-      console.log('📊 Backend events:', backendEvents);
+  //     if (!data || data.length === 0) {
+  //       console.log('ℹ️ No active events found');
+  //       setEvents([]);
+  //       return;
+  //     }
 
-      if (!backendEvents || backendEvents.length === 0) {
-        console.log('⚠️ No events found');
-        setEvents([]);
-        return;
-      }
+  //     // Transform YOUR Supabase schema to MapEvent format
+  //     const transformedEvents: MapEvent[] = data.map((event: any) => ({
+  //       id: event.id,
+  //       name: event.name, // Column: 'name'
+  //       activity: event.activity, // Column: 'activity'
+  //       latitude: event.latitude,
+  //       longitude: event.longitude,
+  //       participants_count: event.participants_count || 0,
+  //       max_participants: event.max_participants,
+  //       status: event.status,
+  //       created_at: event.scheduled_datetime, // Using scheduled_datetime for display
+  //     }));
 
-      // Transform backend events to MapEvent format
-      const transformedEvents: MapEvent[] = await Promise.all(
-        backendEvents.map(async (event) => {
-          // Get participant count for each event
-          const participants = await BackendService.Events.getEventParticipants(event.id);
-          
-          return {
-            id: event.id,
-            name: event.title,
-            activity: event.sport_type,
-            latitude: event.latitude,
-            longitude: event.longitude,
-            participants_count: participants.length,
-            max_participants: event.max_participants,
-            status: event.status as 'live' | 'past' | 'cancelled' | 'active',
-            created_at: event.created_at,
-          };
-        })
-      );
+  //     console.log(`✅ Fetched ${transformedEvents.length} events successfully`);
+  //     console.log('📊 Events data:', transformedEvents);
+  //     setEvents(transformedEvents);
 
-      console.log('✅ Transformed events:', transformedEvents);
-      setEvents(transformedEvents);
-
-    } catch (error: any) {
-      console.error('❌ Error fetching events:', error);
-      setError(`Failed to load events: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [userLocation, filters.radius]);
+  //   } catch (err: any) {
+  //     console.error('❌ Error fetching events:', err);
+  //     setError(err.message || 'Failed to load events');
+  //     Alert.alert(
+  //       'Error Loading Events',
+  //       'Could not fetch sport events. Please try again later.',
+  //       [{ text: 'OK' }]
+  //     );
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }, []);
 
   // ===========================
   // LOCATION PERMISSION & SETUP
   // ===========================
   useEffect(() => {
-    const setupLocationAndFetchEvents = async () => {
+    const setupLocation = async () => {
       try {
         // Request location permission
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert(t.map.permissionDenied, t.map.locationAccessNeeded);
-          // Still fetch events even without location
-          await fetchEventsFromBackend();
           return;
         }
 
@@ -176,50 +179,47 @@ export default function MapScreen() {
 
         console.log('📍 User location obtained:', location.coords);
 
-        // Fetch events
-        await fetchEventsFromBackend();
-
       } catch (error) {
         console.error('Error setting up location:', error);
-        // Still try to fetch events
-        await fetchEventsFromBackend();
       }
     };
 
-    setupLocationAndFetchEvents();
-  }, [fetchEventsFromBackend, t.map.locationAccessNeeded, t.map.permissionDenied]);
+    setupLocation();
+  }, [t.map.locationAccessNeeded, t.map.permissionDenied]);
 
   // ===========================
   // REAL-TIME EVENT UPDATES
   // ===========================
-  useEffect(() => {
-    console.log('🔔 Setting up real-time event subscriptions...');
+  // NOTE: Event fetching disabled - events now only show in PlaceInfoModal
+  // when clicking on filtered locations, not as map markers
+  // useEffect(() => {
+  //   console.log('🔔 Setting up real-time event subscriptions...');
 
-    // Subscribe to changes in events table
-    const channel = supabase
-      .channel('map-events')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
-          schema: 'public',
-          table: 'events',
-        },
-        (payload) => {
-          console.log('🔔 Event change detected:', payload);
-          
-          // Refetch events when changes occur
-          fetchEventsFromBackend();
-        }
-      )
-      .subscribe();
+  //   // Subscribe to changes in events table
+  //   const channel = supabase
+  //     .channel('map-events')
+  //     .on(
+  //       'postgres_changes',
+  //       {
+  //         event: '*', // Listen to INSERT, UPDATE, DELETE
+  //         schema: 'public',
+  //         table: 'events',
+  //       },
+  //       (payload) => {
+  //         console.log('🔔 Event change detected:', payload);
+  //         
+  //         // Refetch events when changes occur
+  //         fetchEventsFromSupabase();
+  //       }
+  //     )
+  //     .subscribe();
 
-    // Cleanup subscription on unmount
-    return () => {
-      console.log('🔕 Cleaning up event subscriptions...');
-      supabase.removeChannel(channel);
-    };
-  }, [fetchEventsFromBackend]);
+  //   // Cleanup subscription on unmount
+  //   return () => {
+  //     console.log('🔕 Cleaning up event subscriptions...');
+  //     supabase.removeChannel(channel);
+  //   };
+  // }, [fetchEventsFromSupabase]);
 
   const handleLocationPermissionGranted = () => {
     console.log('Location permission granted');
@@ -235,38 +235,87 @@ export default function MapScreen() {
     setShowFilterModal(false);
   };
 
-  const handleCreateEvent = () => {
-    if (!user) {
-      Alert.alert('Login Required', 'You must be logged in to create an event');
-      return;
-    }
-    setShowCreateEventModal(true);
+  // Handle place/location marker press (for filtered locations)
+  const handleLocationSelect = (place: any) => {
+    console.log('📍 MapScreen: Filtered location selected:', place);
+    setIsLoadingPlaceDetails(true);
+    setIsPlaceModalVisible(true);
+    
+    // Convert photo references to URLs if photos exist
+    const placeWithPhotoUrls = {
+      ...place,
+      photos: place.photos?.map((photo: any) => {
+        // If photo already has url, keep it
+        if (photo.url) return photo;
+        
+        // If photo has photoReference, convert to URL
+        if (photo.photoReference) {
+          const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyDBJ65DOu4WMoTRjvz1J6i6VbYbjOoEW2E';
+          return {
+            ...photo,
+            url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photoReference}&key=${GOOGLE_API_KEY}`
+          };
+        }
+        
+        // Fallback for old format (string photoReference)
+        if (typeof photo === 'string') {
+          const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyDBJ65DOu4WMoTRjvz1J6i6VbYbjOoEW2E';
+          return {
+            photoReference: photo,
+            url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo}&key=${GOOGLE_API_KEY}`
+          };
+        }
+        
+        return photo;
+      })
+    };
+    
+    setSelectedPlace(placeWithPhotoUrls);
+    setIsLoadingPlaceDetails(false);
   };
 
+  // Handle create event at place
+  const handleCreateMeetup = (placeDetails: any) => {
+    console.log('✨ MapScreen: Opening create event modal for:', placeDetails.name);
+    
+    // Prepare location data for event creation modal
+    const locationData = {
+      name: placeDetails.name || 'Selected Location',
+      address: placeDetails.address || placeDetails.vicinity || '',
+      latitude: placeDetails.coordinates?.lat || placeDetails.latitude,
+      longitude: placeDetails.coordinates?.lng || placeDetails.longitude,
+      placeId: placeDetails.placeId || placeDetails.place_id || null,
+    };
+    
+    setSelectedLocationForEvent(locationData);
+    setIsCreateEventModalVisible(true);
+    setIsPlaceModalVisible(false); // Close location modal
+  };
+
+  // Handler for when event is created
   const handleEventCreated = (newEvent: any) => {
-    console.log('New event created:', newEvent);
-    // Refresh events list
-    fetchEventsFromBackend();
+    console.log('🎉 New event created:', newEvent.name);
+    
+    // Event created successfully - it will now be visible in PlaceInfoModal
+    // when users click on this location
+    
+    // Show success feedback
+    Alert.alert(
+      'Event Created! 🎉',
+      `Your "${newEvent.name}" event is now live! Visit this location on the map to see it.`,
+      [{ text: 'Awesome!' }]
+    );
   };
 
-  const handleEventPress = (event: MapEvent) => {
-    // Navigate to event details with chat
-    navigation.navigate('EventDetails', { 
-      eventId: event.id,
-      eventTitle: event.name,
-      event: event 
-    });
-  };
-
-  // Handle map tap to create event at that location
-  const handleMapTap = (location: { latitude: number; longitude: number }) => {
-    console.log('🗺️ Map tapped at:', location);
-    
-    // Update user location to tapped location
-    setUserLocation(location);
-    
-    // Show create event modal
-    setShowCreateEventModal(true);
+  // Handle event press from place modal
+  const handleEventPress = (event: any) => {
+    console.log('🎮 MapScreen: Event selected:', event.name);
+    // TODO: Navigate to event details or show event details modal
+    Alert.alert(
+      'Event Details',
+      `Event: ${event.name}\nCreator: ${event.creator?.display_name || 'Unknown'}\nParticipants: ${event.currentParticipants}/${event.max_participants}`,
+      [{ text: 'OK' }]
+    );
   };
 
   return (
@@ -279,9 +328,8 @@ export default function MapScreen() {
           mapRef.current = ref;
         }}
         onLocationPermissionGranted={handleLocationPermissionGranted}
-        onLocationSelect={handleMapTap}
+        onLocationSelect={handleLocationSelect}
         hideControls={true}
-        events={events}
         externalFilters={filters}
       />
 
@@ -336,47 +384,6 @@ export default function MapScreen() {
         </View>
       </SafeAreaView>
 
-      {/* Loading Indicator */}
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingCard}>
-            <ActivityIndicator size="large" color="#FDB924" />
-            <Text style={styles.loadingText}>Loading events...</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Event Count Badge */}
-      {!loading && events.length > 0 && (
-        <View style={styles.eventCountBadge}>
-          <Text style={styles.eventCountText}>
-            {events.length} event{events.length !== 1 ? 's' : ''} nearby
-          </Text>
-        </View>
-      )}
-
-      {/* Debug Info (remove in production) */}
-      {__DEV__ && (
-        <View style={styles.debugInfo}>
-          <Text style={styles.debugText}>
-            Events: {events.length} | Loading: {loading ? 'Yes' : 'No'}
-          </Text>
-          {events.length > 0 && (
-            <Text style={styles.debugText}>
-              Sports: {[...new Set(events.map(e => e.activity))].join(', ')}
-            </Text>
-          )}
-        </View>
-      )}
-
-      {/* Create Event Button */}
-      <TouchableOpacity
-        style={styles.createEventButton}
-        onPress={handleCreateEvent}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.createEventButtonText}>+ Create Event</Text>
-      </TouchableOpacity>
 
       {/* Filter Modal */}
       <ActivityFilterModal
@@ -386,12 +393,23 @@ export default function MapScreen() {
         currentFilters={filters}
       />
 
+      {/* Place Info Modal */}
+      <PlaceInfoModal
+        visible={isPlaceModalVisible}
+        placeDetails={selectedPlace}
+        onClose={() => setIsPlaceModalVisible(false)}
+        onCreateMeetup={handleCreateMeetup}
+        onEventPress={handleEventPress}
+        userLocation={userLocation}
+        loading={isLoadingPlaceDetails}
+      />
+
       {/* Create Event Modal */}
       <CreateEventModal
-        visible={showCreateEventModal}
-        onClose={() => setShowCreateEventModal(false)}
+        visible={isCreateEventModalVisible}
+        location={selectedLocationForEvent}
+        onClose={() => setIsCreateEventModalVisible(false)}
         onEventCreated={handleEventCreated}
-        userLocation={userLocation || undefined}
       />
 
       {/* Bottom Navigation */}
@@ -529,26 +547,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#FFFFFF',
     marginBottom: 4,
-  },
-  // Create Event Button
-  createEventButton: {
-    position: 'absolute',
-    bottom: 100,
-    right: 20,
-    backgroundColor: '#4CAF50',
-    borderRadius: 25,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 500,
-  },
-  createEventButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

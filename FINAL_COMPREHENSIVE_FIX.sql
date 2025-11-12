@@ -87,3 +87,4 @@ INSERT INTO events (title, max_participants, latitude, longitude, created_by, sc
 ('Final Test Event', 10, 51.1079, 17.0385, 'c46dec97-bfd3-4d30-9cc8-178b1a2b66a7', NOW() + INTERVAL '1 day', 'active');
 
 SELECT 'All done! Your app should now work perfectly!' as result;
+

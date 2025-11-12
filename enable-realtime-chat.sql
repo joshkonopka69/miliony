@@ -105,3 +105,4 @@ SELECT 'Test data created:' as status,
        (SELECT COUNT(*) FROM users) as users;
 
 SELECT 'Real-time setup complete! Your chat should now work!' as result;
+

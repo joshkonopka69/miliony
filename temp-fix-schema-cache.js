@@ -49,3 +49,4 @@ supabase.rpc('exec_sql', {
     });
   }
 });
+

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -10,7 +11,9 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
-  Image
+  Image,
+  Platform,
+  ActionSheetIOS
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation/hooks';
@@ -19,6 +22,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/TranslationContext';
 import { supabase } from '../config/supabase';
 import { ROUTES } from '../navigation/types';
+import {
+  takePhoto,
+  pickImage,
+  uploadProfilePhoto,
+  deleteOldProfilePhoto,
+} from '../services/photoUploadService';
+import { supabaseService } from '../services/supabase';
 
 interface UserProfile {
   id: string;
@@ -36,6 +46,7 @@ export default function ProfileScreen() {
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   
   const [profile, setProfile] = useState<UserProfile | null>(null);
   
@@ -134,6 +145,8 @@ export default function ProfileScreen() {
     try {
       setLoading(true);
 
+      console.log('📥 Fetching profile for user:', user.id);
+
       // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
         .from('users')
@@ -141,14 +154,25 @@ export default function ProfileScreen() {
         .eq('id', user.id)
         .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('❌ Profile fetch error:', profileError);
+        throw profileError;
+      }
+
+      console.log('✅ Profile loaded:', {
+        id: profileData.id,
+        display_name: profileData.display_name,
+        avatar_url: profileData.avatar_url || '(none)',
+        avatar_url_length: profileData.avatar_url?.length || 0,
+      });
+
       setProfile(profileData);
 
       // TODO: Fetch user's game statistics from backend
       // This would update the gameStats state
 
     } catch (error: any) {
-      console.error('Error fetching profile:', error);
+      console.error('❌ Error fetching profile:', error);
       Alert.alert(t.common.error, t.profile.errorLoading);
     } finally {
       setLoading(false);
@@ -158,6 +182,14 @@ export default function ProfileScreen() {
   useEffect(() => {
     fetchProfileData();
   }, [fetchProfileData]);
+
+  // Refetch profile data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('👤 ProfileScreen: Screen focused, refetching profile...');
+      fetchProfileData();
+    }, [fetchProfileData])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -191,6 +223,95 @@ export default function ProfileScreen() {
   const getJoinYear = (dateString: string): number => {
     return new Date(dateString).getFullYear();
   };
+
+  const handlePhotoPress = () => {
+    if (Platform.OS === 'ios') {
+      // iOS Action Sheet
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Library'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleTakePhoto();
+          } else if (buttonIndex === 2) {
+            handlePickImage();
+          }
+        }
+      );
+    } else {
+      // Android Alert
+      Alert.alert(
+        'Change Profile Photo',
+        'Choose an option',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Take Photo', onPress: handleTakePhoto },
+          { text: 'Choose from Library', onPress: handlePickImage },
+        ]
+      );
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const photo = await takePhoto();
+      if (photo) {
+        await uploadAndUpdatePhoto(photo.uri);
+      }
+    } catch (error: any) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', error.message || 'Failed to take photo');
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const image = await pickImage();
+      if (image) {
+        await uploadAndUpdatePhoto(image.uri);
+      }
+    } catch (error: any) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', error.message || 'Failed to pick image');
+    }
+  };
+
+  const uploadAndUpdatePhoto = async (imageUri: string) => {
+    try {
+      setIsUploadingPhoto(true);
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
+
+      // Upload new photo
+      const newPhotoUrl = await uploadProfilePhoto(user.id, imageUri);
+
+      // Delete old photo (optional, don't block on this)
+      if (profile?.avatar_url) {
+        deleteOldProfilePhoto(profile.avatar_url).catch(console.warn);
+      }
+
+      // Update database
+      await supabaseService.updateProfilePhoto(user.id, newPhotoUrl);
+
+      // Update local state
+      setProfile({
+        ...profile!,
+        avatar_url: newPhotoUrl,
+      });
+
+      Alert.alert('Success', 'Profile photo updated!');
+
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      Alert.alert('Error', error.message || 'Failed to upload photo');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };;
 
 
   if (loading) {
@@ -241,20 +362,37 @@ export default function ProfileScreen() {
         <View style={styles.profileSection}>
           {/* Profile Photo */}
           <View style={styles.profilePhotoContainer}>
-            <View style={styles.profilePhoto}>
-              {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.profileImage} />
-              ) : (
-                <Text style={styles.profileInitials}>
-                  {getInitials(profile?.display_name || 'User')}
-                </Text>
-              )}
+            <TouchableOpacity
+              onPress={handlePhotoPress}
+              activeOpacity={0.7}
+              disabled={isUploadingPhoto}
+            >
+              <View style={styles.profilePhoto}>
+                {isUploadingPhoto ? (
+                  <View style={styles.uploadingContainer}>
+                    <ActivityIndicator size="large" color="#FFD700" />
+                    <Text style={styles.uploadingText}>Uploading...</Text>
+                  </View>
+                ) : profile?.avatar_url ? (
+                  <Image source={{ uri: profile.avatar_url }} style={styles.profileImage} />
+                ) : (
+                  <Text style={styles.profileInitials}>
+                    {getInitials(profile?.display_name || 'User')}
+                  </Text>
+                )}
               </View>
+            </TouchableOpacity>
             
             {/* Camera Button */}
-            <TouchableOpacity style={styles.cameraButton}>
-              <Ionicons name="camera" size={20} color="#000000" />
-            </TouchableOpacity>
+            {!isUploadingPhoto && (
+              <TouchableOpacity 
+                style={styles.cameraButton}
+                onPress={handlePhotoPress}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="camera" size={20} color="#000000" />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* User Info */}
@@ -460,6 +598,17 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontWeight: '700',
     color: '#666666',
+  },
+  uploadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  uploadingText: {
+    fontSize: 12,
+    color: '#FFD700',
+    fontWeight: '600',
+    marginTop: 8,
   },
   cameraButton: {
     position: 'absolute',

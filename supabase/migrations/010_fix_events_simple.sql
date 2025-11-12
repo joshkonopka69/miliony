@@ -157,3 +157,4 @@ ON CONFLICT DO NOTHING;
 INSERT INTO events (title, sport_type, description, max_participants, latitude, longitude, location_name, created_by, scheduled_datetime) VALUES
   ('Football Match', 'Football', 'A football match at the stadium', 22, 51.1408, 16.9426, 'Stadion Wrocław', 'f6385377-f738-4486-8692-853dd25b08d8', NOW() + INTERVAL '3 days')
 ON CONFLICT DO NOTHING;
+

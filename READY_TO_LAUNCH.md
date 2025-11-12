@@ -228,3 +228,4 @@ npx expo start --clear
 ```
 
 **Your app is 85% production-ready. The remaining 15% is just polish!**
+
