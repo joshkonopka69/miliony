@@ -65,6 +65,8 @@ export interface MyEvent {
   chatEnabled: boolean;
   createdBy: EventCreator;
   description?: string;
+  requiresApproval?: boolean;
+  placeId?: string | null;
 }
 
 export interface GroupedEvents {

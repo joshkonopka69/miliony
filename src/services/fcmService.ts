@@ -60,14 +60,14 @@ class FCMService {
       }
 
       if (finalStatus !== 'granted') {
-        console.error('Failed to get push token for push notification!');
+        console.warn('Push notification permissions not granted. Skipping FCM setup.');
         return false;
       }
 
       // Get FCM token
       this.fcmToken = await this.getFCMToken();
       if (!this.fcmToken) {
-        console.error('Failed to get FCM token');
+        console.warn('Failed to obtain FCM token. Push notifications will be disabled until permissions are granted.');
         return false;
       }
 
@@ -96,7 +96,7 @@ class FCMService {
       });
       return token.data;
     } catch (error) {
-      console.error('Error getting FCM token:', error);
+      console.warn('Error getting FCM token:', error);
       return null;
     }
   }

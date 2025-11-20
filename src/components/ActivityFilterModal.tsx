@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { useTranslation } from '../contexts/TranslationContext';
 
 // Custom SM Logo Component
 const SMLogo = ({ size = 30 }: { size?: number }) => (
@@ -33,25 +34,17 @@ interface ActivityFilterModalProps {
   currentFilters: ActivityFilter;
 }
 
-const ACTIVITY_TYPES = [
-  { id: 'gym', label: 'Gym/Fitness Center', icon: '💪' },
-  { id: 'stadium', label: 'Stadium', icon: '🏟️' },
-  { id: 'swimming_pool', label: 'Swimming Pool', icon: '🏊' },
-  { id: 'park', label: 'Park', icon: '🌳' },
-  { id: 'sports_complex', label: 'Sports Complex', icon: '🏟️' },
-  { id: 'bowling_alley', label: 'Bowling Alley', icon: '🎳' },
-  { id: 'golf_course', label: 'Golf Course', icon: '⛳' },
-  { id: 'ice_rink', label: 'Ice Rink', icon: '⛸️' },
-  { id: 'tennis_court', label: 'Tennis Court', icon: '🎾' },
-  { id: 'basketball_court', label: 'Basketball Court', icon: '🏀' },
-];
-
-const RADIUS_OPTIONS = [
-  { value: 1000, label: '1 km' },
-  { value: 3000, label: '3 km' },
-  { value: 5000, label: '5 km' },
-  { value: 10000, label: '10 km' },
-  { value: 20000, label: '20 km' },
+const BASE_ACTIVITY_TYPES = [
+  { id: 'gym', icon: '💪' },
+  { id: 'stadium', icon: '🏟️' },
+  { id: 'swimming_pool', icon: '🏊' },
+  { id: 'park', icon: '🌳' },
+  { id: 'sports_complex', icon: '🏟️' },
+  { id: 'bowling_alley', icon: '🎳' },
+  { id: 'golf_course', icon: '⛳' },
+  { id: 'ice_rink', icon: '⛸️' },
+  { id: 'tennis_court', icon: '🎾' },
+  { id: 'basketball_court', icon: '🏀' },
 ];
 
 export default function ActivityFilterModal({
@@ -60,9 +53,28 @@ export default function ActivityFilterModal({
   onApplyFilters,
   currentFilters,
 }: ActivityFilterModalProps) {
+  const { t } = useTranslation();
   const [selectedTypes, setSelectedTypes] = useState<string[]>(currentFilters.types);
   const [keywords, setKeywords] = useState(currentFilters.keywords.join(', '));
   const [radius, setRadius] = useState(currentFilters.radius);
+
+  const activityTypes = useMemo(
+    () =>
+      BASE_ACTIVITY_TYPES.map(type => ({
+        ...type,
+        label: t.activityFilter.types[type.id] ?? type.id,
+      })),
+    [t.activityFilter.types]
+  );
+
+  const radiusOptions = useMemo(
+    () =>
+      [1000, 3000, 5000, 10000, 20000].map(value => ({
+        value,
+        label: `${value / 1000} ${t.activityFilter.unitKm}`,
+      })),
+    [t.activityFilter.unitKm]
+  );
 
   // Update local state when currentFilters prop changes
   useEffect(() => {
@@ -109,18 +121,18 @@ export default function ActivityFilterModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>{t.activityFilter.cancel}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Activities</Text>
+          <Text style={styles.title}>{t.activityFilter.title}</Text>
           <SMLogo size={30} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Activity Types */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Venue Types</Text>
+            <Text style={styles.sectionTitle}>{t.activityFilter.venueTypes}</Text>
             <View style={styles.typesGrid}>
-              {ACTIVITY_TYPES.map((type) => (
+              {activityTypes.map((type) => (
                 <TouchableOpacity
                   key={type.id}
                   style={[
@@ -131,10 +143,12 @@ export default function ActivityFilterModal({
                   activeOpacity={0.7}
                 >
                   <Text style={styles.typeIcon}>{type.icon}</Text>
-                  <Text style={[
-                    styles.typeLabel,
-                    selectedTypes.includes(type.id) && styles.typeLabelSelected
-                  ]}>
+                  <Text
+                    style={[
+                      styles.typeLabel,
+                      selectedTypes.includes(type.id) && styles.typeLabelSelected,
+                    ]}
+                  >
                     {type.label}
                   </Text>
                 </TouchableOpacity>
@@ -144,15 +158,15 @@ export default function ActivityFilterModal({
 
           {/* Keywords */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Specific Activities</Text>
+            <Text style={styles.sectionTitle}>{t.activityFilter.specificActivities}</Text>
             <Text style={styles.sectionSubtitle}>
-              Search for specific activities (e.g., yoga, bouldering, martial arts)
+              {t.activityFilter.specificActivitiesHint}
             </Text>
             <TextInput
               style={styles.keywordInput}
               value={keywords}
               onChangeText={setKeywords}
-              placeholder="Enter activities separated by commas"
+              placeholder={t.activityFilter.keywordsPlaceholder}
               placeholderTextColor="#9ca3af"
               multiline
             />
@@ -160,9 +174,9 @@ export default function ActivityFilterModal({
 
           {/* Radius */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Search Radius</Text>
+            <Text style={styles.sectionTitle}>{t.activityFilter.searchRadius}</Text>
             <View style={styles.radiusContainer}>
-              {RADIUS_OPTIONS.map((option) => (
+              {radiusOptions.map((option) => (
                 <TouchableOpacity
                   key={option.value}
                   style={[
@@ -191,7 +205,7 @@ export default function ActivityFilterModal({
             onPress={handleApply}
             activeOpacity={0.8}
           >
-            <Text style={styles.applyButtonText}>Apply Filters</Text>
+            <Text style={styles.applyButtonText}>{t.activityFilter.apply}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

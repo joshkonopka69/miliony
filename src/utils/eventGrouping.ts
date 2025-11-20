@@ -64,7 +64,13 @@ export function groupEventsByTime(events: MyEvent[]): GroupedEvents[] {
 /**
  * Format date intelligently (Today, Tomorrow, or specific date)
  */
-export function formatEventDate(date: Date): string {
+const DEFAULT_LOCALE = 'en-US';
+
+export function formatEventDate(
+  date: Date,
+  locale: string = DEFAULT_LOCALE,
+  labels?: { today?: string; tomorrow?: string }
+): string {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const tomorrow = new Date(today);
@@ -72,25 +78,24 @@ export function formatEventDate(date: Date): string {
   const eventDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
   if (eventDay.getTime() === today.getTime()) {
-    return 'Today';
+    return labels?.today ?? 'Today';
   } else if (eventDay.getTime() === tomorrow.getTime()) {
-    return 'Tomorrow';
-  } else {
-    // Format as "Mon, Jan 15" or "Wed, Dec 25"
-    const options: Intl.DateTimeFormatOptions = { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    };
-    return date.toLocaleDateString('en-US', options);
+    return labels?.tomorrow ?? 'Tomorrow';
   }
+
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  };
+  return date.toLocaleDateString(locale, options);
 }
 
 /**
  * Format time (6:00 PM, 9:30 AM)
  */
-export function formatEventTime(date: Date): string {
-  return date.toLocaleTimeString('en-US', { 
+export function formatEventTime(date: Date, locale: string = DEFAULT_LOCALE): string {
+  return date.toLocaleTimeString(locale, {
     hour: 'numeric', 
     minute: '2-digit',
     hour12: true 
@@ -100,34 +105,63 @@ export function formatEventTime(date: Date): string {
 /**
  * Format date and time together
  */
-export function formatEventDateTime(date: Date): string {
-  return `${formatEventDate(date)}, ${formatEventTime(date)}`;
+export function formatEventDateTime(
+  date: Date,
+  locale: string = DEFAULT_LOCALE,
+  labels?: { today?: string; tomorrow?: string }
+): string {
+  return `${formatEventDate(date, locale, labels)}, ${formatEventTime(date, locale)}`;
 }
 
 /**
  * Get time until event starts (for "Starting in X minutes")
  */
-export function getTimeUntilEvent(startTime: Date): string {
+export function getTimeUntilEvent(
+  startTime: Date,
+  locale: string = DEFAULT_LOCALE,
+  nowLabel: string = 'Starting now'
+): string {
   const now = new Date();
   const diff = startTime.getTime() - now.getTime();
   
   if (diff < 0) {
-    return 'Started';
+    return nowLabel;
   }
 
   const minutes = Math.floor(diff / (1000 * 60));
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (days > 0) {
-    return `In ${days} day${days > 1 ? 's' : ''}`;
-  } else if (hours > 0) {
-    return `In ${hours} hour${hours > 1 ? 's' : ''}`;
-  } else if (minutes > 0) {
-    return `In ${minutes} min`;
-  } else {
-    return 'Starting now';
+  const hasRelativeTimeFormat =
+    typeof Intl !== 'undefined' &&
+    typeof Intl.RelativeTimeFormat === 'function';
+
+  if (!hasRelativeTimeFormat) {
+    if (days > 0) {
+      return days === 1 ? 'Tomorrow' : `${days} days`;
+    }
+    if (hours > 0) {
+      return `${hours}h`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m`;
+    }
+    return nowLabel;
   }
+
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+
+  if (days > 0) {
+    return rtf.format(days, 'day');
+  }
+  if (hours > 0) {
+    return rtf.format(hours, 'hour');
+  }
+  if (minutes > 0) {
+    return rtf.format(minutes, 'minute');
+  }
+
+  return nowLabel;
 }
 
 /**
@@ -161,13 +195,18 @@ export function formatDistance(distanceKm: number): string {
 /**
  * Get status badge text
  */
-export function getStatusBadge(event: MyEvent): string | null {
+export type StatusBadge = 'live' | 'startingSoon' | 'cancelled' | 'started';
+
+export function getStatusBadge(event: MyEvent): StatusBadge | null {
   if (isEventLive(event)) {
-    return 'Live';
+    return 'live';
   } else if (isEventStartingSoon(event)) {
-    return 'Starting Soon';
+    return 'startingSoon';
   } else if (event.status === 'cancelled') {
-    return 'Cancelled';
+    return 'cancelled';
+  }
+  if (event.startTime.getTime() < Date.now()) {
+    return 'started';
   }
   return null;
 }

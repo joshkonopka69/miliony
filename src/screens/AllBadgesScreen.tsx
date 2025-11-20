@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,22 +11,40 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation/hooks';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useAuth } from '../contexts/AuthContext';
+import { userService, UserGameStats } from '../services/userService';
 
 export default function AllBadgesScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
+  const { user } = useAuth();
 
-  // Mock game stats (would come from props or context)
-  const [gameStats] = useState({
-    basketball: 15,
-    football: 8,
-    tennis: 5,
-    volleyball: 3,
-    running: 20,
-    cycling: 7,
-    swimming: 2,
-    gym: 10,
+  // Game stats now loaded from backend so badges update in real-time
+  const [gameStats, setGameStats] = useState<UserGameStats>({
+    basketball: 0,
+    football: 0,
+    tennis: 0,
+    volleyball: 0,
+    running: 0,
+    cycling: 0,
+    swimming: 0,
+    gym: 0,
   });
+
+  useEffect(() => {
+    const loadStats = async () => {
+      if (!user?.id) return;
+      try {
+        const stats = await userService.getUserGameStats(user.id);
+        setGameStats(stats);
+        console.log('✅ AllBadgesScreen: game stats loaded:', stats);
+      } catch (error) {
+        console.error('❌ AllBadgesScreen: error loading game stats:', error);
+      }
+    };
+
+    loadStats();
+  }, [user?.id]);
 
   // Define all badges by category
   const badgeCategories = [
@@ -173,7 +191,7 @@ export default function AllBadgesScreen() {
                 <View style={styles.categoryInfo}>
                   <Text style={styles.categoryName}>{category.sport}</Text>
                   <Text style={styles.categoryProgress}>
-                    {earnedCount}/{category.badges.length} earned
+                    {earnedCount}/{category.badges.length} {t.allBadges.earnedBadge}
                   </Text>
                 </View>
               </View>
@@ -240,7 +258,7 @@ export default function AllBadgesScreen() {
                       ) : (
                         <View style={styles.earnedContainer}>
                           <Ionicons name="trophy" size={12} color="#FFD700" />
-                          <Text style={styles.earnedText}>Earned!</Text>
+                          <Text style={styles.earnedText}>{t.allBadges.earnedStatus}</Text>
                         </View>
                       )}
                     </View>

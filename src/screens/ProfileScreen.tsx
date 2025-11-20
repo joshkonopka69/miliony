@@ -29,6 +29,7 @@ import {
   deleteOldProfilePhoto,
 } from '../services/photoUploadService';
 import { supabaseService } from '../services/supabase';
+import { userService, UserGameStats } from '../services/userService';
 
 interface UserProfile {
   id: string;
@@ -50,16 +51,16 @@ export default function ProfileScreen() {
   
   const [profile, setProfile] = useState<UserProfile | null>(null);
   
-  // User's game statistics (mock data - would come from backend)
-  const [gameStats] = useState({
-    basketball: 15,
-    football: 8,
-    tennis: 5,
-    volleyball: 3,
-    running: 20,
-    cycling: 7,
-    swimming: 2,
-    gym: 10,
+  // User's game statistics (now loaded from backend for real-time achievements)
+  const [gameStats, setGameStats] = useState<UserGameStats>({
+    basketball: 0,
+    football: 0,
+    tennis: 0,
+    volleyball: 0,
+    running: 0,
+    cycling: 0,
+    swimming: 0,
+    gym: 0,
   });
 
   // Define all possible badges
@@ -148,6 +149,7 @@ export default function ProfileScreen() {
       console.log('📥 Fetching profile for user:', user.id);
 
       // Fetch user profile
+      // Force fresh data by adding timestamp to bypass cache
       const { data: profileData, error: profileError } = await supabase
         .from('users')
         .select('*')
@@ -166,10 +168,24 @@ export default function ProfileScreen() {
         avatar_url_length: profileData.avatar_url?.length || 0,
       });
 
-      setProfile(profileData);
+      // Add cache-busting timestamp to avatar URL if it exists
+      const profileWithFreshAvatar = {
+        ...profileData,
+        avatar_url: profileData.avatar_url 
+          ? `${profileData.avatar_url}?t=${Date.now()}`
+          : profileData.avatar_url
+      };
 
-      // TODO: Fetch user's game statistics from backend
-      // This would update the gameStats state
+      setProfile(profileWithFreshAvatar);
+
+      // Fetch user's game statistics from backend for real-time achievements
+      try {
+        const stats = await userService.getUserGameStats(user.id);
+        setGameStats(stats);
+        console.log('✅ Game stats loaded for achievements:', stats);
+      } catch (statsError) {
+        console.error('❌ Error fetching game stats for achievements:', statsError);
+      }
 
     } catch (error: any) {
       console.error('❌ Error fetching profile:', error);

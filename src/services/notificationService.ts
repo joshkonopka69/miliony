@@ -4,16 +4,47 @@ import { Platform } from 'react-native';
 import { supabase } from '../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type NotificationType =
+  | 'new_event_nearby'
+  | 'friend_request'
+  | 'friend_request_accepted'
+  | 'friend_activity'
+  | 'event_invite'
+  | 'event_invitation'
+  | 'event_cancelled'
+  | 'event_updated'
+  | 'event_update'
+  | 'event_reminder'
+  | 'event_participant_joined'
+  | 'event_participant_left'
+  | 'event_starting_soon'
+  | 'chat_message'
+  | 'system_announcement'
+  | 'weather_alert'
+  | 'achievement_unlocked'
+  | 'group_invite'
+  | 'general';
+
 export interface NotificationData {
+  id?: string;
   title: string;
   body: string;
   data?: any;
-  type: 'event_invite' | 'friend_request' | 'event_update' | 'event_reminder' | 'event_cancelled' | 'event_updated' | 'general';
+  type: NotificationType;
+  read?: boolean;
+  created_at?: string;
 }
 
 class NotificationService {
   private expoPushToken: string | null = null;
   private isInitialized = false;
+
+  private isRLSPolicyError(error: any): boolean {
+    if (!error) return false;
+    const code = (error as any).code;
+    const message = (error as any).message;
+    return code === '42501' || (typeof message === 'string' && message.includes('row-level security'));
+  }
 
   // Initialize notification service
   async initialize(): Promise<void> {
@@ -274,28 +305,6 @@ class NotificationService {
     }
   }
 
-  // Get user notifications from database
-  async getUserNotifications(userId: string, options: { limit?: number } = {}): Promise<any[]> {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(options.limit || 50);
-
-      if (error) {
-        console.error('Error fetching notifications:', error);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error getting user notifications:', error);
-      return [];
-    }
-  }
-
   // Get notification preferences
   async getNotificationPreferences(userId: string): Promise<any> {
     try {
@@ -367,6 +376,107 @@ class NotificationService {
     }
   }
 
+  // Ensure reminders exist for upcoming events (12h & 1h)
+  async ensureEventReminders(userId: string): Promise<boolean> {
+    try {
+      const now = new Date();
+
+      const { data: upcomingEvents, error } = await supabase
+        .from('event_participants')
+        .select(`
+          event_id,
+          events (
+            id,
+            name,
+            scheduled_datetime
+          )
+        `)
+        .eq('user_id', userId)
+        .gte('events.scheduled_datetime', new Date(now.getTime() - 5 * 60 * 1000).toISOString());
+
+      if (error) {
+        console.error('Error fetching upcoming events for reminders:', error);
+        return false;
+      }
+
+      if (!upcomingEvents || upcomingEvents.length === 0) {
+        return false;
+      }
+
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('id, data')
+        .eq('user_id', userId)
+        .eq('type', 'event_reminder');
+
+      const sentKeys = new Set(
+        (existing || [])
+          .map((item) => {
+            const payload = item.data as { eventId?: string; reminder?: string };
+            return payload?.eventId && payload?.reminder
+              ? `${payload.eventId}-${payload.reminder}`
+              : null;
+          })
+          .filter(Boolean) as string[]
+      );
+
+      const thresholds = [
+        {
+          hours: 12,
+          minHours: 1,
+          reminder: '12h',
+          title: 'Upcoming Event',
+          buildBody: (name: string) => `${name} starts in 12 hours.`,
+        },
+        {
+          hours: 1,
+          minHours: 0,
+          reminder: '1h',
+          title: 'Event Starting Soon',
+          buildBody: (name: string) => `${name} starts in 1 hour.`,
+        },
+      ];
+
+      let created = false;
+
+      for (const participant of upcomingEvents) {
+        const event = participant.events;
+        if (!event) continue;
+
+        const start = new Date(event.scheduled_datetime);
+        const diffHours = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+        if (diffHours <= 0) continue;
+
+        for (const threshold of thresholds) {
+          if (diffHours <= threshold.hours && diffHours > threshold.minHours) {
+            const key = `${event.id}-${threshold.reminder}`;
+            if (sentKeys.has(key)) continue;
+
+            await this.sendNotificationWithStorage(userId, {
+              title: threshold.title,
+              body: threshold.buildBody(event.name),
+              type: 'event_reminder',
+              data: {
+                eventId: event.id,
+                reminder: threshold.reminder,
+                eventName: event.name,
+                scheduledAt: event.scheduled_datetime,
+              },
+            });
+
+            sentKeys.add(key);
+            created = true;
+          }
+        }
+      }
+
+      return created;
+    } catch (err) {
+      console.error('Error ensuring event reminders:', err);
+      return false;
+    }
+  }
+
   // ===== NEW NOTIFICATIONS TABLE METHODS =====
 
   // Save notification to database
@@ -387,6 +497,10 @@ class NotificationService {
         });
 
       if (error) {
+        if (this.isRLSPolicyError(error)) {
+          console.warn('Skipping notification DB save due to RLS policy. Please ensure notifications table policies permit inserts.');
+          return;
+        }
         console.error('Error saving notification to database:', error);
         throw error;
       }

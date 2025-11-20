@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { notificationService } from './notificationService';
 
 // Types for our database
 export interface User {
@@ -244,7 +245,7 @@ class SupabaseService {
    */
   async updateProfilePhoto(userId: string, avatarUrl: string): Promise<void> {
     try {
-      console.log('💾 Updating profile photo in database...');
+      console.log('💾 Updating profile photo in database (direct UPDATE)...');
       console.log('   User ID:', userId);
       console.log('   New URL:', avatarUrl);
 
@@ -258,7 +259,7 @@ class SupabaseService {
         throw error;
       }
 
-      console.log('✅ Profile updated successfully');
+      console.log('✅ Profile updated successfully (direct UPDATE)');
     } catch (error) {
       console.error('❌ Error updating profile:', error);
       throw error;
@@ -407,31 +408,49 @@ class SupabaseService {
 
   // Event participation
   async joinEvent(eventId: string, userId: string): Promise<boolean> {
-    const { data, error } = await supabase.rpc('join_event', {
-      event_uuid: eventId,
-      user_uuid: userId,
-    });
+    try {
+      const { error } = await supabase
+        .from('event_participants')
+        .insert({
+          event_id: eventId,
+          user_id: userId,
+        });
 
-    if (error) {
-      console.error('Error joining event:', error);
+      if (error) {
+        // Unique violations mean the user is already in the event – treat as success
+        if ((error as any)?.code === '23505') {
+          console.warn('User already joined event, skipping duplicate insert', { eventId, userId });
+          return true;
+        }
+        console.error('Error joining event:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Unexpected error joining event:', error);
       return false;
     }
-
-    return data;
   }
 
   async leaveEvent(eventId: string, userId: string): Promise<boolean> {
-    const { data, error } = await supabase.rpc('leave_event', {
-      event_uuid: eventId,
-      user_uuid: userId,
-    });
+    try {
+      const { error } = await supabase
+        .from('event_participants')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('user_id', userId);
 
-    if (error) {
-      console.error('Error leaving event:', error);
+      if (error) {
+        console.error('Error leaving event:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Unexpected error leaving event:', error);
       return false;
     }
-
-    return data;
   }
 
   async getEventParticipants(eventId: string): Promise<EventParticipant[]> {
@@ -567,42 +586,46 @@ class SupabaseService {
 
   // Event messages (for persistent chat history)
   async getEventMessages(eventId: string, limit: number = 50): Promise<EventMessage[]> {
-    const { data, error } = await supabase
-      .from('event_messages')
-      .select(`
-        *,
-        sender:users!event_messages_sender_id_fkey(display_name, avatar_url)
-      `)
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    try {
+      console.log('💬 [SupabaseService] Loading event messages for event (via RPC):', eventId);
 
-    if (error) {
-      console.error('Error fetching event messages:', error);
+      const { data, error } = await supabase.rpc('get_event_messages', {
+        p_event_id: eventId,
+        p_limit: limit,
+      });
+
+      if (error) {
+        console.error('❌ [SupabaseService] Error fetching event messages via RPC:', error);
+        return [];
+      }
+
+      console.log('✅ [SupabaseService] Loaded messages count (via RPC):', data?.length || 0);
+      return (data || []) as EventMessage[];
+    } catch (error) {
+      console.error('❌ [SupabaseService] Unexpected error fetching event messages via RPC:', error);
       return [];
     }
-
-    return data || [];
   }
 
   async sendEventMessage(eventId: string, senderId: string, messageText: string): Promise<EventMessage | null> {
-    const { data, error } = await supabase
-      .from('event_messages')
-      .insert({
-        event_id: eventId,
-        sender_id: senderId,
-        message_text: messageText,
-        message_type: 'text',
-      })
-      .select()
-      .single();
+    try {
+      console.log('💬 Sending event message via RPC:', { eventId, senderId });
 
-    if (error) {
-      console.error('Error sending message:', error);
+      const { data, error } = await supabase.rpc('send_event_message', {
+        p_event_id: eventId,
+        p_message: messageText,
+      });
+
+      if (error) {
+        console.error('Error sending message via RPC:', error);
+        return null;
+      }
+
+      return data as EventMessage;
+    } catch (error) {
+      console.error('Unexpected error sending event message:', error);
       return null;
     }
-
-    return data;
   }
 
   // Storage operations
@@ -690,6 +713,11 @@ class SupabaseService {
       .subscribe();
   }
 
+  // Helper to remove a realtime channel (used by screens to clean up)
+  removeChannel(channel: any) {
+    return supabase.removeChannel(channel);
+  }
+
   /**
    * ============================================
    * FRIENDS & SOCIAL FEATURES
@@ -725,7 +753,7 @@ class SupabaseService {
    */
   async sendFriendRequest(userId: string, friendId: string): Promise<void> {
     try {
-      console.log('📤 Sending friend request:', { userId, friendId });
+      console.log('📤 Sending friend request (direct INSERT):', { userId, friendId });
 
       const { error } = await supabase
         .from('user_friendships')
@@ -735,9 +763,28 @@ class SupabaseService {
           status: 'pending',
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error sending friend request:', error);
+        throw error;
+      }
 
-      console.log('✅ Friend request sent');
+      const { data: senderProfile } = await supabase
+        .from('users')
+        .select('display_name')
+        .eq('id', userId)
+        .single();
+
+      await notificationService.sendNotificationWithStorage(friendId, {
+        title: 'New Friend Request',
+        body: `${senderProfile?.display_name || 'Someone'} wants to connect with you.`,
+        type: 'friend_request',
+        data: {
+          senderId: userId,
+          senderName: senderProfile?.display_name || 'Someone',
+        },
+      });
+
+      console.log('✅ Friend request sent (direct INSERT)');
     } catch (error) {
       console.error('❌ Error sending friend request:', error);
       throw error;

@@ -135,6 +135,25 @@ export class AuthService {
     }
   }
 
+  static async sendEmailVerification(email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+
+      if (error) {
+        console.error('Resend verification error:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Unexpected verification resend error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // Get current user
   static async getCurrentUser(): Promise<any> {
     try {

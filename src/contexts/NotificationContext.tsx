@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { notificationService, NotificationData, NotificationPreferences, NotificationStats } from '../services/notificationService';
 import { fcmService } from '../services/fcmService';
 import { useAuth } from './AuthContext';
+import { supabase } from '../config/supabase';
 
 interface NotificationContextType {
   // State
@@ -83,7 +84,31 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setStats(null);
       setUnreadCount(0);
     }
-  }, [user]);
+  }, [user, loadUserData]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          refreshNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, refreshNotifications]);
 
   // Initialize FCM service
   const initializeFCM = async (): Promise<boolean> => {
@@ -180,16 +205,19 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   };
 
   // Load user data
-  const loadUserData = async (): Promise<void> => {
+  const loadUserData = useCallback(async (): Promise<void> => {
     if (!user) return;
 
     try {
       setIsLoading(true);
       setError(null);
 
+      // Ensure reminders exist before fetching
+      await notificationService.ensureEventReminders(user.id);
+
       // Load notifications, preferences, and stats in parallel
       const [notificationsData, preferencesData, statsData] = await Promise.all([
-        notificationService.getUserNotifications(user.id, { limit: 50 }),
+        notificationService.getUserNotifications(user.id, 50),
         notificationService.getNotificationPreferences(user.id),
         notificationService.getNotificationStats(user.id),
       ]);
@@ -210,17 +238,18 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   // Refresh notifications
-  const refreshNotifications = async (): Promise<void> => {
+  const refreshNotifications = useCallback(async (): Promise<void> => {
     if (!user) return;
 
     try {
       setIsLoading(true);
       setError(null);
 
-      const notificationsData = await notificationService.getUserNotifications(user.id, { limit: 50 });
+      await notificationService.ensureEventReminders(user.id);
+      const notificationsData = await notificationService.getUserNotifications(user.id, 50);
       setNotifications(notificationsData);
 
       // Update unread count
@@ -235,7 +264,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   // Mark notification as read
   const markAsRead = async (notificationId: string): Promise<boolean> => {

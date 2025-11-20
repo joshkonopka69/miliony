@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, SafeAreaView, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, SafeAreaView, FlatList, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { groupService } from '../services/groupService';
+import { supabaseService } from '../services/supabase';
+import { useTranslation } from '../contexts/TranslationContext';
 import { ROUTES } from '../navigation/types';
 
 interface Friend {
   id: string;
   name: string;
-  username: string;
   avatar?: string;
-  isSelected: boolean;
 }
 
 // Sport options with icons
@@ -29,52 +29,39 @@ const SPORTS = [
 export default function CreateGroupScreen() {
   const navigation = useAppNavigation();
   const { user } = useAuth();
+  const { t } = useTranslation();
   
   const [groupName, setGroupName] = useState('');
   const [groupDescription, setGroupDescription] = useState('');
   const [selectedSport, setSelectedSport] = useState('basketball');
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
 
-  // Mock friends data
-  const friends: Friend[] = [
-    {
-      id: '1',
-      name: 'Alex Johnson',
-      username: '@alex.johnson',
-      isSelected: false,
-    },
-    {
-      id: '2',
-      name: 'Sarah Wilson',
-      username: '@sarah.wilson',
-      isSelected: false,
-    },
-    {
-      id: '3',
-      name: 'Mike Chen',
-      username: '@mike.chen',
-      isSelected: false,
-    },
-    {
-      id: '4',
-      name: 'Emma Davis',
-      username: '@emma.davis',
-      isSelected: false,
-    },
-    {
-      id: '5',
-      name: 'David Brown',
-      username: '@david.brown',
-      isSelected: false,
-    },
-    {
-      id: '6',
-      name: 'Lisa Garcia',
-      username: '@lisa.garcia',
-      isSelected: false,
-    },
-  ];
+  // Load real friends from Supabase so user can create groups from actual friends list
+  useEffect(() => {
+    const loadFriends = async () => {
+      if (!user?.id) return;
+
+      try {
+        setLoadingFriends(true);
+        const friendsList = await supabaseService.getFriends(user.id);
+        const mappedFriends: Friend[] = friendsList.map((f: any) => ({
+          id: f.id,
+          name: f.display_name || 'Unknown',
+          avatar: f.avatar_url || undefined,
+        }));
+        setFriends(mappedFriends);
+      } catch (error) {
+        console.error('Error loading friends for group creation:', error);
+      } finally {
+        setLoadingFriends(false);
+      }
+    };
+
+    loadFriends();
+  }, [user?.id]);
 
   const handleBack = () => {
     navigation.goBack();
@@ -177,13 +164,17 @@ export default function CreateGroupScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.friendAvatar}>
-          <Text style={styles.friendAvatarText}>
-            {item.name.split(' ').map(n => n[0]).join('')}
-          </Text>
+          {item.avatar ? (
+            <Image source={{ uri: item.avatar }} style={styles.friendAvatarImage} />
+          ) : (
+            <Text style={styles.friendAvatarText}>
+              {item.name.split(' ').map(n => n[0]).join('')}
+            </Text>
+          )}
         </View>
         <View style={styles.friendInfo}>
           <Text style={styles.friendName}>{item.name}</Text>
-          <Text style={styles.friendUsername}>{item.username}</Text>
+          {/* Additional friend info (e.g. username) could be shown here if available */}
         </View>
         <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
           {isSelected && <Ionicons name="checkmark" size={18} color="#000000" />}
@@ -201,10 +192,10 @@ export default function CreateGroupScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Group</Text>
+        <Text style={styles.headerTitle}>{t.createGroup.title}</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.myGroupsButton} onPress={handleMyGroups}>
-            <Text style={styles.myGroupsButtonText}>My Groups</Text>
+            <Text style={styles.myGroupsButtonText}>{t.myGroups.title}</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.createButton, (!groupName.trim() || isCreating) && styles.createButtonDisabled]}
@@ -212,7 +203,7 @@ export default function CreateGroupScreen() {
             disabled={!groupName.trim() || isCreating}
           >
             <Text style={[styles.createButtonText, (!groupName.trim() || isCreating) && styles.createButtonTextDisabled]}>
-              {isCreating ? 'Creating...' : 'Create'}
+              {isCreating ? t.common.loading : t.createGroup.create}
             </Text>
           </TouchableOpacity>
         </View>
@@ -221,13 +212,13 @@ export default function CreateGroupScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Group Details Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Group Details</Text>
+          <Text style={styles.sectionTitle}>{t.createGroup.title}</Text>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Group Name *</Text>
+            <Text style={styles.inputLabel}>{t.createGroup.groupName} *</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Enter group name..."
+              placeholder={t.createGroup.groupNamePlaceholder}
               value={groupName}
               onChangeText={setGroupName}
               maxLength={50}
@@ -236,10 +227,10 @@ export default function CreateGroupScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Description (Optional)</Text>
+            <Text style={styles.inputLabel}>{t.createGroup.description}</Text>
             <TextInput
               style={[styles.textInput, styles.multilineInput]}
-              placeholder="Enter group description..."
+              placeholder={t.createGroup.descriptionPlaceholder}
               value={groupDescription}
               onChangeText={setGroupDescription}
               multiline
@@ -252,7 +243,7 @@ export default function CreateGroupScreen() {
 
         {/* Sport Selection Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Sport</Text>
+          <Text style={styles.sectionTitle}>{t.createGroup.selectSport}</Text>
           <View style={styles.sportsGrid}>
             {SPORTS.map((sport) => {
               const isSelected = selectedSport === sport.id;
@@ -328,13 +319,24 @@ export default function CreateGroupScreen() {
             Choose friends to add to your group
           </Text>
           
-          <FlatList
-            data={friends}
-            renderItem={renderFriendItem}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            showsVerticalScrollIndicator={false}
-          />
+          {loadingFriends ? (
+            <View style={styles.friendsLoadingContainer}>
+              <ActivityIndicator size="small" color="#f9bc06" />
+              <Text style={styles.friendsLoadingText}>Loading your friends...</Text>
+            </View>
+          ) : friends.length === 0 ? (
+            <Text style={styles.noFriendsText}>
+              You don't have any friends yet. Add friends to invite them to your group.
+            </Text>
+          ) : (
+            <FlatList
+              data={friends}
+              renderItem={renderFriendItem}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
         </View>
 
         {/* Group Settings Section */}
@@ -546,6 +548,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#18181b',
   },
+  friendAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    resizeMode: 'cover',
+  },
   friendInfo: {
     flex: 1,
   },
@@ -556,6 +564,20 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   friendUsername: {
+    fontSize: 14,
+    color: '#71717a',
+  },
+  friendsLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  friendsLoadingText: {
+    fontSize: 14,
+    color: '#71717a',
+  },
+  noFriendsText: {
     fontSize: 14,
     color: '#71717a',
   },

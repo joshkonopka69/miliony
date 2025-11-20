@@ -14,6 +14,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation, useAppRoute } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
 import { MyEvent, SPORT_COLORS } from '../types/event';
+import {
+  formatEventDate,
+  formatEventTime,
+  getTimeUntilEvent,
+} from '../utils/eventGrouping';
+import { useTranslation, Language } from '../contexts/TranslationContext';
+import { useAuth } from '../contexts/AuthContext';
+import { supabaseService } from '../services/supabase';
+import { notificationService } from '../services/notificationService';
 
 // Sport emoji mapping
 const SPORT_EMOJI_MAP: Record<string, string> = {
@@ -33,79 +42,150 @@ const getSportEmoji = (sportType: string): string => {
   return SPORT_EMOJI_MAP[sportType?.toLowerCase()] || SPORT_EMOJI_MAP.default;
 };
 
-// Format date and time
-const formatEventDate = (date: Date): string => {
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const isToday = date.toDateString() === now.toDateString();
-  const isTomorrow = date.toDateString() === tomorrow.toDateString();
-
-  if (isToday) {
-    return 'Today';
-  } else if (isTomorrow) {
-    return 'Tomorrow';
-  } else {
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long',
-      month: 'long', 
-      day: 'numeric',
-      year: 'numeric' 
-    });
-  }
-};
-
-const formatEventTime = (date: Date): string => {
-  return date.toLocaleTimeString('en-US', { 
-    hour: 'numeric', 
-    minute: '2-digit',
-    hour12: true 
-  });
-};
-
-const getTimeUntilEvent = (date: Date): string => {
-  const now = new Date();
-  const diff = date.getTime() - now.getTime();
-  
-  if (diff < 0) return 'Event has started';
-  
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const days = Math.floor(hours / 24);
-  
-  if (days > 0) {
-    return `In ${days} day${days > 1 ? 's' : ''}`;
-  } else if (hours > 0) {
-    return `In ${hours} hour${hours > 1 ? 's' : ''}`;
-  } else {
-    const minutes = Math.floor(diff / (1000 * 60));
-    return `In ${minutes} minute${minutes > 1 ? 's' : ''}`;
-  }
+const LOCALE_MAP: Record<Language, string> = {
+  en: 'en-US',
+  pl: 'pl-PL',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  de: 'de-DE',
 };
 
 export default function EventDetailsScreen() {
   const navigation = useAppNavigation();
   const route = useAppRoute<'EventDetails'>();
   const event = route.params?.game as MyEvent;
+  const { t, language } = useTranslation();
+  const { getUserId, user: authUser } = useAuth();
+  const userId = getUserId();
+  const loginRequiredMessage = t.friends?.loginRequired || 'Please sign in to continue.';
+  const locale = LOCALE_MAP[language] ?? 'en-US';
 
   const [hasJoined, setHasJoined] = useState(event?.role === 'joined');
+  const [participantsState, setParticipantsState] = useState(event?.participants);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [requestPending, setRequestPending] = useState(false);
+  const relativeStart = event
+    ? getTimeUntilEvent(event.startTime, locale, t.eventDetails.eventStarted)
+    : '';
 
   const handleBack = () => {
     navigation.goBack();
   };
 
+  const sendJoinRequest = async () => {
+    if (!event) return;
+    if (!userId) {
+      Alert.alert(t.common.error, loginRequiredMessage);
+      return;
+    }
+    if (requestPending) {
+      Alert.alert(t.eventDetails.requestAccess, t.eventDetails.requestPending);
+      return;
+    }
+    if (!event.createdBy?.id) {
+      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      await notificationService.sendNotificationWithStorage(event.createdBy.id, {
+        title: t.eventDetails.requestAccess,
+        body: `${authUser?.display_name || 'Someone'} wants to join "${event.name}".`,
+        type: 'event_updated',
+        data: {
+          eventId: event.id,
+          requesterId: userId,
+          requesterName: authUser?.display_name,
+        },
+      });
+      setRequestPending(true);
+      Alert.alert(t.common.success, t.eventDetails.requestSent);
+    } catch (error) {
+      console.error('Failed to send join request:', error);
+      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const performJoin = async () => {
+    if (!event) return;
+    if (!userId) {
+      Alert.alert(t.common.error, loginRequiredMessage);
+      return;
+    }
+
+    if (participantsInfo && participantsInfo.max > 0 && participantsInfo.current >= participantsInfo.max) {
+      Alert.alert(t.common.error, t.eventDetails.eventFull);
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const joined = await supabaseService.joinEvent(event.id, userId);
+      if (joined) {
+        setHasJoined(true);
+        setParticipantsState(prev =>
+          prev
+            ? { ...prev, current: Math.min(prev.current + 1, prev.max) }
+            : prev
+        );
+        Alert.alert(t.common.success, t.eventDetails.joinSuccess);
+      } else {
+        Alert.alert(t.common.error, t.eventDetails.errorMessage);
+      }
+    } catch (error) {
+      console.error('Failed to join event:', error);
+      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const performLeave = async () => {
+    if (!event) return;
+    if (!userId) {
+      Alert.alert(t.common.error, loginRequiredMessage);
+      return;
+    }
+    try {
+      setIsProcessing(true);
+      const left = await supabaseService.leaveEvent(event.id, userId);
+      if (left) {
+        setHasJoined(false);
+        setParticipantsState(prev =>
+          prev
+            ? { ...prev, current: Math.max(prev.current - 1, 0) }
+            : prev
+        );
+        Alert.alert(t.common.success, t.myEvents.leaveEventSuccess);
+      } else {
+        Alert.alert(t.common.error, t.eventDetails.errorMessage);
+      }
+    } catch (error) {
+      console.error('Failed to leave event:', error);
+      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleJoinEvent = () => {
+    if (!event) return;
+    if (event.requiresApproval) {
+      sendJoinRequest();
+      return;
+    }
+
     Alert.alert(
-      'Join Event',
-      `Are you sure you want to join "${event?.name}"?`,
+      t.eventDetails.joinGame,
+      t.eventDetails.joinPrompt.replace('{name}', event?.name ?? ''),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Join',
-          onPress: () => {
-            setHasJoined(true);
-            Alert.alert('Success', 'You have joined the event!');
-          },
+          text: t.common.confirm,
+          onPress: performJoin,
         },
       ]
     );
@@ -113,17 +193,14 @@ export default function EventDetailsScreen() {
 
   const handleLeaveEvent = () => {
     Alert.alert(
-      'Leave Event',
-      `Are you sure you want to leave "${event?.name}"?`,
+      t.eventDetails.leaveGame,
+      t.myEvents.leaveEventMessage.replace('{name}', event?.name ?? ''),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Leave',
+          text: t.myEvents.leaveEventConfirm,
           style: 'destructive',
-          onPress: () => {
-            setHasJoined(false);
-            Alert.alert('Left Event', 'You have left the event.');
-          },
+          onPress: performLeave,
         },
       ]
     );
@@ -135,24 +212,38 @@ export default function EventDetailsScreen() {
 
   const handleShareEvent = async () => {
     try {
+      if (!event) return;
+      const formattedDate = formatEventDate(event.startTime, locale, {
+        today: t.myEvents.groupLabels.TODAY,
+        tomorrow: t.myEvents.groupLabels.TOMORROW,
+      });
+      const message = t.eventDetails.shareMessage
+        .replace('{name}', event.name)
+        .replace('{location}', event.location.name)
+        .replace('{date}', formattedDate);
       const result = await Share.share({
-        message: `Join me for ${event?.name} at ${event?.location.name} on ${formatEventDate(event?.startTime)}!`,
+        message,
       });
       if (result.action === Share.sharedAction) {
-        console.log('Event shared successfully');
+        Alert.alert(t.common.success, t.eventDetails.shareSuccess);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to share event');
+      Alert.alert(t.common.error, t.eventDetails.shareError);
     }
   };
 
   const handleViewLocation = () => {
-    // Navigate to map with this location
-    Alert.alert('View Location', 'Opening map view...');
+    Alert.alert(t.eventDetails.viewLocationTitle, t.eventDetails.viewLocationMessage);
   };
 
   const handleViewParticipants = () => {
-    Alert.alert('Participants', `${event?.participants.current} people have joined this event.`);
+    Alert.alert(
+      t.eventDetails.participantsInfoTitle,
+      t.eventDetails.participantsInfoMessage.replace(
+        '{count}',
+        String(participantsInfo?.current ?? 0)
+      )
+    );
   };
 
   if (!event) {
@@ -160,19 +251,23 @@ export default function EventDetailsScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.errorTitle}>Event Not Found</Text>
+          <Text style={styles.errorTitle}>{t.eventDetails.errorTitle}</Text>
           <Text style={styles.errorMessage}>
-            This event could not be loaded
+            {t.eventDetails.errorMessage}
           </Text>
           <TouchableOpacity style={styles.errorButton} onPress={handleBack}>
-            <Text style={styles.errorButtonText}>Go Back</Text>
+            <Text style={styles.errorButtonText}>{t.eventDetails.errorButton}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
+  const participantsInfo = participantsState || event.participants;
   const isCreator = event.role === 'created';
+  const isPrivateEvent = !!event.requiresApproval;
+  const isEventFull =
+    participantsInfo ? (participantsInfo.max > 0 && participantsInfo.current >= participantsInfo.max) : false;
   const sportColor = SPORT_COLORS[event.activity] || '#FDB924';
 
   return (
@@ -187,7 +282,7 @@ export default function EventDetailsScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
-          <Text style={styles.headerTitle}>Event Details</Text>
+          <Text style={styles.headerTitle}>{t.eventDetails.title}</Text>
           <TouchableOpacity
             style={styles.shareButton}
             onPress={handleShareEvent}
@@ -210,14 +305,14 @@ export default function EventDetailsScreen() {
           {/* Time Until Event */}
           <View style={styles.timeUntilBadge}>
             <Ionicons name="time-outline" size={16} color="#6B7280" />
-            <Text style={styles.timeUntilText}>{getTimeUntilEvent(event.startTime)}</Text>
+            <Text style={styles.timeUntilText}>{relativeStart}</Text>
           </View>
 
           {/* Creator Badge */}
           {isCreator && (
             <View style={styles.creatorBadge}>
               <Ionicons name="star" size={14} color="#FDB924" />
-              <Text style={styles.creatorBadgeText}>You created this event</Text>
+              <Text style={styles.creatorBadgeText}>{t.eventDetails.creatorBadge}</Text>
             </View>
           )}
         </View>
@@ -226,20 +321,22 @@ export default function EventDetailsScreen() {
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
             <Ionicons name="people" size={24} color="#FDB924" />
-            <Text style={styles.statValue}>{event.participants.current}/{event.participants.max}</Text>
-            <Text style={styles.statLabel}>Players</Text>
+            <Text style={styles.statValue}>
+              {participantsInfo?.current ?? 0}/{participantsInfo?.max ?? 0}
+            </Text>
+            <Text style={styles.statLabel}>{t.eventDetails.players}</Text>
           </View>
           
           <View style={styles.statBox}>
             <Ionicons name="location" size={24} color="#FDB924" />
             <Text style={styles.statValue}>{event.location.distance?.toFixed(1) || '—'} km</Text>
-            <Text style={styles.statLabel}>Away</Text>
+            <Text style={styles.statLabel}>{t.eventDetails.distanceLabel}</Text>
           </View>
           
           <View style={styles.statBox}>
             <Ionicons name="trophy" size={24} color="#FDB924" />
-            <Text style={styles.statValue}>All</Text>
-            <Text style={styles.statLabel}>Levels</Text>
+            <Text style={styles.statValue}>{t.eventDetails.skillLevelAll}</Text>
+            <Text style={styles.statLabel}>{t.eventDetails.skillLevel}</Text>
           </View>
         </View>
 
@@ -247,20 +344,25 @@ export default function EventDetailsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="calendar-outline" size={20} color="#1F2937" />
-            <Text style={styles.sectionTitle}>Date & Time</Text>
+            <Text style={styles.sectionTitle}>{t.eventDetails.gameInformation}</Text>
           </View>
           <View style={styles.sectionContent}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Date</Text>
-              <Text style={styles.detailValue}>{formatEventDate(event.startTime)}</Text>
+              <Text style={styles.detailLabel}>{t.eventDetails.date}</Text>
+              <Text style={styles.detailValue}>
+                {formatEventDate(event.startTime, locale, {
+                  today: t.myEvents.groupLabels.TODAY,
+                  tomorrow: t.myEvents.groupLabels.TOMORROW,
+                })}
+              </Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Start Time</Text>
-              <Text style={styles.detailValue}>{formatEventTime(event.startTime)}</Text>
+              <Text style={styles.detailLabel}>{t.eventDetails.startTime}</Text>
+              <Text style={styles.detailValue}>{formatEventTime(event.startTime, locale)}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>End Time</Text>
-              <Text style={styles.detailValue}>{formatEventTime(event.endTime)}</Text>
+              <Text style={styles.detailLabel}>{t.eventDetails.endTime}</Text>
+              <Text style={styles.detailValue}>{formatEventTime(event.endTime, locale)}</Text>
             </View>
           </View>
         </View>
@@ -269,7 +371,7 @@ export default function EventDetailsScreen() {
           <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="location-outline" size={20} color="#1F2937" />
-            <Text style={styles.sectionTitle}>Location</Text>
+            <Text style={styles.sectionTitle}>{t.eventDetails.location}</Text>
           </View>
           <View style={styles.sectionContent}>
             <Text style={styles.locationName}>{event.location.name}</Text>
@@ -280,7 +382,7 @@ export default function EventDetailsScreen() {
               activeOpacity={0.7}
             >
               <Ionicons name="map" size={16} color="#FDB924" />
-              <Text style={styles.viewMapText}>View on Map</Text>
+              <Text style={styles.viewMapText}>{t.eventDetails.viewOnMap}</Text>
             </TouchableOpacity>
           </View>
               </View>
@@ -289,22 +391,25 @@ export default function EventDetailsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="people-outline" size={20} color="#1F2937" />
-            <Text style={styles.sectionTitle}>Participants</Text>
+            <Text style={styles.sectionTitle}>{t.eventDetails.participantsSection}</Text>
               </View>
           <View style={styles.sectionContent}>
             <View style={styles.participantsInfo}>
               <View style={styles.participantsStat}>
                 <Text style={styles.participantsNumber}>
-                  {event.participants.current}
+                  {participantsInfo?.current ?? 0}
                 </Text>
-                <Text style={styles.participantsLabel}>Joined</Text>
+                <Text style={styles.participantsLabel}>{t.eventDetails.joinedLabel}</Text>
               </View>
               <View style={styles.participantsDivider} />
               <View style={styles.participantsStat}>
                 <Text style={styles.participantsNumber}>
-                  {event.participants.max - event.participants.current}
+                  {Math.max(
+                    (participantsInfo?.max ?? 0) - (participantsInfo?.current ?? 0),
+                    0
+                  )}
                 </Text>
-                <Text style={styles.participantsLabel}>Spots Left</Text>
+                <Text style={styles.participantsLabel}>{t.eventDetails.spotsLeft}</Text>
               </View>
             </View>
             <TouchableOpacity
@@ -312,7 +417,7 @@ export default function EventDetailsScreen() {
               onPress={handleViewParticipants}
               activeOpacity={0.7}
             >
-              <Text style={styles.viewParticipantsText}>View All Participants</Text>
+              <Text style={styles.viewParticipantsText}>{t.eventDetails.viewParticipants}</Text>
               <Ionicons name="chevron-forward" size={16} color="#6B7280" />
             </TouchableOpacity>
             </View>
@@ -323,7 +428,7 @@ export default function EventDetailsScreen() {
             <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="document-text-outline" size={20} color="#1F2937" />
-              <Text style={styles.sectionTitle}>Description</Text>
+              <Text style={styles.sectionTitle}>{t.eventDetails.description}</Text>
             </View>
             <View style={styles.sectionContent}>
               <Text style={styles.descriptionText}>{event.description}</Text>
@@ -335,7 +440,7 @@ export default function EventDetailsScreen() {
             <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="person-outline" size={20} color="#1F2937" />
-              <Text style={styles.sectionTitle}>Organizer</Text>
+            <Text style={styles.sectionTitle}>{t.eventDetails.organizer}</Text>
           </View>
           <View style={styles.sectionContent}>
             <View style={styles.organizerCard}>
@@ -346,7 +451,7 @@ export default function EventDetailsScreen() {
               </View>
               <View style={styles.organizerInfo}>
                 <Text style={styles.organizerName}>{event.createdBy.name}</Text>
-                <Text style={styles.organizerRole}>Event Creator</Text>
+                <Text style={styles.organizerRole}>{t.eventDetails.organizerRole}</Text>
               </View>
             </View>
           </View>
@@ -366,18 +471,18 @@ export default function EventDetailsScreen() {
               activeOpacity={0.7}
         >
               <Ionicons name="chatbubble-outline" size={20} color="#1F2937" />
-              <Text style={styles.chatButtonText}>Chat</Text>
+              <Text style={styles.chatButtonText}>{t.eventDetails.chat}</Text>
         </TouchableOpacity>
           )}
 
           {isCreator ? (
             <TouchableOpacity
               style={styles.manageButton}
-              onPress={() => Alert.alert('Manage Event', 'Event management options')}
+              onPress={() => Alert.alert(t.eventDetails.manageEvent, t.eventDetails.manageEvent)}
               activeOpacity={0.7}
             >
               <Ionicons name="settings-outline" size={20} color="#000000" />
-              <Text style={styles.manageButtonText}>Manage Event</Text>
+              <Text style={styles.manageButtonText}>{t.eventDetails.manageEvent}</Text>
             </TouchableOpacity>
           ) : hasJoined ? (
           <TouchableOpacity
@@ -386,19 +491,33 @@ export default function EventDetailsScreen() {
               activeOpacity={0.7}
           >
               <Ionicons name="exit-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.leaveButtonText}>Leave Event</Text>
+              <Text style={styles.leaveButtonText}>{t.eventDetails.leaveGame}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={styles.joinButton}
-              onPress={handleJoinEvent}
-              activeOpacity={0.7}
-              disabled={event.participants.current >= event.participants.max}
+            style={[
+              styles.joinButton,
+              ((isEventFull && !isPrivateEvent) || isProcessing || (isPrivateEvent && requestPending)) &&
+                styles.joinButtonDisabled,
+            ]}
+            onPress={handleJoinEvent}
+            activeOpacity={0.7}
+            disabled={
+              isProcessing ||
+              (!isPrivateEvent && isEventFull) ||
+              (isPrivateEvent && requestPending)
+            }
           >
-              <Ionicons name="add-circle-outline" size={20} color="#000000" />
-              <Text style={styles.joinButtonText}>
-                {event.participants.current >= event.participants.max ? 'Event Full' : 'Join Event'}
-              </Text>
+            <Ionicons name="add-circle-outline" size={20} color="#000000" />
+            <Text style={styles.joinButtonText}>
+              {isPrivateEvent
+                ? requestPending
+                  ? t.eventDetails.requestPending
+                  : t.eventDetails.requestAccess
+                : isEventFull
+                  ? t.eventDetails.eventFull
+                  : t.eventDetails.joinGame}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -713,6 +832,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     gap: 6,
+  },
+  joinButtonDisabled: {
+    backgroundColor: '#E5E7EB',
   },
   joinButtonText: {
     fontSize: 16,

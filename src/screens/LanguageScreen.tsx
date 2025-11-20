@@ -18,7 +18,7 @@ const { width } = Dimensions.get('window');
 
 export default function LanguageScreen() {
   const navigation = useAppNavigation();
-  const { language, setLanguage, availableLanguages } = useTranslation();
+  const { language, setLanguage, availableLanguages, t } = useTranslation();
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -57,7 +57,7 @@ export default function LanguageScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Language</Text>
+        <Text style={styles.headerTitle}>{t.languageScreen.headerTitle}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -82,9 +82,9 @@ export default function LanguageScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.title}>Language Settings</Text>
+            <Text style={styles.title}>{t.languageScreen.title}</Text>
             <Text style={styles.subtitle}>
-              Choose your preferred language for the entire app
+              {t.languageScreen.subtitle}
             </Text>
           </View>
 

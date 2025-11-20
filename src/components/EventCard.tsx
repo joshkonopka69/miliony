@@ -8,7 +8,17 @@ import {
   formatDistance,
   getStatusBadge,
   isEventLive,
+  getTimeUntilEvent,
 } from '../utils/eventGrouping';
+import { useTranslation, Language } from '../contexts/TranslationContext';
+
+const LOCALE_MAP: Record<Language, string> = {
+  en: 'en-US',
+  pl: 'pl-PL',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  de: 'de-DE',
+};
 
 interface EventCardProps {
   event: MyEvent;
@@ -23,9 +33,17 @@ export default function EventCard({
   onChatPress,
   onLeavePress,
 }: EventCardProps) {
+  const { t, language } = useTranslation();
+  const locale = LOCALE_MAP[language] ?? 'en-US';
   const sportColor = SPORT_COLORS[event.activity];
   const statusBadge = getStatusBadge(event);
   const isLive = isEventLive(event);
+  const statusLabel = statusBadge ? t.myEvents.statusLabels[statusBadge] ?? statusBadge : null;
+  const relativeStart = getTimeUntilEvent(
+    event.startTime,
+    locale,
+    t.eventDetails.eventStarted
+  );
   
   // Calculate participant percentage for progress bar
   const participantPercent = (event.participants.current / event.participants.max) * 100;
@@ -57,7 +75,7 @@ export default function EventCard({
         </View>
 
         {/* Status Badge */}
-        {statusBadge && (
+        {statusLabel && (
           <View style={[
             styles.statusBadge,
             isLive && styles.statusBadgeLive
@@ -66,10 +84,15 @@ export default function EventCard({
               styles.statusBadgeText,
               isLive && styles.statusBadgeTextLive
             ]}>
-              {statusBadge}
+              {statusLabel}
             </Text>
           </View>
         )}
+      </View>
+
+      <View style={styles.timeUntilContainer}>
+        <Ionicons name="time-outline" size={14} color="#6B7280" />
+        <Text style={styles.timeUntilText}>{relativeStart}</Text>
       </View>
 
       {/* Participants Progress */}
@@ -77,11 +100,11 @@ export default function EventCard({
         <View style={styles.participantsRow}>
           <Ionicons name="people" size={16} color="#6B7280" />
           <Text style={styles.participantsText}>
-            {event.participants.current}/{event.participants.max} joined
+            {event.participants.current}/{event.participants.max} {t.myEvents.participantsShort}
           </Text>
           {isAlmostFull && (
             <View style={styles.almostFullBadge}>
-              <Text style={styles.almostFullText}>Almost full</Text>
+              <Text style={styles.almostFullText}>{t.myEvents.almostFull}</Text>
             </View>
           )}
         </View>
@@ -112,7 +135,10 @@ export default function EventCard({
       <View style={styles.infoRow}>
         <Ionicons name="time" size={16} color="#6B7280" />
         <Text style={styles.infoText}>
-          {formatEventDate(event.startTime)}, {formatEventTime(event.startTime)}
+          {formatEventDate(event.startTime, locale, {
+            today: t.myEvents.groupLabels.TODAY,
+            tomorrow: t.myEvents.groupLabels.TOMORROW,
+          })}, {formatEventTime(event.startTime, locale)}
         </Text>
       </View>
 
@@ -127,7 +153,7 @@ export default function EventCard({
           onPress={onPress}
           activeOpacity={0.7}
         >
-          <Text style={styles.primaryButtonText}>View Details</Text>
+          <Text style={styles.primaryButtonText}>{t.myEvents.viewDetails}</Text>
         </TouchableOpacity>
 
         {/* Secondary: Chat */}
@@ -226,6 +252,18 @@ const styles = StyleSheet.create({
   },
   statusBadgeTextLive: {
     color: '#EF4444',
+  },
+  timeUntilContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  timeUntilText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   participantsSection: {
     marginBottom: 12,

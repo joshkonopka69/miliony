@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,18 @@ import {
   Image
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
+import { ROUTES } from '../navigation/types';
 import { useNotificationManager } from '../hooks/useNotifications';
 import { NotificationData, NotificationType } from '../services/notificationService';
+import { useTranslation, Language } from '../contexts/TranslationContext';
+
+const LOCALE_MAP: Record<Language, string> = {
+  en: 'en-US',
+  pl: 'pl-PL',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  de: 'de-DE',
+};
 
 // Custom SM Logo Component
 const SMLogo = ({ size = 30 }: { size?: number }) => (
@@ -29,6 +39,8 @@ const SMLogo = ({ size = 30 }: { size?: number }) => (
 
 export default function NotificationsScreen() {
   const navigation = useAppNavigation();
+  const { t, language } = useTranslation();
+  const locale = LOCALE_MAP[language] ?? 'en-US';
   const {
     notifications,
     unreadCount,
@@ -53,6 +65,54 @@ export default function NotificationsScreen() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+
+  const getNotificationCopy = useCallback(
+    (notification: NotificationData) => {
+      if (!notification) {
+        return { title: '', body: '' };
+      }
+
+      const data = notification.data || {};
+      switch (notification.type) {
+        case 'friend_request': {
+          const name = data.senderName || data.sender_id || 'Someone';
+          return {
+            title: t.notifications.friendRequestTitle,
+            body: t.notifications.friendRequestBody.replace('{name}', String(name)),
+          };
+        }
+        case 'group_invite': {
+          const inviterName = data.inviterName || 'Someone';
+          const groupName = data.groupName || 'your group';
+          return {
+            title: t.notifications.groupInviteTitle,
+            body: t.notifications.groupInviteBody
+              .replace('{name}', String(inviterName))
+              .replace('{group}', String(groupName)),
+          };
+        }
+        case 'event_reminder': {
+          const eventName = data.eventName || notification.title || 'Event';
+          const reminderOffset = data.reminder || data.offsetHours || '12h';
+          const bodyText =
+            reminderOffset === '1h' || reminderOffset === 1
+              ? t.notifications.reminder1h.replace('{event}', String(eventName))
+              : t.notifications.reminder12h.replace('{event}', String(eventName));
+
+          return {
+            title: t.notifications.title,
+            body: bodyText,
+          };
+        }
+        default:
+          return {
+            title: notification.title,
+            body: notification.body,
+          };
+      }
+    },
+    [t.notifications]
+  );
 
   useEffect(() => {
     Animated.parallel([
@@ -115,6 +175,9 @@ export default function NotificationsScreen() {
           navigation.navigate('EventDetails', { eventId: notification.data.event_id });
         }
         break;
+      case 'group_invite':
+        navigation.navigate(ROUTES.MY_GROUPS);
+        break;
       case 'chat_message':
         if (notification.data?.chat_id) {
           navigation.navigate('Chat', { chatId: notification.data.chat_id });
@@ -154,12 +217,15 @@ export default function NotificationsScreen() {
 
   const handleDeleteSelected = () => {
     Alert.alert(
-      'Delete Notifications',
-      `Are you sure you want to delete ${selectedNotifications.size} notification${selectedNotifications.size !== 1 ? 's' : ''}?`,
+      t.notifications.deleteConfirmTitle,
+      t.notifications.deleteConfirmMessage.replace(
+        '{count}',
+        String(selectedNotifications.size)
+      ),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Delete',
+          text: t.notifications.deleteSelected,
           style: 'destructive',
           onPress: async () => {
             const promises = Array.from(selectedNotifications).map(id => deleteNotification(id));
@@ -174,12 +240,12 @@ export default function NotificationsScreen() {
 
   const handleMarkAllAsRead = () => {
     Alert.alert(
-      'Mark All as Read',
-      'Are you sure you want to mark all notifications as read?',
+      t.notifications.markAllReadTitle,
+      t.notifications.markAllReadMessage,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Mark All Read',
+          text: t.notifications.markAllReadConfirm,
           onPress: markAllAsRead,
         },
       ]
@@ -210,6 +276,7 @@ export default function NotificationsScreen() {
       friend_request: '👤',
       friend_request_accepted: '✅',
       event_invitation: '📅',
+      group_invite: '👥',
       event_cancelled: '❌',
       event_updated: '📝',
       event_reminder: '⏰',
@@ -231,6 +298,7 @@ export default function NotificationsScreen() {
       friend_request: '#2196F3',
       friend_request_accepted: '#4CAF50',
       event_invitation: '#FF9800',
+      group_invite: '#3B82F6',
       event_cancelled: '#F44336',
       event_updated: '#FF9800',
       event_reminder: '#9C27B0',
@@ -251,17 +319,18 @@ export default function NotificationsScreen() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
     
-    if (diffMinutes < 1) return 'Just now';
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffMinutes < 1) return rtf.format(0, 'minute');
+    if (diffMinutes < 60) return rtf.format(-diffMinutes, 'minute');
     
     const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 24) return rtf.format(-diffHours, 'hour');
     
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 7) return rtf.format(-diffDays, 'day');
     
-    return date.toLocaleDateString();
+    return date.toLocaleDateString(locale);
   };
 
   const filteredNotifications = getFilteredNotifications();
@@ -275,7 +344,7 @@ export default function NotificationsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>{t.notifications.title}</Text>
         <View style={styles.headerActions}>
           <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
         </View>
@@ -297,7 +366,7 @@ export default function NotificationsScreen() {
           style={styles.searchInput}
           value={searchQuery}
           onChangeText={handleSearch}
-          placeholder="Search notifications..."
+          placeholder={t.notifications.searchPlaceholder}
           placeholderTextColor="#8e8e93"
         />
         <TouchableOpacity style={styles.searchButton}>
@@ -314,7 +383,7 @@ export default function NotificationsScreen() {
               onPress={() => handleFilterChange('all')}
             >
               <Text style={[styles.filterChipText, activeFilter === 'all' && styles.filterChipTextActive]}>
-                All ({notifications.length})
+                {t.notifications.filterAll} ({notifications.length})
               </Text>
             </TouchableOpacity>
             
@@ -323,18 +392,18 @@ export default function NotificationsScreen() {
               onPress={() => handleFilterChange('unread')}
             >
               <Text style={[styles.filterChipText, activeFilter === 'unread' && styles.filterChipTextActive]}>
-                Unread ({unreadCount})
+                {t.notifications.filterUnread} ({unreadCount})
               </Text>
             </TouchableOpacity>
 
-            {['friend_request', 'event_invitation', 'chat_message', 'system_announcement'].map((type) => (
+            {['friend_request', 'event_invitation', 'group_invite', 'chat_message', 'system_announcement'].map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[styles.filterChip, activeFilter === type && styles.filterChipActive]}
                 onPress={() => handleFilterChange(type as NotificationType)}
               >
                 <Text style={[styles.filterChipText, activeFilter === type && styles.filterChipTextActive]}>
-                  {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {t.notifications.filterLabels[type as NotificationType] ?? type}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -347,7 +416,9 @@ export default function NotificationsScreen() {
         <View style={styles.actionBar}>
           <TouchableOpacity style={styles.actionButton} onPress={handleSelectAll}>
             <Text style={styles.actionButtonText}>
-              {selectedNotifications.size === filteredNotifications.length ? 'Deselect All' : 'Select All'}
+              {selectedNotifications.size === filteredNotifications.length
+                ? t.notifications.deselectAll
+                : t.notifications.selectAll}
             </Text>
           </TouchableOpacity>
           
@@ -358,7 +429,7 @@ export default function NotificationsScreen() {
               disabled={selectedNotifications.size === 0}
             >
               <Text style={[styles.actionButtonText, selectedNotifications.size === 0 && styles.actionButtonTextDisabled]}>
-                Mark Read
+                {t.notifications.markAsRead}
               </Text>
             </TouchableOpacity>
             
@@ -368,7 +439,7 @@ export default function NotificationsScreen() {
               disabled={selectedNotifications.size === 0}
             >
               <Text style={[styles.actionButtonText, styles.deleteButtonText, selectedNotifications.size === 0 && styles.actionButtonTextDisabled]}>
-                Delete
+                {t.notifications.deleteSelected}
               </Text>
             </TouchableOpacity>
           </View>
@@ -396,81 +467,84 @@ export default function NotificationsScreen() {
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#FFD700" />
-              <Text style={styles.loadingText}>Loading notifications...</Text>
+              <Text style={styles.loadingText}>{t.notifications.loading}</Text>
             </View>
           ) : (
             <>
               {/* Notifications */}
               {filteredNotifications.length > 0 ? (
                 <View style={styles.notificationsList}>
-                  {filteredNotifications.map((notification) => (
-                    <TouchableOpacity
-                      key={notification.id}
-                      style={[
-                        styles.notificationItem,
-                        !notification.is_read && styles.notificationItemUnread,
-                        selectedNotifications.has(notification.id) && styles.notificationItemSelected,
-                      ]}
-                      onPress={() => handleNotificationPress(notification)}
-                      onLongPress={() => {
-                        setIsSelectionMode(true);
-                        toggleNotificationSelection(notification.id);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.notificationContent}>
-                        <View style={styles.notificationHeader}>
-                          <View style={styles.notificationIconContainer}>
-                            <Text style={styles.notificationIcon}>
-                              {getNotificationIcon(notification.type)}
-                            </Text>
-                            {!notification.is_read && <View style={styles.unreadIndicator} />}
+                  {filteredNotifications.map((notification) => {
+                    const copy = getNotificationCopy(notification);
+                    return (
+                      <TouchableOpacity
+                        key={notification.id}
+                        style={[
+                          styles.notificationItem,
+                          !notification.is_read && styles.notificationItemUnread,
+                          selectedNotifications.has(notification.id) && styles.notificationItemSelected,
+                        ]}
+                        onPress={() => handleNotificationPress(notification)}
+                        onLongPress={() => {
+                          setIsSelectionMode(true);
+                          toggleNotificationSelection(notification.id);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.notificationContent}>
+                          <View style={styles.notificationHeader}>
+                            <View style={styles.notificationIconContainer}>
+                              <Text style={styles.notificationIcon}>
+                                {getNotificationIcon(notification.type)}
+                              </Text>
+                              {!notification.is_read && <View style={styles.unreadIndicator} />}
+                            </View>
+                            
+                            <View style={styles.notificationInfo}>
+                              <Text style={[styles.notificationTitle, !notification.is_read && styles.notificationTitleUnread]}>
+                                {copy.title}
+                              </Text>
+                              <Text style={styles.notificationTime}>
+                                {formatNotificationTime(notification.created_at)}
+                              </Text>
+                            </View>
+                            
+                            {isSelectionMode && (
+                              <TouchableOpacity
+                                style={[styles.selectionIndicator, selectedNotifications.has(notification.id) && styles.selectionIndicatorSelected]}
+                                onPress={() => toggleNotificationSelection(notification.id)}
+                              >
+                                {selectedNotifications.has(notification.id) && (
+                                  <Text style={styles.selectionCheckmark}>✓</Text>
+                                )}
+                              </TouchableOpacity>
+                            )}
                           </View>
                           
-                          <View style={styles.notificationInfo}>
-                            <Text style={[styles.notificationTitle, !notification.is_read && styles.notificationTitleUnread]}>
-                              {notification.title}
-                            </Text>
-                            <Text style={styles.notificationTime}>
-                              {formatNotificationTime(notification.created_at)}
-                            </Text>
-                          </View>
+                          <Text style={styles.notificationBody} numberOfLines={2}>
+                            {copy.body}
+                          </Text>
                           
-                          {isSelectionMode && (
-                            <TouchableOpacity
-                              style={[styles.selectionIndicator, selectedNotifications.has(notification.id) && styles.selectionIndicatorSelected]}
-                              onPress={() => toggleNotificationSelection(notification.id)}
-                            >
-                              {selectedNotifications.has(notification.id) && (
-                                <Text style={styles.selectionCheckmark}>✓</Text>
-                              )}
-                            </TouchableOpacity>
+                          {notification.image_url && (
+                            <View style={styles.notificationImageContainer}>
+                              <Text style={styles.notificationImagePlaceholder}>📷</Text>
+                            </View>
                           )}
                         </View>
-                        
-                        <Text style={styles.notificationBody} numberOfLines={2}>
-                          {notification.body}
-                        </Text>
-                        
-                        {notification.image_url && (
-                          <View style={styles.notificationImageContainer}>
-                            <Text style={styles.notificationImagePlaceholder}>📷</Text>
-                          </View>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               ) : (
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyIcon}>🔔</Text>
                   <Text style={styles.emptyTitle}>
-                    {searchQuery ? 'No notifications found' : 'No notifications yet'}
+                    {searchQuery ? t.notifications.emptySearchTitle : t.notifications.emptyTitle}
                   </Text>
                   <Text style={styles.emptySubtitle}>
                     {searchQuery 
-                      ? 'Try adjusting your search terms'
-                      : 'You\'ll receive notifications about events, friends, and more!'
+                      ? t.notifications.emptySearchSubtitle
+                      : t.notifications.emptySubtitle
                     }
                   </Text>
                 </View>
@@ -482,7 +556,7 @@ export default function NotificationsScreen() {
           {isUpdating && (
             <View style={styles.updatingContainer}>
               <ActivityIndicator size="small" color="#FFD700" />
-              <Text style={styles.updatingText}>Updating...</Text>
+              <Text style={styles.updatingText}>{t.notifications.updating}</Text>
             </View>
           )}
         </Animated.View>
@@ -492,12 +566,12 @@ export default function NotificationsScreen() {
       {!isSelectionMode && filteredNotifications.length > 0 && (
         <View style={styles.bottomActions}>
           <TouchableOpacity style={styles.bottomActionButton} onPress={() => setIsSelectionMode(true)}>
-            <Text style={styles.bottomActionButtonText}>Select</Text>
+            <Text style={styles.bottomActionButtonText}>{t.notifications.select}</Text>
           </TouchableOpacity>
           
           {unreadCount > 0 && (
             <TouchableOpacity style={styles.bottomActionButton} onPress={handleMarkAllAsRead}>
-              <Text style={styles.bottomActionButtonText}>Mark All Read</Text>
+              <Text style={styles.bottomActionButtonText}>{t.notifications.markAllReadButton}</Text>
             </TouchableOpacity>
           )}
         </View>

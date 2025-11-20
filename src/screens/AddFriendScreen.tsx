@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert,
 import { useAppNavigation } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { supabaseService } from '../services/supabase';
+import { useTranslation } from '../contexts/TranslationContext';
 import { useFocusEffect } from '@react-navigation/native';
 
 // Custom SM Logo Component
@@ -26,6 +27,7 @@ interface User {
 export default function AddFriendScreen() {
   const navigation = useAppNavigation();
   const { getUserId } = useAuth();
+  const { t } = useTranslation();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -61,7 +63,7 @@ export default function AddFriendScreen() {
     if (query.length > 2) {
       const userId = getUserId();
       if (!userId) {
-        Alert.alert('Error', 'You must be logged in to search for friends');
+        Alert.alert(t.common.error, t.friends.loginRequired);
         return;
       }
 
@@ -88,7 +90,7 @@ export default function AddFriendScreen() {
         setSearchResults(usersWithStatus);
       } catch (error: any) {
         console.error('Error searching users:', error);
-        Alert.alert('Error', error.message || 'Failed to search users');
+        Alert.alert(t.common.error, error.message || t.common.error);
       } finally {
         setIsSearching(false);
       }
@@ -100,21 +102,21 @@ export default function AddFriendScreen() {
   const handleAddFriend = async (friendId: string, userName: string) => {
     const userId = getUserId();
     if (!userId) {
-      Alert.alert('Error', 'You must be logged in to add friends');
+      Alert.alert(t.common.error, t.friends.loginRequired);
       return;
     }
 
     Alert.alert(
-      'Add Friend',
-      `Send friend request to ${userName}?`,
+      t.friends.addConfirmTitle,
+      t.friends.addConfirmMessage.replace('{name}', userName),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         { 
-          text: 'Send Request', 
+          text: t.friends.sendRequest, 
           onPress: async () => {
             try {
               await supabaseService.sendFriendRequest(userId, friendId);
-              Alert.alert('Success', `Friend request sent to ${userName}!`);
+              Alert.alert(t.common.success, t.friends.addSuccess.replace('{name}', userName));
               
               // Update search results to show pending status
               setSearchResults(prev =>
@@ -126,7 +128,7 @@ export default function AddFriendScreen() {
               );
             } catch (error: any) {
               console.error('Error sending friend request:', error);
-              Alert.alert('Error', error.message || 'Failed to send friend request');
+              Alert.alert(t.common.error, error.message || t.common.error);
             }
           }
         }
@@ -142,17 +144,17 @@ export default function AddFriendScreen() {
     }
 
     Alert.alert(
-      'Remove Friend',
-      `Remove ${userName} from your friends?`,
+      t.friends.removeConfirmTitle,
+      t.friends.removeConfirmMessage.replace('{name}', userName),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         { 
-          text: 'Remove', 
+          text: t.friends.removeConfirmButton, 
           style: 'destructive',
           onPress: async () => {
             try {
               await supabaseService.removeFriend(userId, friendId);
-              Alert.alert('Success', `${userName} has been removed from your friends.`);
+              Alert.alert(t.common.success, t.friends.removeSuccess.replace('{name}', userName));
               
               // Update search results and friends list
               setSearchResults(prev =>
@@ -169,7 +171,7 @@ export default function AddFriendScreen() {
               });
             } catch (error: any) {
               console.error('Error removing friend:', error);
-              Alert.alert('Error', error.message || 'Failed to remove friend');
+              Alert.alert(t.common.error, error.message || t.common.error);
             }
           }
         }
@@ -188,9 +190,9 @@ export default function AddFriendScreen() {
     };
 
     const getButtonText = () => {
-      if (item.friendshipStatus === 'pending') return 'Pending';
-      if (item.isFriend) return 'Remove';
-      return 'Add';
+      if (item.friendshipStatus === 'pending') return t.friends.pending;
+      if (item.isFriend) return t.friends.remove;
+      return t.friends.add;
     };
 
     const getButtonStyle = () => {
@@ -245,9 +247,9 @@ export default function AddFriendScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Text style={styles.emptyStateIcon}>👥</Text>
-      <Text style={styles.emptyStateTitle}>No users found</Text>
+      <Text style={styles.emptyStateTitle}>{t.friends.emptyResultsTitle}</Text>
       <Text style={styles.emptyStateText}>
-        Try searching with a different name or username
+        {t.friends.emptyResultsSubtitle}
       </Text>
     </View>
   );
@@ -259,23 +261,23 @@ export default function AddFriendScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Friend</Text>
+        <Text style={styles.headerTitle}>{t.profile.addFriends}</Text>
         <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Search Section */}
         <View style={styles.searchSection}>
-          <Text style={styles.searchTitle}>Find Friends</Text>
+          <Text style={styles.searchTitle}>{t.friends.searchTitle}</Text>
           <Text style={styles.searchSubtitle}>
-            Search for friends by name or username
+            {t.friends.searchSubtitle}
           </Text>
           
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by name or username..."
+              placeholder={t.friends.searchPlaceholder}
               value={searchQuery}
               onChangeText={handleSearch}
               autoCapitalize="none"
@@ -299,12 +301,14 @@ export default function AddFriendScreen() {
         {searchQuery.length > 2 && (
           <View style={styles.resultsSection}>
             <Text style={styles.resultsTitle}>
-              {isSearching ? 'Searching...' : `Results (${searchResults.length})`}
+              {isSearching
+                ? t.common.loading
+                : `${t.friends.resultsTitle} (${searchResults.length})`}
             </Text>
             
             {isSearching ? (
               <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Searching...</Text>
+                <Text style={styles.loadingText}>{t.common.loading}</Text>
               </View>
             ) : searchResults.length > 0 ? (
               <FlatList
@@ -322,15 +326,15 @@ export default function AddFriendScreen() {
 
         {/* Quick Actions */}
         <View style={styles.quickActionsSection}>
-          <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+          <Text style={styles.quickActionsTitle}>{t.friends.quickActionsTitle}</Text>
           
           <TouchableOpacity style={styles.quickActionItem}>
             <View style={styles.quickActionIcon}>
               <Text style={styles.quickActionIconText}>📱</Text>
             </View>
             <View style={styles.quickActionInfo}>
-              <Text style={styles.quickActionTitle}>Invite from Contacts</Text>
-              <Text style={styles.quickActionSubtitle}>Find friends from your phone contacts</Text>
+              <Text style={styles.quickActionTitle}>{t.friends.quickActions.contactsTitle}</Text>
+              <Text style={styles.quickActionSubtitle}>{t.friends.quickActions.contactsSubtitle}</Text>
             </View>
             <Text style={styles.quickActionArrow}>›</Text>
           </TouchableOpacity>
@@ -340,8 +344,8 @@ export default function AddFriendScreen() {
               <Text style={styles.quickActionIconText}>🔗</Text>
             </View>
             <View style={styles.quickActionInfo}>
-              <Text style={styles.quickActionTitle}>Share Invite Link</Text>
-              <Text style={styles.quickActionSubtitle}>Send a link to invite friends</Text>
+              <Text style={styles.quickActionTitle}>{t.friends.quickActions.inviteLinkTitle}</Text>
+              <Text style={styles.quickActionSubtitle}>{t.friends.quickActions.inviteLinkSubtitle}</Text>
             </View>
             <Text style={styles.quickActionArrow}>›</Text>
           </TouchableOpacity>
@@ -351,8 +355,8 @@ export default function AddFriendScreen() {
               <Text style={styles.quickActionIconText}>👥</Text>
             </View>
             <View style={styles.quickActionInfo}>
-              <Text style={styles.quickActionTitle}>Find Nearby Users</Text>
-              <Text style={styles.quickActionSubtitle}>Discover people in your area</Text>
+              <Text style={styles.quickActionTitle}>{t.friends.quickActions.nearbyTitle}</Text>
+              <Text style={styles.quickActionSubtitle}>{t.friends.quickActions.nearbySubtitle}</Text>
             </View>
             <Text style={styles.quickActionArrow}>›</Text>
           </TouchableOpacity>

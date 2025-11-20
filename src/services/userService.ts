@@ -93,6 +93,18 @@ export interface UserStats {
   longest_streak: number;
 }
 
+// Per-sport game statistics used for achievements/badges
+export interface UserGameStats {
+  basketball: number;
+  football: number;
+  tennis: number;
+  volleyball: number;
+  running: number;
+  cycling: number;
+  swimming: number;
+  gym: number;
+}
+
 export interface CreateUserProfileData {
   id: string;
   email: string;
@@ -468,10 +480,11 @@ class UserService {
 
       // Get friends count
       const { data: friends } = await supabase
-        .from('friendships')
+        .from('user_friendships')
         .select('id')
-        .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
-        .eq('status', 'accepted');
+        .or(
+          `and(user_id.eq.${userId},status.eq.accepted),and(friend_id.eq.${userId},status.eq.accepted)`
+        );
 
       const stats: UserStats = {
         total_events_created: eventsCreated?.length || 0,
@@ -490,6 +503,97 @@ class UserService {
     } catch (error) {
       console.error('Error fetching user stats:', error);
       return null;
+    }
+  }
+
+  /**
+   * Get per-sport game stats for a user based on all events they joined.
+   * Used to power achievements/badges in Profile and AllBadges screens.
+   */
+  async getUserGameStats(userId: string): Promise<UserGameStats> {
+    const baseStats: UserGameStats = {
+      basketball: 0,
+      football: 0,
+      tennis: 0,
+      volleyball: 0,
+      running: 0,
+      cycling: 0,
+      swimming: 0,
+      gym: 0,
+    };
+
+    try {
+      // Get all event IDs the user has participated in
+      const { data: participantRows, error: participantsError } = await supabase
+        .from('event_participants')
+        .select('event_id')
+        .eq('user_id', userId);
+
+      if (participantsError) {
+        console.error('Error fetching participant events for stats:', participantsError);
+        return baseStats;
+      }
+
+      const eventIds = Array.from(
+        new Set((participantRows || []).map((row: any) => row.event_id))
+      );
+
+      if (eventIds.length === 0) {
+        return baseStats;
+      }
+
+      // Fetch activities for these events
+      const { data: events, error: eventsError } = await supabase
+        .from('events')
+        .select('id, activity')
+        .in('id', eventIds);
+
+      if (eventsError) {
+        console.error('Error fetching events for stats:', eventsError);
+        return baseStats;
+      }
+
+      for (const event of events || []) {
+        const activity = (event.activity || '').toLowerCase();
+        if (!activity) continue;
+
+        switch (activity) {
+          case 'basketball':
+            baseStats.basketball += 1;
+            break;
+          case 'football':
+          case 'soccer':
+            baseStats.football += 1;
+            break;
+          case 'tennis':
+            baseStats.tennis += 1;
+            break;
+          case 'volleyball':
+            baseStats.volleyball += 1;
+            break;
+          case 'running':
+            baseStats.running += 1;
+            break;
+          case 'cycling':
+            baseStats.cycling += 1;
+            break;
+          case 'swimming':
+            baseStats.swimming += 1;
+            break;
+          case 'gym':
+          case 'fitness':
+            baseStats.gym += 1;
+            break;
+          default:
+            // Ignore activities that don't map to a badge category
+            break;
+        }
+      }
+
+      return baseStats;
+    } catch (error) {
+      console.error('Error computing user game stats:', error);
+      return baseStats;
     }
   }
 

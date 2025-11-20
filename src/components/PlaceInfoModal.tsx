@@ -15,6 +15,9 @@ import {
 } from 'react-native';
 import { PlaceDetails } from '../services/placesApi';
 import { supabaseService } from '../services/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../contexts/TranslationContext';
+import { notificationService } from '../services/notificationService';
 
 interface PlaceInfoModalProps {
   visible: boolean;
@@ -38,9 +41,15 @@ export default function PlaceInfoModal({
   loading = false,
 }: PlaceInfoModalProps) {
   console.log('🏢 PlaceInfoModal rendered:', { visible, loading, placeDetails: !!placeDetails });
+  const { getUserId, user: authUser } = useAuth();
+  const { t } = useTranslation();
+  const userId = getUserId();
+  const loginRequiredMessage = t.friends?.loginRequired || 'Please sign in to continue.';
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [events, setEvents] = useState<any[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [joiningEventId, setJoiningEventId] = useState<string | null>(null);
+  const [requestStatus, setRequestStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (placeDetails?.photos && placeDetails.photos.length > 0) {
@@ -51,11 +60,82 @@ export default function PlaceInfoModal({
   // Fetch events when modal opens
   useEffect(() => {
     if (visible && placeDetails) {
+      setRequestStatus({});
       fetchEventsAtLocation();
     } else {
       setEvents([]);
+      setRequestStatus({});
     }
   }, [visible, placeDetails]);
+
+  const handleJoinEvent = async (eventRecord: any) => {
+    if (!eventRecord) return;
+
+    const isPrivate = !!eventRecord.requires_approval;
+    const isFull =
+      (eventRecord.currentParticipants ?? eventRecord.participants_count ?? 0) >=
+      (eventRecord.max_participants ?? eventRecord.maxParticipants ?? 0);
+
+    if (!userId) {
+      Alert.alert(t.common.error, loginRequiredMessage);
+      return;
+    }
+
+    if (!isPrivate && isFull) {
+      Alert.alert(t.common.error, t.eventDetails.eventFull);
+      return;
+    }
+
+    const organizerId = eventRecord.creator?.id || eventRecord.created_by;
+
+    try {
+      setJoiningEventId(eventRecord.id);
+
+      if (isPrivate) {
+        if (requestStatus[eventRecord.id]) {
+          Alert.alert(t.eventDetails.requestAccess, t.eventDetails.requestPending);
+          return;
+        }
+
+        if (!organizerId) {
+          Alert.alert(t.common.error, t.eventDetails.errorMessage);
+          return;
+        }
+
+        const requesterName = authUser?.display_name || 'Someone';
+        const eventName = eventRecord.name || eventRecord.title || 'your event';
+
+        await notificationService.sendNotificationWithStorage(organizerId, {
+          title: t.eventDetails.requestAccess,
+          body: `${requesterName} wants to join "${eventName}".`,
+          type: 'event_updated',
+          data: {
+            eventId: eventRecord.id,
+            requesterId: userId,
+            requesterName: authUser?.display_name,
+          },
+        });
+
+        setRequestStatus(prev => ({ ...prev, [eventRecord.id]: true }));
+        Alert.alert(t.common.success, t.eventDetails.requestSent);
+        return;
+      }
+
+      const joined = await supabaseService.joinEvent(eventRecord.id, userId);
+
+      if (joined) {
+        Alert.alert(t.common.success, t.eventDetails.joinSuccess);
+        await fetchEventsAtLocation();
+      } else {
+        Alert.alert(t.common.error, t.eventDetails.errorMessage);
+      }
+    } catch (error) {
+      console.error('Error joining event from place modal:', error);
+      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+    } finally {
+      setJoiningEventId(null);
+    }
+  };
 
   const fetchEventsAtLocation = async () => {
     if (!placeDetails) return;
@@ -402,13 +482,21 @@ export default function PlaceInfoModal({
             <Text style={styles.loadingText}>Loading events...</Text>
           </View>
         ) : events.length > 0 ? (
-          events.map((event) => (
-            <TouchableOpacity
-              key={event.id}
-              style={styles.eventCard}
-              onPress={() => onEventPress?.(event)}
-              activeOpacity={0.7}
-            >
+          events.map((event) => {
+            const isFull =
+              (event.currentParticipants ?? event.participants_count ?? 0) >=
+              (event.max_participants ?? event.maxParticipants ?? 0);
+            const isPrivate = !!event.requires_approval;
+            const isJoining = joiningEventId === event.id;
+            const requestPending = requestStatus[event.id];
+
+            return (
+              <TouchableOpacity
+                key={event.id}
+                style={styles.eventCard}
+                onPress={() => onEventPress?.(event)}
+                activeOpacity={0.7}
+              >
               <View style={styles.eventHeader}>
                 <Text style={styles.eventEmoji}>{getSportEmoji(event.activity)}</Text>
                 <View style={styles.eventTitleContainer}>
@@ -446,8 +534,35 @@ export default function PlaceInfoModal({
                   {event.description}
                 </Text>
               )}
+              <View style={styles.eventActions}>
+                {isPrivate && (
+                  <View style={styles.privateTag}>
+                    <Text style={styles.privateTagText}>{t.eventDetails.requestAccess}</Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={[
+                    styles.joinEventButton,
+                    (isFull && !isPrivate) && styles.joinEventButtonDisabled,
+                  ]}
+                  onPress={() => handleJoinEvent(event)}
+                  activeOpacity={0.8}
+                  disabled={isJoining || (isFull && !isPrivate) || (isPrivate && requestPending)}
+                >
+                  <Text style={styles.joinEventButtonText}>
+                    {isPrivate
+                      ? requestPending
+                        ? t.eventDetails.requestPending
+                        : t.eventDetails.requestAccess
+                      : isFull
+                        ? t.eventDetails.eventFull
+                        : t.eventDetails.joinGame}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </TouchableOpacity>
-          ))
+          );
+          })
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateEmoji}>📅</Text>
@@ -916,6 +1031,38 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 8,
     lineHeight: 20,
+  },
+  eventActions: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  joinEventButton: {
+    flex: 1,
+    backgroundColor: '#FCD34D',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  joinEventButtonDisabled: {
+    backgroundColor: '#E5E7EB',
+  },
+  joinEventButtonText: {
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  privateTag: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    backgroundColor: '#FEE2E2',
+  },
+  privateTagText: {
+    fontSize: 12,
+    color: '#B91C1C',
+    fontWeight: '600',
   },
   emptyState: {
     paddingVertical: 40,

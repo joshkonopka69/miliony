@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import { UserProfile } from './userService';
+import { notificationService } from './notificationService';
 
 // Friend relationship types
 export interface Friendship {
@@ -87,6 +88,23 @@ class FriendService {
         console.error('Error sending friend request:', error);
         return false;
       }
+
+      const { data: senderProfile } = await supabase
+        .from('users')
+        .select('display_name')
+        .eq('id', senderId)
+        .single();
+
+      await notificationService.sendNotificationWithStorage(receiverId, {
+        title: 'New Friend Request',
+        body: `${senderProfile?.display_name || 'Someone'} wants to connect with you.`,
+        type: 'friend_request',
+        data: {
+          senderId,
+          senderName: senderProfile?.display_name || 'Someone',
+          message,
+        },
+      });
 
       return true;
     } catch (error) {

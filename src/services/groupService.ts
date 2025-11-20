@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { notificationService } from './notificationService';
 
 // Group types and interfaces
 export interface Group {
@@ -20,7 +21,7 @@ export interface Group {
   created_at: string;
   updated_at: string;
   member_count: number;
-  is_active: boolean;
+  is_active?: boolean;
   tags: string[];
   rules?: string[];
   requirements?: {
@@ -206,15 +207,17 @@ class GroupService {
   // Create a new group
   async createGroup(groupData: CreateGroupData, creatorId: string): Promise<Group | null> {
     try {
+      const timestamp = new Date().toISOString();
+      const { is_active, ...groupPayload } = groupData as CreateGroupData & { is_active?: boolean };
+
       const { data: group, error: groupError } = await supabase
         .from('groups')
         .insert({
-          ...groupData,
+          ...groupPayload,
           created_by: creatorId,
           member_count: 1,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: timestamp,
+          updated_at: timestamp,
         })
         .select()
         .single();
@@ -621,6 +624,23 @@ class GroupService {
       if (error) {
         console.error('Error sending invitation:', error);
         return null;
+      }
+
+      if (invitedUserId) {
+        const inviterName = data?.inviter?.display_name || 'Someone';
+        const groupName = data?.group?.name || 'your group';
+        await notificationService.sendNotificationWithStorage(invitedUserId, {
+          title: 'Group Invitation',
+          body: `${inviterName} invited you to join ${groupName}.`,
+          type: 'group_invite',
+          data: {
+            groupId,
+            invitationId: data?.id,
+            groupName,
+            inviterId: invitedBy,
+            inviterName,
+          },
+        });
       }
 
       return data;

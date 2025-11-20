@@ -14,10 +14,11 @@ import { useAppNavigation } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
 import { BottomNavBar } from '../components';
 import { EmptyState, SectionHeader, EventCard } from '../components';
-import { MyEvent, SportActivity } from '../types/event';
+import { MyEvent, SportActivity, EventGroup } from '../types/event';
 import { groupEventsByTime } from '../utils/eventGrouping';
 import { supabase, supabaseService } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../contexts/TranslationContext';
 
 // Logo Component (matches MapScreen)
 const SportMapLogo = () => (
@@ -32,6 +33,7 @@ const SportMapLogo = () => (
 export default function MyGroupsScreen() {
   const navigation = useAppNavigation();
   const { getUserId } = useAuth();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<MyEvent[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,7 +102,7 @@ export default function MyGroupsScreen() {
       const transformedEvents: MyEvent[] = userEvents.map((event: any) => ({
         id: event.id,
         name: event.name,
-        activity: capitalizeFirstLetter(event.activity),
+        activity: capitalizeFirstLetter(event.activity) as SportActivity,
         startTime: new Date(event.scheduled_datetime),
         endTime: new Date(new Date(event.scheduled_datetime).getTime() + 2 * 60 * 60 * 1000), // +2 hours default
         location: {
@@ -121,6 +123,9 @@ export default function MyGroupsScreen() {
           id: event.creator?.id || event.created_by,
           name: event.creator?.display_name || 'Unknown',
         },
+        description: event.description,
+        requiresApproval: !!event.requires_approval,
+        placeId: event.place_id || null,
       }));
 
       console.log('📊 Transformed events:', transformedEvents);
@@ -128,7 +133,7 @@ export default function MyGroupsScreen() {
 
     } catch (error) {
       console.error('❌ Error loading events:', error);
-      Alert.alert('Error', 'Failed to load events');
+      Alert.alert(t.common.error, t.myEvents.errorLoading);
     } finally {
       setLoading(false);
     }
@@ -157,17 +162,16 @@ export default function MyGroupsScreen() {
 
   const handleLeaveEvent = (event: MyEvent) => {
     Alert.alert(
-      'Leave Event',
-      `Are you sure you want to leave "${event.name}"?`,
+      t.myEvents.leaveEventTitle,
+      t.myEvents.leaveEventMessage.replace('{name}', event.name),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Leave',
+          text: t.myEvents.leaveEventConfirm,
           style: 'destructive',
           onPress: () => {
-            // TODO: Call API to leave event
             setEvents(prev => prev.filter(e => e.id !== event.id));
-            Alert.alert('Success', 'You have left the event');
+            Alert.alert(t.common.success, t.myEvents.leaveEventSuccess);
           },
         },
       ]
@@ -175,13 +179,14 @@ export default function MyGroupsScreen() {
   };
 
   const handleFilterPress = () => {
-    // TODO: Show filter modal
-    Alert.alert('Filters', 'Filter modal coming soon');
+    Alert.alert(
+      t.myEvents.filtersComingSoonTitle,
+      t.myEvents.filtersComingSoonMessage
+    );
   };
 
   const handleMorePress = () => {
-    // TODO: Show more options (Sort, Past Events, etc.)
-    Alert.alert('More Options', 'Sort, Past Events, Settings');
+    Alert.alert(t.myEvents.moreOptionsTitle, t.myEvents.moreOptionsMessage);
   };
 
   const handleBrowseEvents = () => {
@@ -195,6 +200,13 @@ export default function MyGroupsScreen() {
 
   // Group events by time
   const groupedEvents = groupEventsByTime(filteredEvents);
+  const groupLabels: Record<EventGroup, string> = {
+    TODAY: t.myEvents.groupLabels.TODAY,
+    TOMORROW: t.myEvents.groupLabels.TOMORROW,
+    THIS_WEEK: t.myEvents.groupLabels.THIS_WEEK,
+    NEXT_WEEK: t.myEvents.groupLabels.NEXT_WEEK,
+    LATER: t.myEvents.groupLabels.LATER,
+  };
 
   // Render content based on state
   const renderContent = () => {
@@ -204,7 +216,7 @@ export default function MyGroupsScreen() {
       console.log('   → Showing loading state');
       return (
         <View style={styles.centerContainer}>
-          <Text style={styles.loadingText}>Loading your events...</Text>
+          <Text style={styles.loadingText}>{t.common.loading}</Text>
         </View>
       );
     }
@@ -215,9 +227,9 @@ export default function MyGroupsScreen() {
         <View style={styles.centerContainer}>
           <EmptyState
             icon="calendar-outline"
-            title="No Events Joined Yet"
-            message="Find exciting events on the map and join to see them here"
-            actionLabel="Browse Events"
+            title={t.myEvents.noEvents}
+            message={t.myEvents.noEventsSubtext}
+            actionLabel={t.myEvents.createEvent}
             onAction={handleBrowseEvents}
           />
         </View>
@@ -229,9 +241,9 @@ export default function MyGroupsScreen() {
         <View style={styles.centerContainer}>
           <EmptyState
             icon="search-outline"
-            title="No Events Found"
-            message={`No ${selectedFilter} events in your list`}
-            actionLabel="Clear Filter"
+            title={t.myEvents.noEvents}
+            message={t.myEvents.noEventsSubtext}
+            actionLabel={t.common.confirm}
             onAction={() => setSelectedFilter('all')}
           />
         </View>
@@ -252,7 +264,10 @@ export default function MyGroupsScreen() {
       >
         {groupedEvents.map(({ group, events: groupEvents }) => (
           <View key={group}>
-            <SectionHeader title={group} count={groupEvents.length} />
+            <SectionHeader
+              title={groupLabels[group as EventGroup] ?? group}
+              count={groupEvents.length}
+            />
             {groupEvents.map(event => (
               <EventCard
                 key={event.id}

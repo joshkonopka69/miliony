@@ -17,9 +17,10 @@ import { BottomNavBar, ActivityFilterModal, CreateEventModal } from '../componen
 import EnhancedInteractiveMap from '../components/EnhancedInteractiveMap';
 import PlaceInfoModal from '../components/PlaceInfoModal';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useAuth } from '../contexts/AuthContext';
 import * as Location from 'expo-location';
 import { supabase } from '../services/supabase';
-import type { Event } from '../services/supabase';
+import { MyEvent, SportActivity } from '../types/event';
 
 // ===========================
 // SPORT TYPE TO EMOJI MAPPING
@@ -55,21 +56,37 @@ import type { Event } from '../services/supabase';
 // INTERFACES & TYPES
 // ===========================
 // NOTE: Unused now that events don't show on map
-// interface MapEvent {
-//   id: string;
-//   name: string; // Will be mapped from 'title'
-//   activity: string; // Will be mapped from 'sport_type'
-//   latitude: number;
-//   longitude: number;
-//   participants_count: number;
-//   max_participants: number;
-//   status: 'live' | 'past' | 'cancelled' | 'active'; // Added 'active' for your schema
-//   created_at: string;
-// }
+const EVENT_DURATION_MS = 2 * 60 * 60 * 1000;
+
+const normalizeSportActivity = (activity?: string): SportActivity => {
+  const value = (activity || 'basketball').toLowerCase();
+  switch (value) {
+    case 'football':
+    case 'soccer':
+      return 'Football';
+    case 'tennis':
+      return 'Tennis';
+    case 'volleyball':
+      return 'Volleyball';
+    case 'running':
+      return 'Running';
+    case 'cycling':
+      return 'Cycling';
+    case 'swimming':
+      return 'Swimming';
+    case 'gym':
+    case 'fitness':
+      return 'Gym';
+    default:
+      return 'Basketball';
+  }
+};
 
 export default function MapScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
+  const { getUserId } = useAuth();
+  const userId = getUserId();
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filters, setFilters] = useState({
     types: [],
@@ -94,6 +111,56 @@ export default function MapScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
+
+  const mapEventRecordToMyEvent = useCallback(
+    (eventRecord: any): MyEvent => {
+      const start = eventRecord?.scheduled_datetime
+        ? new Date(eventRecord.scheduled_datetime)
+        : new Date();
+      const end = new Date(start.getTime() + EVENT_DURATION_MS);
+      const creator = eventRecord?.creator || {};
+      const creatorId = creator.id || eventRecord.created_by;
+
+      return {
+        id: eventRecord.id,
+        name: eventRecord.name || eventRecord.title || 'Event',
+        activity: normalizeSportActivity(eventRecord.activity || eventRecord.sport_type),
+        startTime: start,
+        endTime: end,
+        location: {
+          name:
+            eventRecord.location_name ||
+            eventRecord.place_name ||
+            eventRecord.location?.name ||
+            'Selected Location',
+          address:
+            eventRecord.location_address ||
+            eventRecord.place_address ||
+            eventRecord.location?.address ||
+            '',
+          distance: eventRecord.distance ?? 0,
+          lat: eventRecord.latitude || eventRecord.location?.lat || 0,
+          lng: eventRecord.longitude || eventRecord.location?.lng || 0,
+        },
+        participants: {
+          current: eventRecord.currentParticipants ?? eventRecord.participants_count ?? 0,
+          max: eventRecord.max_participants ?? eventRecord.maxParticipants ?? 0,
+        },
+        status: 'upcoming',
+        role: creatorId && userId && creatorId === userId ? 'created' : 'invited',
+        chatEnabled: true,
+        createdBy: {
+          id: creatorId || 'unknown',
+          name: creator.display_name || 'Organizer',
+          avatar: creator.avatar_url,
+        },
+        description: eventRecord.description,
+        requiresApproval: !!(eventRecord.requires_approval ?? eventRecord.requiresApproval),
+        placeId: eventRecord.place_id || null,
+      };
+    },
+    [userId]
+  );
 
   // ===========================
   // FETCH EVENTS FROM SUPABASE
@@ -309,13 +376,14 @@ export default function MapScreen() {
 
   // Handle event press from place modal
   const handleEventPress = (event: any) => {
-    console.log('🎮 MapScreen: Event selected:', event.name);
-    // TODO: Navigate to event details or show event details modal
-    Alert.alert(
-      'Event Details',
-      `Event: ${event.name}\nCreator: ${event.creator?.display_name || 'Unknown'}\nParticipants: ${event.currentParticipants}/${event.max_participants}`,
-      [{ text: 'OK' }]
-    );
+    try {
+      const mappedEvent = mapEventRecordToMyEvent(event);
+      navigation.navigate(ROUTES.EVENT_DETAILS, { game: mappedEvent });
+      setIsPlaceModalVisible(false);
+    } catch (error) {
+      console.error('Failed to open event details:', error);
+      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+    }
   };
 
   return (

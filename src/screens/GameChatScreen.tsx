@@ -12,39 +12,147 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GameChatScreenProps } from '../navigation/types';
+import { useAuth } from '../contexts/AuthContext';
+import { supabaseService, EventMessage } from '../services/supabase';
 
 export default function GameChatScreen({ navigation, route }: GameChatScreenProps) {
   const { game } = route.params || {};
+  const { user } = useAuth();
+
   const [messages, setMessages] = useState<Array<{
     id: string;
     text: string;
-    sender: string;
+    senderName: string;
+    senderId: string;
     timestamp: Date;
+    isMine: boolean;
   }>>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
+  // Load existing messages and subscribe to new ones
   useEffect(() => {
-    // Initialize with some sample messages
-    setMessages([
-      {
-        id: '1',
-        text: 'Welcome to the game chat!',
-        sender: 'System',
-        timestamp: new Date(),
-      },
-    ]);
-  }, []);
+    if (!game?.id || !user?.id) {
+      return;
+    }
 
-  const sendMessage = () => {
-    if (newMessage.trim()) {
-      const message = {
-        id: Date.now().toString(),
-        text: newMessage.trim(),
-        sender: 'You',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, message]);
+    let subscription: ReturnType<typeof supabaseService.subscribeToEventMessages> | null = null;
+
+    const loadMessagesAndSubscribe = async () => {
+      console.log('💬 GameChatScreen: loading messages for event:', game.id);
+
+      // Load last messages from backend
+      const existing = await supabaseService.getEventMessages(game.id, 50);
+      const mapped = (existing || []).map((m: any) => {
+        const senderId = m.sender_id || m.user_id || null;
+        const text = m.message_text || m.message || '';
+
+        const isMine = senderId
+          ? senderId === user.id
+          // Fallback: if no sender stored (old messages), treat as mine for this user
+          : true;
+
+        const senderName =
+          isMine
+            ? (user.email || 'You')
+            : (m.sender?.display_name || m.user?.display_name || 'Unknown');
+
+        return {
+          id: m.id,
+          text,
+          senderName,
+          senderId: senderId || user.id,
+          timestamp: new Date(m.created_at),
+          isMine,
+        };
+      });
+
+      // Show newest at bottom
+      setMessages(mapped.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()));
+      console.log('💬 GameChatScreen: messages after initial load:', mapped.length);
+
+      // Subscribe to new messages
+      subscription = supabaseService.subscribeToEventMessages(game.id, (msg: EventMessage) => {
+        console.log('💬 GameChatScreen: realtime message received:', msg);
+        setMessages(prev => {
+          // Avoid duplicates
+          if (prev.some(m => m.id === msg.id)) return prev;
+
+          const senderId = (msg as any).sender_id || (msg as any).user_id || null;
+          const text = (msg as any).message_text || (msg as any).message || '';
+
+          const isMine = senderId
+            ? senderId === user.id
+            : true;
+
+          const senderName =
+            isMine
+              ? (user.email || 'You')
+              : 'Unknown';
+
+          const next = [
+            ...prev,
+            {
+              id: msg.id,
+              text,
+              senderName,
+              senderId: senderId || user.id,
+              timestamp: new Date(msg.created_at),
+              isMine,
+            },
+          ];
+          return next.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        });
+      });
+    };
+
+    loadMessagesAndSubscribe();
+
+    return () => {
+      if (subscription) {
+        supabaseService.removeChannel(subscription);
+      }
+    };
+  }, [game?.id, user?.id]);
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !game?.id || !user?.id || isSending) {
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      const sent = await supabaseService.sendEventMessage(game.id, user.id, newMessage.trim());
+      if (!sent) {
+        Alert.alert('Error', 'Failed to send message');
+        return;
+      }
+
+      // Optimistically add the message; subscription will also deliver it
+      setMessages(prev => {
+        if (prev.some(m => m.id === sent.id)) return prev;
+        const senderId = (sent as any).sender_id || (sent as any).user_id || user.id;
+        const text = (sent as any).message_text || (sent as any).message || newMessage.trim();
+        const next = [
+          ...prev,
+          {
+            id: sent.id,
+            text,
+            senderName: user.email || 'You',
+            senderId,
+            timestamp: new Date(sent.created_at),
+            isMine: true,
+          },
+        ];
+        return next.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      });
+
       setNewMessage('');
+    } catch (error) {
+      console.error('Error sending event message:', error);
+      Alert.alert('Error', 'Failed to send message');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -78,13 +186,13 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
             key={message.id}
             style={[
               styles.messageBubble,
-              message.sender === 'You' ? styles.myMessage : styles.otherMessage,
+              message.isMine ? styles.myMessage : styles.otherMessage,
             ]}
           >
             <Text 
               style={[
                 styles.messageText,
-                message.sender === 'You' && styles.myMessageText
+                message.isMine && styles.myMessageText
               ]}
             >
               {message.text}
@@ -92,7 +200,7 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
             <Text 
               style={[
                 styles.messageTime,
-                message.sender === 'You' && styles.myMessageTime
+                message.isMine && styles.myMessageTime
               ]}
             >
               {message.timestamp.toLocaleTimeString()}
@@ -116,10 +224,10 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
           <TouchableOpacity 
             style={[
               styles.sendButton,
-              !newMessage.trim() && styles.sendButtonDisabled
+              (!newMessage.trim() || isSending) && styles.sendButtonDisabled
             ]} 
             onPress={sendMessage}
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() || isSending}
             activeOpacity={0.7}
           >
             <Ionicons 

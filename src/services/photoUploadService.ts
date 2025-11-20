@@ -140,7 +140,9 @@ export const deleteOldProfilePhoto = async (photoUrl: string): Promise<void> => 
 
     // Extract path from URL
     // URL format: https://[project].supabase.co/storage/v1/object/public/avatars/[user_id]/[filename]
-    const urlParts = photoUrl.split('/avatars/');
+    // Strip query parameters like ?t=timestamp
+    const cleanUrl = photoUrl.split('?')[0];
+    const urlParts = cleanUrl.split('/avatars/');
     if (urlParts.length < 2) return;
 
     const filePath = urlParts[1];

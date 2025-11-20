@@ -15,6 +15,11 @@ interface User {
   updated_at: string;
 }
 
+export interface AuthError {
+  message: string;
+  code?: string;
+}
+
 interface AuthState {
   user: User | null;
   isLoading: boolean;
@@ -32,6 +37,7 @@ interface AuthContextType extends AuthState {
   updateProfile: (updates: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   getUserId: () => string | null;
   refreshUser: () => Promise<void>;
+  sendEmailVerification: () => Promise<{ success: boolean; error?: AuthError }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -209,6 +215,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const sendEmailVerification = async (): Promise<{ success: boolean; error?: AuthError }> => {
+    try {
+      const email = authState.user?.email;
+      if (!email) {
+        return { success: false, error: { message: 'No email address available for verification.' } };
+      }
+
+      const result = await BackendService.Auth.sendEmailVerification(email);
+      if (!result.success) {
+        return {
+          success: false,
+          error: { message: result.error || 'Failed to send verification email.' },
+        };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error sending verification email:', error);
+      return { success: false, error: { message: error.message } };
+    }
+  };
+
   const contextValue: AuthContextType = {
     ...authState,
     signIn,
@@ -217,6 +245,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateProfile,
     getUserId,
     refreshUser,
+    sendEmailVerification,
   };
 
   return (

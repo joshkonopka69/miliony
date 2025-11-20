@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Translation types
@@ -167,6 +167,30 @@ export interface Translations {
     intermediate: string;
     advanced: string;
     expert: string;
+    errorLoading: string;
+    filtersComingSoonTitle: string;
+    filtersComingSoonMessage: string;
+    moreOptionsTitle: string;
+    moreOptionsMessage: string;
+    leaveEventTitle: string;
+    leaveEventMessage: string;
+    leaveEventConfirm: string;
+    leaveEventSuccess: string;
+    participantsShort: string;
+    almostFull: string;
+    groupLabels: {
+      TODAY: string;
+      TOMORROW: string;
+      THIS_WEEK: string;
+      NEXT_WEEK: string;
+      LATER: string;
+    };
+    statusLabels: {
+      live: string;
+      startingSoon: string;
+      cancelled: string;
+      started: string;
+    };
   };
   
   // My Groups Screen
@@ -203,20 +227,50 @@ export interface Translations {
   
   // Event Details Screen
   eventDetails: {
+    title: string;
     share: string;
     gameInformation: string;
     date: string;
     time: string;
+    startTime: string;
+    endTime: string;
     players: string;
     location: string;
+    viewOnMap: string;
     skillLevel: string;
+    skillLevelAll: string;
     description: string;
     equipmentNeeded: string;
     rules: string;
     organizer: string;
+    organizerRole: string;
+    creatorBadge: string;
     chat: string;
     joinGame: string;
+    joinPrompt: string;
+    joinSuccess: string;
+    requestAccess: string;
+    requestSent: string;
+    requestPending: string;
     leaveGame: string;
+    manageEvent: string;
+    eventFull: string;
+    eventStarted: string;
+    shareMessage: string;
+    distanceLabel: string;
+    participantsSection: string;
+    joinedLabel: string;
+    spotsLeft: string;
+    viewParticipants: string;
+    shareError: string;
+    shareSuccess: string;
+    viewLocationTitle: string;
+    viewLocationMessage: string;
+    participantsInfoTitle: string;
+    participantsInfoMessage: string;
+    errorTitle: string;
+    errorMessage: string;
+    errorButton: string;
   };
   
   // All Badges Screen
@@ -224,6 +278,25 @@ export interface Translations {
     title: string;
     earnedBadge: string;
     locked: string;
+    progressLabel: string;
+    requirementLabel: string;
+    earnedStatus: string;
+    tiers: {
+      rookie: string;
+      player: string;
+      pro: string;
+      legend: string;
+      enthusiast: string;
+      regular: string;
+      marathoner: string;
+    };
+    specialCategory: string;
+    specialBadges: {
+      allRounderName: string;
+      allRounderRequirement: string;
+      socialButterflyName: string;
+      socialButterflyRequirement: string;
+    };
   };
   
   // Notifications
@@ -232,6 +305,38 @@ export interface Translations {
     noNotifications: string;
     noNotificationsSubtext: string;
     markAsRead: string;
+    searchPlaceholder: string;
+    filterAll: string;
+    filterUnread: string;
+    filterLabels: {
+      friend_request: string;
+      event_invitation: string;
+      group_invite: string;
+      chat_message: string;
+      system_announcement: string;
+    };
+    emptyTitle: string;
+    emptySubtitle: string;
+    emptySearchTitle: string;
+    emptySearchSubtitle: string;
+    select: string;
+    selectAll: string;
+    deselectAll: string;
+    deleteSelected: string;
+    deleteConfirmTitle: string;
+    deleteConfirmMessage: string;
+    markAllReadTitle: string;
+    markAllReadMessage: string;
+    markAllReadConfirm: string;
+    loading: string;
+    updating: string;
+    markAllReadButton: string;
+    friendRequestTitle: string;
+    friendRequestBody: string;
+    groupInviteTitle: string;
+    groupInviteBody: string;
+    reminder12h: string;
+    reminder1h: string;
   };
   
   // Bottom Navigation
@@ -242,7 +347,155 @@ export interface Translations {
     myProfile: string;
     myGroups: string;
   };
+
+  languageScreen: {
+    headerTitle: string;
+    title: string;
+    subtitle: string;
+  };
+
+  activityFilter: {
+    title: string;
+    cancel: string;
+    venueTypes: string;
+    specificActivities: string;
+    specificActivitiesHint: string;
+    keywordsPlaceholder: string;
+    searchRadius: string;
+    apply: string;
+    reset: string;
+    unitKm: string;
+    types: Record<string, string>;
+  };
+
+  friends: {
+    searchTitle: string;
+    searchSubtitle: string;
+    searchPlaceholder: string;
+    resultsTitle: string;
+    resultsCountLabel: string;
+    loadingResults: string;
+    quickActionsTitle: string;
+    quickActions: {
+      contactsTitle: string;
+      contactsSubtitle: string;
+      inviteLinkTitle: string;
+      inviteLinkSubtitle: string;
+      nearbyTitle: string;
+      nearbySubtitle: string;
+    };
+    loginRequired: string;
+    addConfirmTitle: string;
+    addConfirmMessage: string;
+    sendRequest: string;
+    addSuccess: string;
+    removeConfirmTitle: string;
+    removeConfirmMessage: string;
+    removeConfirmButton: string;
+    removeSuccess: string;
+    pending: string;
+    add: string;
+    remove: string;
+    emptyResultsTitle: string;
+    emptyResultsSubtitle: string;
+  };
 }
+
+// Map of common mojibake sequences -> correct UTF-8 characters
+const ENCODING_FIX_MAP: Record<string, string> = {
+  // Spanish
+  'Ăą': 'ñ',
+  'ĂĄ': 'á',
+  'Ăˇ': 'á',
+  'ĂŠ': 'é',
+  'Ă©': 'é',
+  'Ă­': 'í',
+  'Ăł': 'ó',
+  'Ăł': 'ó',
+  'Ăş': 'ú',
+  'Ăš': 'Ú',
+  'Â¿': '¿',
+  'Â¡': '¡',
+
+  // French
+  'Ă§': 'ç',
+  'Ă€': 'À',
+  'Ă ': 'à',
+  'Ă¨': 'è',
+  'Ă©': 'é',
+  'ĂŞ': 'ê',
+  'Ăª': 'ê',
+  'Ă«': 'ë',
+  'Ă´': 'ô',
+  'Ă»': 'û',
+  'Ă¹': 'ù',
+  'Ă‰': 'É',
+  'ĂŠ': 'é',
+
+  // German
+  'Ă¤': 'ä',
+  'Ă„': 'Ä',
+  'Ăś': 'Ö',
+  'Ă¶': 'ö',
+  'Ă–': 'Ö',
+  'Ăź': 'ü',
+  'ĂĽ': 'ü',
+  'ĂŸ': 'ß',
+
+  // Polish
+  'Ä…': 'ą',
+  'Ä‡': 'ć',
+  'Ä™': 'ę',
+  'Ä‡': 'ć',
+  'Ĺ‚': 'ł',
+  'Ĺ': 'ł',
+  'Ĺ„': 'ń',
+  'Ăł': 'ó',
+  'Ĺ›': 'ś',
+  'Ĺ›': 'ś',
+  'Ĺş': 'ź',
+  'Ĺź': 'ź',
+  'ĹĽ': 'ż',
+
+  // Common stray characters
+  'â€“': '–',
+  'â€”': '—',
+  'â€¦': '…',
+  'â€œ': '“',
+  'â€': '”',
+  'â€ž': '„',
+};
+
+const fixMojibakeString = (text: string): string => {
+  let result = text;
+  for (const [bad, good] of Object.entries(ENCODING_FIX_MAP)) {
+    if (result.includes(bad)) {
+      result = result.split(bad).join(good);
+    }
+  }
+  return result;
+};
+
+// Recursively walk the translations object and fix all string values
+const fixTranslationsObject = <T,>(value: T): T => {
+  if (typeof value === 'string') {
+    return fixMojibakeString(value) as unknown as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(v => fixTranslationsObject(v)) as unknown as T;
+  }
+
+  if (value && typeof value === 'object') {
+    const result: any = {};
+    for (const [key, val] of Object.entries(value as any)) {
+      result[key] = fixTranslationsObject(val);
+    }
+    return result as T;
+  }
+
+  return value;
+};
 
 // Translation data
 const translations: Record<Language, Translations> = {
@@ -388,6 +641,30 @@ const translations: Record<Language, Translations> = {
       intermediate: 'Intermediate',
       advanced: 'Advanced',
       expert: 'Expert',
+    errorLoading: 'Failed to load events',
+    filtersComingSoonTitle: 'Filters coming soon',
+    filtersComingSoonMessage: 'We\'re working on advanced filters for sports, date, and location.',
+    moreOptionsTitle: 'More options coming soon',
+    moreOptionsMessage: 'Sorting, past games, and settings will arrive shortly.',
+    leaveEventTitle: 'Leave Event',
+    leaveEventMessage: 'Do you want to leave "{name}"?',
+    leaveEventConfirm: 'Leave',
+    leaveEventSuccess: 'You left the event.',
+    participantsShort: 'joined',
+    almostFull: 'Almost full',
+    groupLabels: {
+      TODAY: 'Today',
+      TOMORROW: 'Tomorrow',
+      THIS_WEEK: 'This Week',
+      NEXT_WEEK: 'Next Week',
+      LATER: 'Later',
+    },
+    statusLabels: {
+      live: 'Live',
+      startingSoon: 'Starting soon',
+      cancelled: 'Cancelled',
+      started: 'Already started',
+    },
     },
     myGroups: {
       title: 'My Groups',
@@ -418,31 +695,112 @@ const translations: Record<Language, Translations> = {
       fillFields: 'Please fill in all required fields',
     },
     eventDetails: {
+      title: 'Event Details',
       share: 'Share',
       gameInformation: 'Game Information',
       date: 'Date',
       time: 'Time',
+      startTime: 'Start Time',
+      endTime: 'End Time',
       players: 'Players',
       location: 'Location',
+      viewOnMap: 'View on Map',
       skillLevel: 'Skill Level',
+      skillLevelAll: 'All Levels',
       description: 'Description',
       equipmentNeeded: 'Equipment Needed',
       rules: 'Rules',
       organizer: 'Organizer',
+      organizerRole: 'Event Creator',
+      creatorBadge: 'You created this event',
       chat: 'Chat',
       joinGame: 'Join Game',
+      joinPrompt: 'Are you sure you want to join "{name}"?',
+      joinSuccess: 'You have joined the event.',
+      requestAccess: 'Request to Join',
+      requestSent: 'Join request sent to the organizer.',
+      requestPending: 'Request pending approval',
       leaveGame: 'Leave Game',
+      manageEvent: 'Manage Event',
+      eventFull: 'Event Full',
+      eventStarted: 'Event has started',
+      shareMessage: 'Join me for {name} at {location} on {date}!',
+      distanceLabel: 'Distance',
+      participantsSection: 'Participants',
+      joinedLabel: 'Joined',
+      spotsLeft: 'Spots Left',
+      viewParticipants: 'View All Participants',
+      shareError: 'Failed to share event',
+      shareSuccess: 'Event shared successfully',
+      viewLocationTitle: 'View Location',
+      viewLocationMessage: 'Opening map view...',
+      participantsInfoTitle: 'Participants',
+      participantsInfoMessage: '{count} people have joined this event.',
+      errorTitle: 'Event Not Found',
+      errorMessage: 'This event could not be loaded.',
+      errorButton: 'Go Back',
     },
     allBadges: {
       title: 'All Badges',
       earnedBadge: 'Earned',
       locked: 'Locked',
+      progressLabel: 'Progress',
+      requirementLabel: 'Requirement',
+      earnedStatus: 'Earned!',
+      tiers: {
+        rookie: 'Rookie',
+        player: 'Player',
+        pro: 'Pro',
+        legend: 'Legend',
+        enthusiast: 'Enthusiast',
+        regular: 'Regular',
+        marathoner: 'Marathon Runner',
+      },
+      specialCategory: 'Special Achievements',
+      specialBadges: {
+        allRounderName: 'All-Rounder',
+        allRounderRequirement: 'Play 3 different sports',
+        socialButterflyName: 'Social Butterfly',
+        socialButterflyRequirement: 'Join 10 events total',
+      },
     },
     notifications: {
       title: 'Notifications',
       noNotifications: 'No notifications',
       noNotificationsSubtext: 'You\'re all caught up!',
       markAsRead: 'Mark as Read',
+      searchPlaceholder: 'Search notifications',
+      filterAll: 'All',
+      filterUnread: 'Unread',
+      filterLabels: {
+        friend_request: 'Friend Requests',
+        event_invitation: 'Event Invitations',
+        group_invite: 'Group Invites',
+        chat_message: 'Chats',
+        system_announcement: 'Announcements',
+      },
+      emptyTitle: 'No notifications yet',
+      emptySubtitle: 'You\'re all caught up!',
+      emptySearchTitle: 'No notifications found',
+      emptySearchSubtitle: 'Try adjusting your search terms',
+      select: 'Select',
+      selectAll: 'Select All',
+      deselectAll: 'Clear Selection',
+      deleteSelected: 'Delete',
+      deleteConfirmTitle: 'Delete Notifications',
+      deleteConfirmMessage: 'Delete {count} notification(s)?',
+      markAllReadTitle: 'Mark All as Read',
+      markAllReadMessage: 'Mark every notification as read?',
+      markAllReadConfirm: 'Mark All Read',
+      loading: 'Loading notifications...',
+      updating: 'Updating...',
+      markAllReadButton: 'Mark All Read',
+      friendRequestTitle: 'New Friend Request',
+      friendRequestBody: '{name} wants to connect with you.',
+      groupInviteTitle: 'Group Invitation',
+      groupInviteBody: '{name} invited you to join {group}.',
+      reminder12h: '{event} starts in 12 hours.',
+      reminder1h: '{event} starts in 1 hour.',
     },
     bottomNav: {
       map: 'Map',
@@ -450,6 +808,66 @@ const translations: Record<Language, Translations> = {
       myGames: 'My Games',
       myProfile: 'My Profile',
       myGroups: 'My Groups',
+    },
+    languageScreen: {
+      headerTitle: 'Language',
+      title: 'Language Settings',
+      subtitle: 'Choose your preferred language for the entire app',
+    },
+    activityFilter: {
+      title: 'Activities',
+      cancel: 'Cancel',
+      venueTypes: 'Venue Types',
+      specificActivities: 'Specific Activities',
+      specificActivitiesHint: 'Search for specific activities (e.g., yoga, bouldering, martial arts)',
+      keywordsPlaceholder: 'Enter activities separated by commas',
+      searchRadius: 'Search Radius',
+      apply: 'Apply Filters',
+      reset: 'Reset',
+      unitKm: 'km',
+      types: {
+        gym: 'Gym/Fitness Center',
+        stadium: 'Stadium',
+        swimming_pool: 'Swimming Pool',
+        park: 'Park',
+        sports_complex: 'Sports Complex',
+        bowling_alley: 'Bowling Alley',
+        golf_course: 'Golf Course',
+        ice_rink: 'Ice Rink',
+        tennis_court: 'Tennis Court',
+        basketball_court: 'Basketball Court',
+      },
+    },
+    friends: {
+      searchTitle: 'Find Friends',
+      searchSubtitle: 'Add friends to connect and play together',
+      searchPlaceholder: 'Search friends...',
+      resultsTitle: 'Results',
+      resultsCountLabel: 'Results',
+      loadingResults: 'Searching...',
+      quickActionsTitle: 'Quick Actions',
+      quickActions: {
+        contactsTitle: 'Invite from Contacts',
+        contactsSubtitle: 'Find friends from your phone contacts',
+        inviteLinkTitle: 'Share Invite Link',
+        inviteLinkSubtitle: 'Send a link to invite friends',
+        nearbyTitle: 'Find Nearby Users',
+        nearbySubtitle: 'Discover people in your area',
+      },
+      loginRequired: 'You must be logged in to manage friends.',
+      addConfirmTitle: 'Add Friend',
+      addConfirmMessage: 'Send a friend request to {name}?',
+      sendRequest: 'Send Request',
+      addSuccess: 'Friend request sent to {name}!',
+      removeConfirmTitle: 'Remove Friend',
+      removeConfirmMessage: 'Remove {name} from your friends?',
+      removeConfirmButton: 'Remove',
+      removeSuccess: '{name} has been removed from your friends.',
+      pending: 'Pending',
+      add: 'Add',
+      remove: 'Remove',
+      emptyResultsTitle: 'No people found',
+      emptyResultsSubtitle: 'Try a different name or username.',
     },
   },
   pl: {
@@ -594,6 +1012,30 @@ const translations: Record<Language, Translations> = {
       intermediate: 'Ĺšredniozaawansowany',
       advanced: 'Zaawansowany',
       expert: 'Ekspert',
+      errorLoading: 'Nie udało się załadować wydarzeń',
+      filtersComingSoonTitle: 'Filtry wkrótce',
+      filtersComingSoonMessage: 'Pracujemy nad zaawansowanymi filtrami dla sportów, dat i lokalizacji.',
+      moreOptionsTitle: 'Więcej opcji wkrótce',
+      moreOptionsMessage: 'Sortowanie, wcześniejsze gry i ustawienia pojawią się już niedługo.',
+      leaveEventTitle: 'Opuść wydarzenie',
+      leaveEventMessage: 'Czy chcesz opuścić „{name}”?',
+      leaveEventConfirm: 'Opuść',
+      leaveEventSuccess: 'Opuściłeś wydarzenie.',
+      participantsShort: 'dołączyło',
+      almostFull: 'Prawie pełne',
+      groupLabels: {
+        TODAY: 'Dzisiaj',
+        TOMORROW: 'Jutro',
+        THIS_WEEK: 'W tym tygodniu',
+        NEXT_WEEK: 'W przyszłym tygodniu',
+        LATER: 'Później',
+      },
+      statusLabels: {
+        live: 'Na żywo',
+        startingSoon: 'Zaczyna się wkrótce',
+        cancelled: 'Odwołane',
+        started: 'Już się rozpoczęło',
+      },
     },
     myGroups: {
       title: 'Moje Grupy',
@@ -624,38 +1066,179 @@ const translations: Record<Language, Translations> = {
       fillFields: 'ProszÄ™ wypeĹ‚niÄ‡ wszystkie wymagane pola',
     },
     eventDetails: {
-      share: 'UdostÄ™pnij',
-      gameInformation: 'Informacje o Grze',
+      title: 'Szczegóły wydarzenia',
+      share: 'Udostępnij',
+      gameInformation: 'Informacje o grze',
       date: 'Data',
       time: 'Czas',
+      startTime: 'Godzina rozpoczęcia',
+      endTime: 'Godzina zakończenia',
       players: 'Gracze',
       location: 'Lokalizacja',
-      skillLevel: 'Poziom UmiejÄ™tnoĹ›ci',
+      viewOnMap: 'Pokaż na mapie',
+      skillLevel: 'Poziom umiejętności',
+      skillLevelAll: 'Wszystkie poziomy',
       description: 'Opis',
-      equipmentNeeded: 'Potrzebny SprzÄ™t',
+      equipmentNeeded: 'Potrzebny sprzęt',
       rules: 'Zasady',
       organizer: 'Organizator',
+      organizerRole: 'Organizator wydarzenia',
+      creatorBadge: 'To Ty utworzyłeś to wydarzenie',
       chat: 'Czat',
-      joinGame: 'DoĹ‚Ä…cz do Gry',
-      leaveGame: 'OpuĹ›Ä‡ GrÄ™',
+      joinGame: 'Dołącz do gry',
+      joinPrompt: 'Czy chcesz dołączyć do „{name}”?',
+      joinSuccess: 'Dołączyłeś do wydarzenia.',
+      requestAccess: 'Poproś o dołączenie',
+      requestSent: 'Prośba o dołączenie została wysłana do organizatora.',
+      requestPending: 'Oczekuje na zatwierdzenie',
+      leaveGame: 'Opuść grę',
+      manageEvent: 'Zarządzaj wydarzeniem',
+      eventFull: 'Brak miejsc',
+      eventStarted: 'Wydarzenie już się rozpoczęło',
+      shareMessage: 'Dołącz do mnie na {name} w {location} dnia {date}!',
+      distanceLabel: 'Odległość',
+      participantsSection: 'Uczestnicy',
+      joinedLabel: 'Dołączyło',
+      spotsLeft: 'Wolne miejsca',
+      viewParticipants: 'Zobacz wszystkich uczestników',
+      shareError: 'Nie udało się udostępnić wydarzenia',
+      shareSuccess: 'Wydarzenie udostępnione',
+      viewLocationTitle: 'Zobacz lokalizację',
+      viewLocationMessage: 'Otwieranie widoku mapy...',
+      participantsInfoTitle: 'Uczestnicy',
+      participantsInfoMessage: '{count} osób dołączyło do tego wydarzenia.',
+      errorTitle: 'Nie znaleziono wydarzenia',
+      errorMessage: 'Nie udało się załadować tego wydarzenia.',
+      errorButton: 'Wróć',
     },
     allBadges: {
-      title: 'Wszystkie Odznaki',
+      title: 'Wszystkie odznaki',
       earnedBadge: 'Zdobyte',
       locked: 'Zablokowane',
+      progressLabel: 'Postęp',
+      requirementLabel: 'Wymaganie',
+      earnedStatus: 'Zdobyto!',
+      tiers: {
+        rookie: 'Debiutant',
+        player: 'Gracz',
+        pro: 'Pro',
+        legend: 'Legenda',
+        enthusiast: 'Entuzjasta',
+        regular: 'Bywalec',
+        marathoner: 'Maratończyk',
+      },
+      specialCategory: 'Specjalne osiągnięcia',
+      specialBadges: {
+        allRounderName: 'Wszechstronny',
+        allRounderRequirement: 'Zagraj w 3 różne sporty',
+        socialButterflyName: 'Dusza towarzystwa',
+        socialButterflyRequirement: 'Dołącz do 10 wydarzeń',
+      },
     },
     notifications: {
       title: 'Powiadomienia',
-      noNotifications: 'Brak powiadomieĹ„',
+      noNotifications: 'Brak powiadomień',
       noNotificationsSubtext: 'Wszystko przeczytane!',
-      markAsRead: 'Oznacz jako Przeczytane',
+      markAsRead: 'Oznacz jako przeczytane',
+      searchPlaceholder: 'Szukaj powiadomień',
+      filterAll: 'Wszystkie',
+      filterUnread: 'Nieprzeczytane',
+      filterLabels: {
+        friend_request: 'Zaproszenia do znajomych',
+        event_invitation: 'Zaproszenia na wydarzenia',
+        group_invite: 'Zaproszenia do grup',
+        chat_message: 'Wiadomości',
+        system_announcement: 'Komunikaty',
+      },
+      emptyTitle: 'Brak powiadomień',
+      emptySubtitle: 'Jesteś na bieżąco!',
+      emptySearchTitle: 'Nie znaleziono powiadomień',
+      emptySearchSubtitle: 'Spróbuj zmienić kryteria wyszukiwania',
+      select: 'Zaznacz',
+      selectAll: 'Zaznacz wszystko',
+      deselectAll: 'Wyczyść wybór',
+      deleteSelected: 'Usuń',
+      deleteConfirmTitle: 'Usuń powiadomienia',
+      deleteConfirmMessage: 'Usunąć {count} powiadomienie(a)?',
+      markAllReadTitle: 'Oznacz wszystkie jako przeczytane',
+      markAllReadMessage: 'Oznaczyć wszystkie powiadomienia jako przeczytane?',
+      markAllReadConfirm: 'Oznacz wszystko',
+      loading: 'Ładowanie powiadomień...',
+      updating: 'Aktualizowanie...',
+      markAllReadButton: 'Oznacz wszystko',
+      friendRequestTitle: 'Nowe zaproszenie do znajomych',
+      friendRequestBody: '{name} chce się z Tobą połączyć.',
+      groupInviteTitle: 'Zaproszenie do grupy',
+      groupInviteBody: '{name} zaprasza Cię do grupy {group}.',
+      reminder12h: '{event} rozpocznie się za 12 godzin.',
+      reminder1h: '{event} rozpocznie się za 1 godzinę.',
     },
     bottomNav: {
       map: 'Mapa',
       events: 'Wydarzenia',
       myGames: 'Moje Gry',
-      myProfile: 'MĂłj Profil',
+      myProfile: 'Mój Profil',
       myGroups: 'Moje Grupy',
+    },
+    languageScreen: {
+      headerTitle: 'Język',
+      title: 'Ustawienia języka',
+      subtitle: 'Wybierz preferowany język dla całej aplikacji',
+    },
+    activityFilter: {
+      title: 'Aktywności',
+      cancel: 'Anuluj',
+      venueTypes: 'Typy obiektów',
+      specificActivities: 'Konkretne aktywności',
+      specificActivitiesHint: 'Wyszukaj konkretne aktywności (np. joga, bouldering, sztuki walki)',
+      keywordsPlaceholder: 'Wpisz aktywności oddzielone przecinkami',
+      searchRadius: 'Promień wyszukiwania',
+      apply: 'Zastosuj filtry',
+      reset: 'Resetuj',
+      unitKm: 'km',
+      types: {
+        gym: 'Siłownia/Fitness',
+        stadium: 'Stadion',
+        swimming_pool: 'Basen',
+        park: 'Park',
+        sports_complex: 'Kompleks sportowy',
+        bowling_alley: 'Kręgielnia',
+        golf_course: 'Pole golfowe',
+        ice_rink: 'Lodowisko',
+        tennis_court: 'Kort tenisowy',
+        basketball_court: 'Boisko do koszykówki',
+      },
+    },
+    friends: {
+      searchTitle: 'Wyszukaj znajomych',
+      searchSubtitle: 'Dodaj znajomych, aby łączyć się i grać razem',
+      searchPlaceholder: 'Szukaj znajomych...',
+      resultsTitle: 'Wyniki',
+      resultsCountLabel: 'Wyniki',
+      loadingResults: 'Wyszukiwanie...',
+      quickActionsTitle: 'Szybkie akcje',
+      quickActions: {
+        contactsTitle: 'Zaproś z kontaktów',
+        contactsSubtitle: 'Znajdź znajomych w kontaktach telefonu',
+        inviteLinkTitle: 'Udostępnij link zaproszenia',
+        inviteLinkSubtitle: 'Wyślij link, aby zaprosić znajomych',
+        nearbyTitle: 'Znajdź pobliskich użytkowników',
+        nearbySubtitle: 'Odkryj ludzi w swojej okolicy',
+      },
+      loginRequired: 'Musisz być zalogowany, aby zarządzać znajomymi.',
+      addConfirmTitle: 'Dodaj znajomego',
+      addConfirmMessage: 'Wysłać zaproszenie do {name}?',
+      sendRequest: 'Wyślij zaproszenie',
+      addSuccess: 'Wysłano zaproszenie do {name}.',
+      removeConfirmTitle: 'Usuń znajomego',
+      removeConfirmMessage: 'Usunąć {name} ze znajomych?',
+      removeConfirmButton: 'Usuń',
+      removeSuccess: '{name} został usunięty ze znajomych.',
+      pending: 'Oczekuje',
+      add: 'Dodaj',
+      remove: 'Usuń',
+      emptyResultsTitle: 'Nie znaleziono osób',
+      emptyResultsSubtitle: 'Spróbuj innego imienia lub nazwy użytkownika.',
     },
   },
   es: {
@@ -800,6 +1383,30 @@ const translations: Record<Language, Translations> = {
       intermediate: 'Intermedio',
       advanced: 'Avanzado',
       expert: 'Experto',
+      errorLoading: 'No se pudieron cargar los eventos',
+      filtersComingSoonTitle: 'Filtros disponibles pronto',
+      filtersComingSoonMessage: 'Estamos trabajando en filtros avanzados por deporte, fecha y ubicación.',
+      moreOptionsTitle: 'Más opciones pronto',
+      moreOptionsMessage: 'La ordenación, eventos pasados y ajustes llegarán en breve.',
+      leaveEventTitle: 'Salir del evento',
+      leaveEventMessage: '¿Quieres salir de "{name}"?',
+      leaveEventConfirm: 'Salir',
+      leaveEventSuccess: 'Has salido del evento.',
+      participantsShort: 'unidos',
+      almostFull: 'Casi lleno',
+      groupLabels: {
+        TODAY: 'Hoy',
+        TOMORROW: 'Mañana',
+        THIS_WEEK: 'Esta semana',
+        NEXT_WEEK: 'La próxima semana',
+        LATER: 'Más tarde',
+      },
+      statusLabels: {
+        live: 'En vivo',
+        startingSoon: 'Comienza pronto',
+        cancelled: 'Cancelado',
+        started: 'Ya comenzó',
+      },
     },
     myGroups: {
       title: 'Mis Grupos',
@@ -830,31 +1437,112 @@ const translations: Record<Language, Translations> = {
       fillFields: 'Por favor completa todos los campos requeridos',
     },
     eventDetails: {
+      title: 'Detalles del evento',
       share: 'Compartir',
-      gameInformation: 'InformaciĂłn del Juego',
+      gameInformation: 'Información del juego',
       date: 'Fecha',
       time: 'Hora',
+      startTime: 'Hora de inicio',
+      endTime: 'Hora de finalización',
       players: 'Jugadores',
-      location: 'UbicaciĂłn',
-      skillLevel: 'Nivel de Habilidad',
-      description: 'DescripciĂłn',
-      equipmentNeeded: 'Equipo Necesario',
+      location: 'Ubicación',
+      viewOnMap: 'Ver en el mapa',
+      skillLevel: 'Nivel de habilidad',
+      skillLevelAll: 'Todos los niveles',
+      description: 'Descripción',
+      equipmentNeeded: 'Equipo necesario',
       rules: 'Reglas',
       organizer: 'Organizador',
+      organizerRole: 'Creador del evento',
+      creatorBadge: 'Tú creaste este evento',
       chat: 'Chat',
-      joinGame: 'Unirse al Juego',
-      leaveGame: 'Dejar el Juego',
+      joinGame: 'Unirse al juego',
+      joinPrompt: '¿Quieres unirte a "{name}"?',
+      joinSuccess: 'Te has unido al evento.',
+      requestAccess: 'Solicitar unirse',
+      requestSent: 'Solicitud enviada al organizador.',
+      requestPending: 'Solicitud pendiente de aprobación',
+      leaveGame: 'Salir del juego',
+      manageEvent: 'Administrar evento',
+      eventFull: 'Evento completo',
+      eventStarted: 'El evento ya comenzó',
+      shareMessage: 'Únete a mí en {name} en {location} el {date}!',
+      distanceLabel: 'Distancia',
+      participantsSection: 'Participantes',
+      joinedLabel: 'Unidos',
+      spotsLeft: 'Lugares disponibles',
+      viewParticipants: 'Ver todos los participantes',
+      shareError: 'No se pudo compartir el evento',
+      shareSuccess: 'Evento compartido con éxito',
+      viewLocationTitle: 'Ver ubicación',
+      viewLocationMessage: 'Abriendo vista del mapa...',
+      participantsInfoTitle: 'Participantes',
+      participantsInfoMessage: '{count} personas se han unido a este evento.',
+      errorTitle: 'Evento no encontrado',
+      errorMessage: 'No se pudo cargar este evento.',
+      errorButton: 'Volver',
     },
     allBadges: {
-      title: 'Todas las Insignias',
+      title: 'Todas las insignias',
       earnedBadge: 'Ganadas',
       locked: 'Bloqueadas',
+      progressLabel: 'Progreso',
+      requirementLabel: 'Requisito',
+      earnedStatus: '¡Conseguida!',
+      tiers: {
+        rookie: 'Novato',
+        player: 'Jugador',
+        pro: 'Profesional',
+        legend: 'Leyenda',
+        enthusiast: 'Entusiasta',
+        regular: 'Frecuente',
+        marathoner: 'Maratonista',
+      },
+      specialCategory: 'Logros especiales',
+      specialBadges: {
+        allRounderName: 'Todoterreno',
+        allRounderRequirement: 'Juega 3 deportes diferentes',
+        socialButterflyName: 'Alma social',
+        socialButterflyRequirement: 'Únete a 10 eventos en total',
+      },
     },
     notifications: {
       title: 'Notificaciones',
       noNotifications: 'Sin notificaciones',
-      noNotificationsSubtext: 'ÂˇEstĂˇs al dĂ­a!',
-      markAsRead: 'Marcar como LeĂ­do',
+      noNotificationsSubtext: '¡Estás al día!',
+      markAsRead: 'Marcar como leído',
+      searchPlaceholder: 'Buscar notificaciones',
+      filterAll: 'Todas',
+      filterUnread: 'No leídas',
+      filterLabels: {
+        friend_request: 'Solicitudes de amistad',
+        event_invitation: 'Invitaciones a eventos',
+        group_invite: 'Invitaciones a grupos',
+        chat_message: 'Chats',
+        system_announcement: 'Anuncios',
+      },
+      emptyTitle: 'Sin notificaciones',
+      emptySubtitle: '¡Estás al día!',
+      emptySearchTitle: 'No se encontraron notificaciones',
+      emptySearchSubtitle: 'Prueba a cambiar los términos de búsqueda',
+      select: 'Seleccionar',
+      selectAll: 'Seleccionar todo',
+      deselectAll: 'Limpiar selección',
+      deleteSelected: 'Eliminar',
+      deleteConfirmTitle: 'Eliminar notificaciones',
+      deleteConfirmMessage: '¿Eliminar {count} notificación(es)?',
+      markAllReadTitle: 'Marcar todas como leídas',
+      markAllReadMessage: '¿Marcar todas las notificaciones como leídas?',
+      markAllReadConfirm: 'Marcar todas',
+      loading: 'Cargando notificaciones...',
+      updating: 'Actualizando...',
+      markAllReadButton: 'Marcar todas',
+      friendRequestTitle: 'Nueva solicitud de amistad',
+      friendRequestBody: '{name} quiere conectar contigo.',
+      groupInviteTitle: 'Invitación al grupo',
+      groupInviteBody: '{name} te invitó al grupo {group}.',
+      reminder12h: '{event} comienza en 12 horas.',
+      reminder1h: '{event} comienza en 1 hora.',
     },
     bottomNav: {
       map: 'Mapa',
@@ -862,6 +1550,66 @@ const translations: Record<Language, Translations> = {
       myGames: 'Mis Juegos',
       myProfile: 'Mi Perfil',
       myGroups: 'Mis Grupos',
+    },
+    languageScreen: {
+      headerTitle: 'Idioma',
+      title: 'Configuración de idioma',
+      subtitle: 'Elige tu idioma preferido para toda la aplicación',
+    },
+    activityFilter: {
+      title: 'Actividades',
+      cancel: 'Cancelar',
+      venueTypes: 'Tipos de lugar',
+      specificActivities: 'Actividades específicas',
+      specificActivitiesHint: 'Busca actividades concretas (ej. yoga, boulder, artes marciales)',
+      keywordsPlaceholder: 'Introduce actividades separadas por comas',
+      searchRadius: 'Radio de búsqueda',
+      apply: 'Aplicar filtros',
+      reset: 'Restablecer',
+      unitKm: 'km',
+      types: {
+        gym: 'Gimnasio/Centro fitness',
+        stadium: 'Estadio',
+        swimming_pool: 'Piscina',
+        park: 'Parque',
+        sports_complex: 'Complejo deportivo',
+        bowling_alley: 'Bolera',
+        golf_course: 'Campo de golf',
+        ice_rink: 'Pista de hielo',
+        tennis_court: 'Cancha de tenis',
+        basketball_court: 'Cancha de baloncesto',
+      },
+    },
+    friends: {
+      searchTitle: 'Buscar amigos',
+      searchSubtitle: 'Agrega amigos para conectar y jugar juntos',
+      searchPlaceholder: 'Buscar amigos...',
+      resultsTitle: 'Resultados',
+      resultsCountLabel: 'Resultados',
+      loadingResults: 'Buscando...',
+      quickActionsTitle: 'Accesos rápidos',
+      quickActions: {
+        contactsTitle: 'Invitar desde contactos',
+        contactsSubtitle: 'Encuentra amigos en tus contactos del teléfono',
+        inviteLinkTitle: 'Compartir enlace de invitación',
+        inviteLinkSubtitle: 'Envía un enlace para invitar amigos',
+        nearbyTitle: 'Encontrar usuarios cercanos',
+        nearbySubtitle: 'Descubre personas en tu zona',
+      },
+      loginRequired: 'Debes iniciar sesión para gestionar amigos.',
+      addConfirmTitle: 'Agregar amigo',
+      addConfirmMessage: '¿Enviar solicitud a {name}?',
+      sendRequest: 'Enviar solicitud',
+      addSuccess: 'Solicitud enviada a {name}.',
+      removeConfirmTitle: 'Eliminar amigo',
+      removeConfirmMessage: '¿Eliminar a {name} de tus amigos?',
+      removeConfirmButton: 'Eliminar',
+      removeSuccess: '{name} ha sido eliminado de tus amigos.',
+      pending: 'Pendiente',
+      add: 'Agregar',
+      remove: 'Eliminar',
+      emptyResultsTitle: 'No se encontraron personas',
+      emptyResultsSubtitle: 'Prueba con otro nombre o usuario.',
     },
   },
   fr: {
@@ -1006,6 +1754,30 @@ const translations: Record<Language, Translations> = {
       intermediate: 'IntermĂ©diaire',
       advanced: 'AvancĂ©',
       expert: 'Expert',
+      errorLoading: 'Impossible de charger les événements',
+      filtersComingSoonTitle: 'Filtres bientôt disponibles',
+      filtersComingSoonMessage: 'Nous préparons des filtres avancés par sport, date et lieu.',
+      moreOptionsTitle: 'Plus d’options bientôt',
+      moreOptionsMessage: 'Tri, événements passés et réglages arrivent très vite.',
+      leaveEventTitle: 'Quitter l’événement',
+      leaveEventMessage: 'Voulez-vous quitter « {name} » ?',
+      leaveEventConfirm: 'Quitter',
+      leaveEventSuccess: 'Vous avez quitté l’événement.',
+      participantsShort: 'inscrits',
+      almostFull: 'Presque complet',
+      groupLabels: {
+        TODAY: 'Aujourd’hui',
+        TOMORROW: 'Demain',
+        THIS_WEEK: 'Cette semaine',
+        NEXT_WEEK: 'La semaine prochaine',
+        LATER: 'Plus tard',
+      },
+      statusLabels: {
+        live: 'En direct',
+        startingSoon: 'Commence bientôt',
+        cancelled: 'Annulé',
+        started: 'Déjà commencé',
+      },
     },
     myGroups: {
       title: 'Mes Groupes',
@@ -1036,38 +1808,179 @@ const translations: Record<Language, Translations> = {
       fillFields: 'Veuillez remplir tous les champs requis',
     },
     eventDetails: {
+      title: 'Détails de l’événement',
       share: 'Partager',
-      gameInformation: 'Informations sur le Jeu',
+      gameInformation: 'Informations sur le jeu',
       date: 'Date',
       time: 'Heure',
+      startTime: 'Heure de début',
+      endTime: 'Heure de fin',
       players: 'Joueurs',
-      location: 'Emplacement',
-      skillLevel: 'Niveau de CompĂ©tence',
+      location: 'Lieu',
+      viewOnMap: 'Voir sur la carte',
+      skillLevel: 'Niveau de compétence',
+      skillLevelAll: 'Tous niveaux',
       description: 'Description',
-      equipmentNeeded: 'Ă‰quipement NĂ©cessaire',
-      rules: 'RĂ¨gles',
+      equipmentNeeded: 'Équipement nécessaire',
+      rules: 'Règles',
       organizer: 'Organisateur',
+      organizerRole: 'Créateur de l’événement',
+      creatorBadge: 'Vous avez créé cet événement',
       chat: 'Chat',
-      joinGame: 'Rejoindre le Jeu',
-      leaveGame: 'Quitter le Jeu',
+      joinGame: 'Rejoindre',
+      joinPrompt: 'Voulez-vous rejoindre « {name} » ?',
+      joinSuccess: 'Vous avez rejoint l’événement.',
+      requestAccess: 'Demander à rejoindre',
+      requestSent: 'Demande envoyée à l’organisateur.',
+      requestPending: 'En attente d’approbation',
+      leaveGame: 'Quitter',
+      manageEvent: 'Gérer l’événement',
+      eventFull: 'Événement complet',
+      eventStarted: 'L’événement a déjà commencé',
+      shareMessage: 'Rejoignez-moi pour {name} à {location} le {date} !',
+      distanceLabel: 'Distance',
+      participantsSection: 'Participants',
+      joinedLabel: 'Inscrits',
+      spotsLeft: 'Places restantes',
+      viewParticipants: 'Voir tous les participants',
+      shareError: 'Impossible de partager l’événement',
+      shareSuccess: 'Événement partagé',
+      viewLocationTitle: 'Voir la localisation',
+      viewLocationMessage: 'Ouverture de la carte...',
+      participantsInfoTitle: 'Participants',
+      participantsInfoMessage: '{count} personnes ont rejoint cet événement.',
+      errorTitle: 'Événement introuvable',
+      errorMessage: 'Impossible de charger cet événement.',
+      errorButton: 'Retour',
     },
     allBadges: {
-      title: 'Tous les Badges',
-      earnedBadge: 'GagnĂ©s',
-      locked: 'VerrouillĂ©s',
+      title: 'Tous les badges',
+      earnedBadge: 'Gagnés',
+      locked: 'Verrouillés',
+      progressLabel: 'Progression',
+      requirementLabel: 'Condition',
+      earnedStatus: 'Obtenue !',
+      tiers: {
+        rookie: 'Débutant',
+        player: 'Joueur',
+        pro: 'Pro',
+        legend: 'Légende',
+        enthusiast: 'Passionné',
+        regular: 'Habitué',
+        marathoner: 'Marathonien',
+      },
+      specialCategory: 'Réalisations spéciales',
+      specialBadges: {
+        allRounderName: 'Polyvalent',
+        allRounderRequirement: 'Jouer 3 sports différents',
+        socialButterflyName: 'Sociable',
+        socialButterflyRequirement: 'Participer à 10 événements',
+      },
     },
     notifications: {
       title: 'Notifications',
       noNotifications: 'Aucune notification',
-      noNotificationsSubtext: 'Vous ĂŞtes Ă  jour !',
-      markAsRead: 'Marquer comme Lu',
+      noNotificationsSubtext: 'Vous êtes à jour !',
+      markAsRead: 'Marquer comme lu',
+      searchPlaceholder: 'Rechercher des notifications',
+      filterAll: 'Tout',
+      filterUnread: 'Non lues',
+      filterLabels: {
+        friend_request: 'Demandes d’ami',
+        event_invitation: 'Invitations',
+        group_invite: 'Invitations aux groupes',
+        chat_message: 'Messages',
+        system_announcement: 'Annonces',
+      },
+      emptyTitle: 'Aucune notification',
+      emptySubtitle: 'Vous êtes à jour !',
+      emptySearchTitle: 'Aucune notification trouvée',
+      emptySearchSubtitle: 'Essayez d’ajuster votre recherche',
+      select: 'Sélectionner',
+      selectAll: 'Tout sélectionner',
+      deselectAll: 'Effacer la sélection',
+      deleteSelected: 'Supprimer',
+      deleteConfirmTitle: 'Supprimer les notifications',
+      deleteConfirmMessage: 'Supprimer {count} notification(s) ?',
+      markAllReadTitle: 'Tout marquer comme lu',
+      markAllReadMessage: 'Voulez-vous marquer toutes les notifications comme lues ?',
+      markAllReadConfirm: 'Tout marquer',
+      loading: 'Chargement des notifications...',
+      updating: 'Mise à jour...',
+      markAllReadButton: 'Tout marquer',
+      friendRequestTitle: 'Nouvelle demande d’ami',
+      friendRequestBody: '{name} souhaite se connecter avec vous.',
+      groupInviteTitle: 'Invitation au groupe',
+      groupInviteBody: '{name} vous invite à rejoindre {group}.',
+      reminder12h: '{event} commence dans 12 heures.',
+      reminder1h: '{event} commence dans 1 heure.',
     },
     bottomNav: {
       map: 'Carte',
-      events: 'Ă‰vĂ©nements',
+      events: 'Événements',
       myGames: 'Mes Jeux',
       myProfile: 'Mon Profil',
       myGroups: 'Mes Groupes',
+    },
+    languageScreen: {
+      headerTitle: 'Langue',
+      title: 'Paramètres de langue',
+      subtitle: 'Choisissez la langue de l’application',
+    },
+    activityFilter: {
+      title: 'Activités',
+      cancel: 'Annuler',
+      venueTypes: 'Types de lieu',
+      specificActivities: 'Activités spécifiques',
+      specificActivitiesHint: 'Recherchez des activités (ex. yoga, escalade, arts martiaux)',
+      keywordsPlaceholder: 'Entrez des activités séparées par des virgules',
+      searchRadius: 'Rayon de recherche',
+      apply: 'Appliquer les filtres',
+      reset: 'Réinitialiser',
+      unitKm: 'km',
+      types: {
+        gym: 'Salle de sport / Fitness',
+        stadium: 'Stade',
+        swimming_pool: 'Piscine',
+        park: 'Parc',
+        sports_complex: 'Complexe sportif',
+        bowling_alley: 'Bowling',
+        golf_course: 'Parcours de golf',
+        ice_rink: 'Patinoire',
+        tennis_court: 'Court de tennis',
+        basketball_court: 'Terrain de basket',
+      },
+    },
+    friends: {
+      searchTitle: 'Rechercher des amis',
+      searchSubtitle: 'Ajoutez des amis pour jouer ensemble',
+      searchPlaceholder: 'Rechercher des amis...',
+      resultsTitle: 'Résultats',
+      resultsCountLabel: 'Résultats',
+      loadingResults: 'Recherche...',
+      quickActionsTitle: 'Actions rapides',
+      quickActions: {
+        contactsTitle: 'Inviter depuis les contacts',
+        contactsSubtitle: 'Trouvez des amis dans votre téléphone',
+        inviteLinkTitle: 'Partager un lien d’invitation',
+        inviteLinkSubtitle: 'Envoyez un lien pour inviter des amis',
+        nearbyTitle: 'Trouver des utilisateurs proches',
+        nearbySubtitle: 'Découvrez des personnes autour de vous',
+      },
+      loginRequired: 'Vous devez être connecté pour gérer vos amis.',
+      addConfirmTitle: 'Ajouter un ami',
+      addConfirmMessage: 'Envoyer une demande à {name} ?',
+      sendRequest: 'Envoyer',
+      addSuccess: 'Demande envoyée à {name}.',
+      removeConfirmTitle: 'Supprimer l’ami',
+      removeConfirmMessage: 'Retirer {name} de vos amis ?',
+      removeConfirmButton: 'Supprimer',
+      removeSuccess: '{name} a été retiré de vos amis.',
+      pending: 'En attente',
+      add: 'Ajouter',
+      remove: 'Supprimer',
+      emptyResultsTitle: 'Aucune personne trouvée',
+      emptyResultsSubtitle: 'Essayez un autre nom ou pseudo.',
     },
   },
   de: {
@@ -1212,6 +2125,30 @@ const translations: Record<Language, Translations> = {
       intermediate: 'Mittelstufe',
       advanced: 'Fortgeschritten',
       expert: 'Experte',
+      errorLoading: 'Veranstaltungen konnten nicht geladen werden',
+      filtersComingSoonTitle: 'Filter kommen bald',
+      filtersComingSoonMessage: 'Wir arbeiten an erweiterten Filtern für Sportart, Datum und Ort.',
+      moreOptionsTitle: 'Weitere Optionen folgen',
+      moreOptionsMessage: 'Sortierung, vergangene Spiele und Einstellungen erscheinen in Kürze.',
+      leaveEventTitle: 'Event verlassen',
+      leaveEventMessage: 'Möchtest du „{name}“ verlassen?',
+      leaveEventConfirm: 'Verlassen',
+      leaveEventSuccess: 'Du hast das Event verlassen.',
+      participantsShort: 'teilgenommen',
+      almostFull: 'Fast voll',
+      groupLabels: {
+        TODAY: 'Heute',
+        TOMORROW: 'Morgen',
+        THIS_WEEK: 'Diese Woche',
+        NEXT_WEEK: 'Nächste Woche',
+        LATER: 'Später',
+      },
+      statusLabels: {
+        live: 'Live',
+        startingSoon: 'Beginnt bald',
+        cancelled: 'Abgesagt',
+        started: 'Bereits gestartet',
+      },
     },
     myGroups: {
       title: 'Meine Gruppen',
@@ -1242,31 +2179,112 @@ const translations: Record<Language, Translations> = {
       fillFields: 'Bitte fĂĽllen Sie alle erforderlichen Felder aus',
     },
     eventDetails: {
+      title: 'Event-Details',
       share: 'Teilen',
       gameInformation: 'Spielinformationen',
       date: 'Datum',
       time: 'Uhrzeit',
+      startTime: 'Startzeit',
+      endTime: 'Endzeit',
       players: 'Spieler',
       location: 'Ort',
-      skillLevel: 'FĂ¤higkeitslevel',
+      viewOnMap: 'Auf Karte anzeigen',
+      skillLevel: 'Fähigkeitslevel',
+      skillLevelAll: 'Alle Level',
       description: 'Beschreibung',
-      equipmentNeeded: 'BenĂ¶tigte AusrĂĽstung',
+      equipmentNeeded: 'Benötigte Ausrüstung',
       rules: 'Regeln',
       organizer: 'Organisator',
+      organizerRole: 'Event-Ersteller',
+      creatorBadge: 'Du hast dieses Event erstellt',
       chat: 'Chat',
-      joinGame: 'Spiel Beitreten',
-      leaveGame: 'Spiel Verlassen',
+      joinGame: 'Beitreten',
+      joinPrompt: 'Möchtest du „{name}“ beitreten?',
+      joinSuccess: 'Du hast dem Event beigetreten.',
+      requestAccess: 'Beitritt anfragen',
+      requestSent: 'Anfrage wurde an den Organisator gesendet.',
+      requestPending: 'Wartet auf Bestätigung',
+      leaveGame: 'Verlassen',
+      manageEvent: 'Event verwalten',
+      eventFull: 'Event ausgebucht',
+      eventStarted: 'Event hat bereits begonnen',
+      shareMessage: 'Begleite mich zu {name} in {location} am {date}!',
+      distanceLabel: 'Entfernung',
+      participantsSection: 'Teilnehmende',
+      joinedLabel: 'Teilnehmend',
+      spotsLeft: 'Plätze frei',
+      viewParticipants: 'Alle Teilnehmenden anzeigen',
+      shareError: 'Event konnte nicht geteilt werden',
+      shareSuccess: 'Event geteilt',
+      viewLocationTitle: 'Ort anzeigen',
+      viewLocationMessage: 'Kartenansicht wird geöffnet...',
+      participantsInfoTitle: 'Teilnehmende',
+      participantsInfoMessage: '{count} Personen haben an diesem Event teilgenommen.',
+      errorTitle: 'Event nicht gefunden',
+      errorMessage: 'Dieses Event konnte nicht geladen werden.',
+      errorButton: 'Zurück',
     },
     allBadges: {
       title: 'Alle Abzeichen',
       earnedBadge: 'Verdient',
       locked: 'Gesperrt',
+      progressLabel: 'Fortschritt',
+      requirementLabel: 'Anforderung',
+      earnedStatus: 'Erhalten!',
+      tiers: {
+        rookie: 'Einsteiger',
+        player: 'Spieler',
+        pro: 'Profi',
+        legend: 'Legende',
+        enthusiast: 'Fan',
+        regular: 'Stammspieler',
+        marathoner: 'Marathonläufer',
+      },
+      specialCategory: 'Besondere Erfolge',
+      specialBadges: {
+        allRounderName: 'Allrounder',
+        allRounderRequirement: 'Spiele 3 verschiedene Sportarten',
+        socialButterflyName: 'Sozialer Star',
+        socialButterflyRequirement: 'Nimm an 10 Events teil',
+      },
     },
     notifications: {
       title: 'Benachrichtigungen',
       noNotifications: 'Keine Benachrichtigungen',
-      noNotificationsSubtext: 'Sie sind auf dem neuesten Stand!',
-      markAsRead: 'Als Gelesen Markieren',
+      noNotificationsSubtext: 'Du bist auf dem neuesten Stand!',
+      markAsRead: 'Als gelesen markieren',
+      searchPlaceholder: 'Benachrichtigungen durchsuchen',
+      filterAll: 'Alle',
+      filterUnread: 'Ungelesen',
+      filterLabels: {
+        friend_request: 'Freundschaftsanfragen',
+        event_invitation: 'Event-Einladungen',
+        group_invite: 'Gruppeneinladungen',
+        chat_message: 'Chats',
+        system_announcement: 'Ankündigungen',
+      },
+      emptyTitle: 'Keine Benachrichtigungen',
+      emptySubtitle: 'Du bist auf dem neuesten Stand!',
+      emptySearchTitle: 'Keine Treffer',
+      emptySearchSubtitle: 'Passe deine Suche an',
+      select: 'Auswählen',
+      selectAll: 'Alle auswählen',
+      deselectAll: 'Auswahl löschen',
+      deleteSelected: 'Löschen',
+      deleteConfirmTitle: 'Benachrichtigungen löschen',
+      deleteConfirmMessage: '{count} Benachrichtigung(en) löschen?',
+      markAllReadTitle: 'Alle als gelesen markieren',
+      markAllReadMessage: 'Alle Benachrichtigungen als gelesen markieren?',
+      markAllReadConfirm: 'Alle markieren',
+      loading: 'Benachrichtigungen werden geladen...',
+      updating: 'Aktualisiere...',
+      markAllReadButton: 'Alle markieren',
+      friendRequestTitle: 'Neue Freundschaftsanfrage',
+      friendRequestBody: '{name} möchte sich mit dir verbinden.',
+      groupInviteTitle: 'Gruppeneinladung',
+      groupInviteBody: '{name} hat dich in die Gruppe {group} eingeladen.',
+      reminder12h: '{event} beginnt in 12 Stunden.',
+      reminder1h: '{event} beginnt in 1 Stunde.',
     },
     bottomNav: {
       map: 'Karte',
@@ -1274,6 +2292,66 @@ const translations: Record<Language, Translations> = {
       myGames: 'Meine Spiele',
       myProfile: 'Mein Profil',
       myGroups: 'Meine Gruppen',
+    },
+    languageScreen: {
+      headerTitle: 'Sprache',
+      title: 'Spracheinstellungen',
+      subtitle: 'Wähle die Sprache für die gesamte App',
+    },
+    activityFilter: {
+      title: 'Aktivitäten',
+      cancel: 'Abbrechen',
+      venueTypes: 'Ortsarten',
+      specificActivities: 'Spezielle Aktivitäten',
+      specificActivitiesHint: 'Suche nach Aktivitäten (z. B. Yoga, Bouldern, Kampfsport)',
+      keywordsPlaceholder: 'Aktivitäten durch Kommas getrennt eingeben',
+      searchRadius: 'Suchradius',
+      apply: 'Filter anwenden',
+      reset: 'Zurücksetzen',
+      unitKm: 'km',
+      types: {
+        gym: 'Fitnessstudio',
+        stadium: 'Stadion',
+        swimming_pool: 'Schwimmbad',
+        park: 'Park',
+        sports_complex: 'Sportanlage',
+        bowling_alley: 'Bowlingbahn',
+        golf_course: 'Golfplatz',
+        ice_rink: 'Eislaufbahn',
+        tennis_court: 'Tennisplatz',
+        basketball_court: 'Basketballfeld',
+      },
+    },
+    friends: {
+      searchTitle: 'Freunde finden',
+      searchSubtitle: 'Füge Freunde hinzu, um gemeinsam zu spielen',
+      searchPlaceholder: 'Freunde suchen...',
+      resultsTitle: 'Ergebnisse',
+      resultsCountLabel: 'Ergebnisse',
+      loadingResults: 'Suche...',
+      quickActionsTitle: 'Schnellaktionen',
+      quickActions: {
+        contactsTitle: 'Aus Kontakten einladen',
+        contactsSubtitle: 'Finde Freunde in deinen Telefonkontakten',
+        inviteLinkTitle: 'Einladungslink teilen',
+        inviteLinkSubtitle: 'Sende einen Link, um Freunde einzuladen',
+        nearbyTitle: 'Nutzer in der Nähe finden',
+        nearbySubtitle: 'Entdecke Leute in deiner Umgebung',
+      },
+      loginRequired: 'Du musst angemeldet sein, um Freunde zu verwalten.',
+      addConfirmTitle: 'Freund hinzufügen',
+      addConfirmMessage: 'Freundschaftsanfrage an {name} senden?',
+      sendRequest: 'Senden',
+      addSuccess: 'Anfrage an {name} gesendet.',
+      removeConfirmTitle: 'Freund entfernen',
+      removeConfirmMessage: '{name} aus deiner Freundesliste entfernen?',
+      removeConfirmButton: 'Entfernen',
+      removeSuccess: '{name} wurde entfernt.',
+      pending: 'Ausstehend',
+      add: 'Hinzufügen',
+      remove: 'Entfernen',
+      emptyResultsTitle: 'Keine Personen gefunden',
+      emptyResultsSubtitle: 'Versuche einen anderen Namen oder Nutzernamen.',
     },
   },
 };
@@ -1293,13 +2371,17 @@ const TranslationContext = createContext<TranslationContextType | undefined>(und
 export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>('en');
 
-  const availableLanguages = [
-    { code: 'en' as Language, name: translations.en.languages.english },
-    { code: 'pl' as Language, name: translations.pl.languages.polish },
-    { code: 'es' as Language, name: translations.es.languages.spanish },
-    { code: 'fr' as Language, name: translations.fr.languages.french },
-    { code: 'de' as Language, name: translations.de.languages.german },
-  ];
+  const availableLanguages = useMemo(
+    () =>
+      [
+        { code: 'en' as Language, name: translations.en.languages.english },
+        { code: 'pl' as Language, name: translations.pl.languages.polish },
+        { code: 'es' as Language, name: translations.es.languages.spanish },
+        { code: 'fr' as Language, name: translations.fr.languages.french },
+        { code: 'de' as Language, name: translations.de.languages.german },
+      ].map(option => ({ ...option, name: fixMojibakeString(option.name) })),
+    []
+  );
 
   // Load saved language on app start
   useEffect(() => {
@@ -1326,10 +2408,13 @@ export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  // Fix any encoding issues in the selected language at runtime
+  const fixedTranslations = fixTranslationsObject<Translations>(translations[language]);
+
   const value: TranslationContextType = {
     language,
     setLanguage,
-    t: translations[language],
+    t: fixedTranslations,
     availableLanguages,
   };
 
