@@ -99,7 +99,7 @@ export default function MapScreen() {
   const [isCreateEventModalVisible, setIsCreateEventModalVisible] = useState(false);
   const [selectedLocationForEvent, setSelectedLocationForEvent] = useState<any>(null);
   const mapRef = useRef<any>(null);
-  
+
   // ===========================
   // STATE MANAGEMENT
   // ===========================
@@ -307,36 +307,36 @@ export default function MapScreen() {
     console.log('📍 MapScreen: Filtered location selected:', place);
     setIsLoadingPlaceDetails(true);
     setIsPlaceModalVisible(true);
-    
+
     // Convert photo references to URLs if photos exist
     const placeWithPhotoUrls = {
       ...place,
       photos: place.photos?.map((photo: any) => {
         // If photo already has url, keep it
         if (photo.url) return photo;
-        
+
         // If photo has photoReference, convert to URL
         if (photo.photoReference) {
-          const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyDBJ65DOu4WMoTRjvz1J6i6VbYbjOoEW2E';
+          const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
           return {
             ...photo,
             url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photoReference}&key=${GOOGLE_API_KEY}`
           };
         }
-        
+
         // Fallback for old format (string photoReference)
         if (typeof photo === 'string') {
-          const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyDBJ65DOu4WMoTRjvz1J6i6VbYbjOoEW2E';
+          const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
           return {
             photoReference: photo,
             url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo}&key=${GOOGLE_API_KEY}`
           };
         }
-        
+
         return photo;
       })
     };
-    
+
     setSelectedPlace(placeWithPhotoUrls);
     setIsLoadingPlaceDetails(false);
   };
@@ -344,7 +344,7 @@ export default function MapScreen() {
   // Handle create event at place
   const handleCreateMeetup = (placeDetails: any) => {
     console.log('✨ MapScreen: Opening create event modal for:', placeDetails.name);
-    
+
     // Prepare location data for event creation modal
     const locationData = {
       name: placeDetails.name || 'Selected Location',
@@ -353,7 +353,7 @@ export default function MapScreen() {
       longitude: placeDetails.coordinates?.lng || placeDetails.longitude,
       placeId: placeDetails.placeId || placeDetails.place_id || null,
     };
-    
+
     setSelectedLocationForEvent(locationData);
     setIsCreateEventModalVisible(true);
     setIsPlaceModalVisible(false); // Close location modal
@@ -362,10 +362,10 @@ export default function MapScreen() {
   // Handler for when event is created
   const handleEventCreated = (newEvent: any) => {
     console.log('🎉 New event created:', newEvent.name);
-    
+
     // Event created successfully - it will now be visible in PlaceInfoModal
     // when users click on this location
-    
+
     // Show success feedback
     Alert.alert(
       'Event Created! 🎉',
@@ -389,7 +389,7 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
+
       {/* Map - Full Screen (underneath top bar) */}
       <EnhancedInteractiveMap
         onMapReady={(ref) => {
@@ -405,44 +405,52 @@ export default function MapScreen() {
       <SafeAreaView style={styles.topBarSafeArea}>
         <View style={styles.topBar}>
           {/* Logo on Left */}
-          <Image 
-            source={require('../../assets/logo.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          {/* Logo on Left */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logoIcon}
+              resizeMode="contain"
+            />
+            <Image
+              source={require('../../assets/logo_text.png')}
+              style={styles.logoText}
+              resizeMode="contain"
+            />
+          </View>
 
           {/* Action Buttons on Right */}
           <View style={styles.topBarActions}>
-            <TouchableOpacity 
-              style={styles.topBarButton} 
+            <TouchableOpacity
+              style={styles.topBarButton}
               onPress={handleFilterPress}
               activeOpacity={0.7}
             >
-              <Image 
+              <Image
                 source={require('../../assets/filters.png')}
                 style={{ width: 24, height: 24 }}
                 resizeMode="contain"
               />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.topBarButton} 
+            <TouchableOpacity
+              style={styles.topBarButton}
               onPress={() => navigation.navigate(ROUTES.NOTIFICATIONS)}
               activeOpacity={0.7}
             >
-              <Image 
+              <Image
                 source={require('../../assets/notification.png')}
                 style={{ width: 24, height: 24 }}
                 resizeMode="contain"
               />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.topBarButton} 
+            <TouchableOpacity
+              style={styles.topBarButton}
               onPress={() => navigation.navigate(ROUTES.SETTINGS)}
               activeOpacity={0.7}
             >
-              <Image 
+              <Image
                 source={require('../../assets/options.png')}
                 style={{ width: 24, height: 24 }}
                 resizeMode="contain"
@@ -482,7 +490,7 @@ export default function MapScreen() {
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNavContainer}>
-        <BottomNavBar 
+        <BottomNavBar
           activeTab="Home"
           onProfilePress={() => navigation.navigate(ROUTES.PROFILE)}
         />
@@ -492,8 +500,8 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
   },
   // Top Bar Safe Area Wrapper
@@ -511,38 +519,63 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 5,
   },
-  // Top Bar Styles (taller and more prominent)
+  // Top Bar Styles
   topBar: {
-    height: 70,
+    height: 100, // Increased height for bigger elements
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 2, // Minimal padding to maximize width
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
   // Logo Styles
-  logo: {
-    width: 46,
-    height: 46,
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginLeft: 0,
+    marginRight: 0,
+    // Allow text to overlap if absolutely necessary, but prioritize visibility
+  },
+  logoIcon: {
+    width: 70, // Slightly bigger icon
+    height: 70,
+    zIndex: 10,
+  },
+  logoText: {
+    width: 320,
+    height: 100,
+    transform: [{ translateX: -85 }], // Massive left shift
+    zIndex: 1,
   },
   // Action Buttons on Right
   topBarActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    display: 'flex',
+    gap: 4, // Tight gap
+    paddingRight: 4,
+    flexShrink: 0,
+    zIndex: 10,
+    backgroundColor: 'transparent', // Ensure transparency
   },
   topBarButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52, // Restored to 52 as requested
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   // Bottom Nav Container
   bottomNavContainer: {

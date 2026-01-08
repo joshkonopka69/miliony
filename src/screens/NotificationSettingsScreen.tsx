@@ -13,44 +13,12 @@ import {
   Animated,
   TextInput,
   Modal,
-  Image
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useNotificationManager } from '../hooks/useNotifications';
+import { NotificationPreferences } from '../services/notificationService';
+import { SMLogo } from '../components';
 
-// Define NotificationPreferences locally
-interface NotificationPreferences {
-  push_enabled: boolean;
-  email_enabled: boolean;
-  sms_enabled: boolean;
-  categories: {
-    events: boolean;
-    friends: boolean;
-    messages: boolean;
-    reminders: boolean;
-    system: boolean;
-    marketing: boolean;
-  };
-  quiet_hours: {
-    enabled: boolean;
-    start_time: string;
-    end_time: string;
-  };
-  frequency: {
-    immediate: boolean;
-    daily_digest: boolean;
-    weekly_digest: boolean;
-  };
-}
-
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 export default function NotificationSettingsScreen() {
   const navigation = useAppNavigation();
@@ -117,7 +85,7 @@ export default function NotificationSettingsScreen() {
     if (!localPreferences) return;
 
     const newPreferences = { ...localPreferences };
-    
+
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
       if (parent === 'categories') {
@@ -247,14 +215,14 @@ export default function NotificationSettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notification Settings</Text>
-        <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
+        <SMLogo />
       </View>
 
       {/* Error Display */}
@@ -268,7 +236,7 @@ export default function NotificationSettingsScreen() {
       )}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.content,
             {
@@ -294,17 +262,17 @@ export default function NotificationSettingsScreen() {
                 <View style={[styles.statusIndicator, fcmStatus.permissionsGranted && styles.statusActive]} />
               </View>
             </View>
-            
+
             {!fcmStatus.permissionsGranted && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.permissionButton}
                 onPress={handleRequestPermissions}
               >
                 <Text style={styles.permissionButtonText}>Grant Permissions</Text>
               </TouchableOpacity>
             )}
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.testButton}
               onPress={handleTestNotification}
               disabled={isUpdating}
@@ -320,7 +288,7 @@ export default function NotificationSettingsScreen() {
           {/* General Settings */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>General Settings</Text>
-            
+
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
                 <Text style={styles.settingLabel}>Push Notifications</Text>
@@ -370,7 +338,7 @@ export default function NotificationSettingsScreen() {
           {/* Category Settings */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notification Categories</Text>
-            
+
             {(Object.entries(localPreferences.categories) as [keyof NotificationPreferences['categories'], boolean][]).map(([category, enabled]) => (
               <View key={category} style={styles.settingItem}>
                 <View style={styles.settingInfo}>
@@ -394,7 +362,7 @@ export default function NotificationSettingsScreen() {
           {/* Quiet Hours */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Quiet Hours</Text>
-            
+
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
                 <Text style={styles.settingLabel}>Enable Quiet Hours</Text>
@@ -419,7 +387,7 @@ export default function NotificationSettingsScreen() {
                       When to start quiet hours
                     </Text>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.timeButton}
                     onPress={() => handleTimeChange('start_time')}
                   >
@@ -436,7 +404,7 @@ export default function NotificationSettingsScreen() {
                       When to end quiet hours
                     </Text>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.timeButton}
                     onPress={() => handleTimeChange('end_time')}
                   >
@@ -452,7 +420,7 @@ export default function NotificationSettingsScreen() {
           {/* Frequency Settings */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notification Frequency</Text>
-            
+
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
                 <Text style={styles.settingLabel}>Immediate Notifications</Text>
@@ -503,7 +471,7 @@ export default function NotificationSettingsScreen() {
           {stats && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Notification Statistics</Text>
-              
+
               <View style={styles.statsContainer}>
                 <View style={styles.statItem}>
                   <Text style={styles.statValue}>{stats.totalSent || 0}</Text>
@@ -523,7 +491,7 @@ export default function NotificationSettingsScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.statsButton}
                 onPress={handleShowStats}
               >
@@ -534,7 +502,7 @@ export default function NotificationSettingsScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.resetButton}
               onPress={handleReset}
             >
@@ -542,7 +510,7 @@ export default function NotificationSettingsScreen() {
             </TouchableOpacity>
 
             {hasChanges && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.saveButton, isUpdating && styles.saveButtonDisabled]}
                 onPress={handleSave}
                 disabled={isUpdating}
@@ -575,13 +543,13 @@ export default function NotificationSettingsScreen() {
               maxLength={5}
             />
             <View style={styles.timePickerButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.timePickerButton}
                 onPress={() => setShowTimePicker(false)}
               >
                 <Text style={styles.timePickerButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.timePickerButton, styles.timePickerButtonPrimary]}
                 onPress={handleTimeSave}
               >
@@ -600,14 +568,14 @@ export default function NotificationSettingsScreen() {
           <View style={styles.statsModal}>
             <View style={styles.statsModalHeader}>
               <Text style={styles.statsModalTitle}>Notification Statistics</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.statsModalClose}
                 onPress={() => setShowStats(false)}
               >
                 <Text style={styles.statsModalCloseText}>×</Text>
               </TouchableOpacity>
             </View>
-            
+
             {stats && (
               <ScrollView style={styles.statsModalContent}>
                 <View style={styles.detailedStats}>
@@ -678,27 +646,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FFD700',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoText: {
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: 1,
   },
   loadingContainer: {
     flex: 1,

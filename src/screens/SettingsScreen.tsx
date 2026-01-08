@@ -6,19 +6,12 @@ import { useTranslation } from '../contexts/TranslationContext';
 
 const { width } = Dimensions.get('window');
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 40 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
+import { SMLogo } from '../components';
 
 export default function SettingsScreen() {
   const navigation = useAppNavigation();
   const { t, language, setLanguage, availableLanguages } = useTranslation();
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -53,8 +46,8 @@ export default function SettingsScreen() {
       t.settings.logoutMessage,
       [
         { text: t.common.cancel, style: 'cancel' },
-        { 
-          text: t.settings.logout, 
+        {
+          text: t.settings.logout,
           style: 'destructive',
           onPress: () => navigation.navigate('Welcome')
         }
@@ -68,8 +61,8 @@ export default function SettingsScreen() {
       t.settings.deleteMessage,
       [
         { text: t.common.cancel, style: 'cancel' },
-        { 
-          text: t.common.delete, 
+        {
+          text: t.common.delete,
           style: 'destructive',
           onPress: () => {
             Alert.alert(t.settings.deleteAccount, t.settings.deleteSuccess);
@@ -86,7 +79,7 @@ export default function SettingsScreen() {
     rightComponent?: React.ReactNode,
     showDivider: boolean = true
   ) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.settingItem, showDivider && styles.settingItemWithDivider]}
       onPress={onPress}
       activeOpacity={0.7}
@@ -99,9 +92,9 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header with Logo and Title */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.header,
           {
@@ -113,13 +106,13 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Image source={require('../../assets/logo.png')} style={{ width: 40, height: 40 }} resizeMode="contain" />
+        <SMLogo />
         <Text style={styles.headerTitle}>{t.settings.title}</Text>
         <View style={styles.headerSpacer} />
       </Animated.View>
 
-      <Animated.ScrollView 
-        style={styles.scrollView} 
+      <Animated.ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           opacity: fadeAnim,
@@ -203,7 +196,7 @@ export default function SettingsScreen() {
       </Animated.ScrollView>
 
       {/* Logout Button */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.logoutContainer,
           {
@@ -212,7 +205,7 @@ export default function SettingsScreen() {
           },
         ]}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
           activeOpacity={0.8}
@@ -250,27 +243,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#fbbf24',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#fbbf24',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoText: {
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: 1,
   },
   backButton: {
     padding: 8,

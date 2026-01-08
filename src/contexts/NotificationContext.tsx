@@ -13,7 +13,7 @@ interface NotificationContextType {
   isLoading: boolean;
   isUpdating: boolean;
   error: string | null;
-  
+
   // FCM State
   fcmToken: string | null;
   isFCMInitialized: boolean;
@@ -21,7 +21,7 @@ interface NotificationContextType {
     granted: boolean;
     canAskAgain: boolean;
   };
-  
+
   // Actions
   refreshNotifications: () => Promise<void>;
   markAsRead: (notificationId: string) => Promise<boolean>;
@@ -30,12 +30,12 @@ interface NotificationContextType {
   updatePreferences: (preferences: Partial<NotificationPreferences>) => Promise<boolean>;
   sendTestNotification: () => Promise<boolean>;
   requestPermissions: () => Promise<boolean>;
-  
+
   // FCM Actions
   initializeFCM: () => Promise<boolean>;
   registerToken: () => Promise<boolean>;
   unregisterToken: () => Promise<boolean>;
-  
+
   // Utility
   clearError: () => void;
 }
@@ -48,7 +48,7 @@ interface NotificationProviderProps {
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
   const { user } = useAuth();
-  
+
   // State
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
@@ -57,7 +57,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // FCM State
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [isFCMInitialized, setIsFCMInitialized] = useState(false);
@@ -66,49 +66,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     canAskAgain: true,
   });
 
-  // Initialize FCM when user is authenticated
-  useEffect(() => {
-    if (user) {
-      initializeFCM();
-    }
-  }, [user]);
-
-  // Load notifications and preferences when user changes
-  useEffect(() => {
-    if (user) {
-      loadUserData();
-    } else {
-      // Clear data when user logs out
-      setNotifications([]);
-      setPreferences(null);
-      setStats(null);
-      setUnreadCount(0);
-    }
-  }, [user, loadUserData]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel(`notifications-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          refreshNotifications();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, refreshNotifications]);
 
   // Initialize FCM service
   const initializeFCM = async (): Promise<boolean> => {
@@ -120,7 +77,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (initialized) {
         setIsFCMInitialized(true);
         setFcmToken(fcmService.getToken());
-        
+
         // Check permissions
         const perms = await fcmService.getPermissions();
         setPermissions({
@@ -148,7 +105,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const registerToken = async (): Promise<boolean> => {
     try {
       if (!user) return false;
-      
+
       const success = await fcmService.registerToken(user.id);
       if (success) {
         console.log('✅ FCM token registered successfully');
@@ -165,7 +122,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const unregisterToken = async (): Promise<boolean> => {
     try {
       if (!user) return false;
-      
+
       const success = await fcmService.unregisterToken(user.id);
       if (success) {
         console.log('✅ FCM token unregistered successfully');
@@ -227,7 +184,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setStats(statsData);
 
       // Calculate unread count
-      const unread = notificationsData.filter(n => !n.is_read).length;
+      const unread = notificationsData.filter(n => !n.read).length;
       setUnreadCount(unread);
 
       // Update badge count
@@ -253,7 +210,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setNotifications(notificationsData);
 
       // Update unread count
-      const unread = notificationsData.filter(n => !n.is_read).length;
+      const unread = notificationsData.filter(n => !n.read).length;
       setUnreadCount(unread);
 
       // Update badge count
@@ -275,15 +232,15 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const success = await notificationService.markAsRead(notificationId);
       if (success) {
         // Update local state
-        setNotifications(prev => 
-          prev.map(n => 
-            n.id === notificationId ? { ...n, is_read: true } : n
+        setNotifications(prev =>
+          prev.map(n =>
+            n.id === notificationId ? { ...n, read: true } : n
           )
         );
-        
+
         // Update unread count
         setUnreadCount(prev => Math.max(0, prev - 1));
-        
+
         // Update badge count
         await fcmService.setBadgeCount(unreadCount - 1);
       }
@@ -309,13 +266,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const success = await notificationService.markAllAsRead(user.id);
       if (success) {
         // Update local state
-        setNotifications(prev => 
-          prev.map(n => ({ ...n, is_read: true }))
+        setNotifications(prev =>
+          prev.map(n => ({ ...n, read: true }))
         );
-        
+
         // Update unread count
         setUnreadCount(0);
-        
+
         // Clear badge count
         await fcmService.clearBadgeCount();
       }
@@ -340,10 +297,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (success) {
         // Update local state
         setNotifications(prev => prev.filter(n => n.id !== notificationId));
-        
+
         // Update unread count if the deleted notification was unread
         const deletedNotification = notifications.find(n => n.id === notificationId);
-        if (deletedNotification && !deletedNotification.is_read) {
+        if (deletedNotification && !deletedNotification.read) {
           setUnreadCount(prev => Math.max(0, prev - 1));
           await fcmService.setBadgeCount(unreadCount - 1);
         }
@@ -413,6 +370,48 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     setError(null);
   };
 
+  // Lifecycle effects - moved after callbacks to avoid hoisting errors
+  useEffect(() => {
+    if (user) {
+      initializeFCM();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadUserData();
+    } else {
+      setNotifications([]);
+      setPreferences(null);
+      setStats(null);
+      setUnreadCount(0);
+    }
+  }, [user, loadUserData]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          refreshNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, refreshNotifications]);
+
   const contextValue: NotificationContextType = {
     // State
     notifications,
@@ -422,12 +421,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     isLoading,
     isUpdating,
     error,
-    
+
     // FCM State
     fcmToken,
     isFCMInitialized,
     permissions,
-    
+
     // Actions
     refreshNotifications,
     markAsRead,
@@ -436,12 +435,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     updatePreferences,
     sendTestNotification,
     requestPermissions,
-    
+
     // FCM Actions
     initializeFCM,
     registerToken,
     unregisterToken,
-    
+
     // Utility
     clearError,
   };

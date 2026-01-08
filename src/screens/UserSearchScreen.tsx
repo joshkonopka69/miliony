@@ -17,15 +17,7 @@ import { useAppNavigation } from '../navigation';
 import { useUser } from '../contexts/UserContext';
 import { useFriends } from '../hooks/useFriends';
 import { useTranslation } from '../contexts/TranslationContext';
-
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
+import { BottomNavBar, ActivityFilterModal, CreateEventModal, SMLogo } from '../components';
 
 export default function UserSearchScreen() {
   const navigation = useAppNavigation();
@@ -116,7 +108,7 @@ export default function UserSearchScreen() {
     const newSports = currentSports.includes(sport)
       ? currentSports.filter(s => s !== sport)
       : [...currentSports, sport];
-    
+
     handleFilterChange('sports', newSports);
   };
 
@@ -125,7 +117,7 @@ export default function UserSearchScreen() {
     const newGenders = currentGenders.includes(gender)
       ? currentGenders.filter(g => g !== gender)
       : [...currentGenders, gender];
-    
+
     handleFilterChange('gender', newGenders);
   };
 
@@ -135,32 +127,32 @@ export default function UserSearchScreen() {
 
   const getLastActiveText = (lastActive?: string) => {
     if (!lastActive) return 'Never';
-    
+
     const lastActiveDate = new Date(lastActive);
     const now = new Date();
     const diffMs = now.getTime() - lastActiveDate.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    
+
     if (diffMinutes < 1) return 'Just now';
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    
+
     const diffHours = Math.floor(diffMinutes / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
-    
+
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return lastActiveDate.toLocaleDateString();
   };
 
   const isOnline = (lastActive?: string) => {
     if (!lastActive) return false;
-    
+
     const lastActiveDate = new Date(lastActive);
     const now = new Date();
     const diffMs = now.getTime() - lastActiveDate.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    
+
     return diffMinutes < 15; // Consider online if active within last 15 minutes
   };
 
@@ -208,28 +200,28 @@ export default function UserSearchScreen() {
           </View>
 
           <View style={styles.userActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleViewProfile(user.id)}
             >
               <Text style={styles.actionButtonText}>👤</Text>
             </TouchableOpacity>
-            
+
             {!isUserFriend && !hasPending && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.addFriendButton}
                 onPress={() => handleSendFriendRequest(user.id, user.display_name)}
               >
                 <Text style={styles.addFriendButtonText}>+</Text>
               </TouchableOpacity>
             )}
-            
+
             {isUserFriend && (
               <View style={styles.friendBadge}>
                 <Text style={styles.friendBadgeText}>✓</Text>
               </View>
             )}
-            
+
             {hasPending && (
               <View style={styles.pendingBadge}>
                 <Text style={styles.pendingBadgeText}>⏳</Text>
@@ -242,7 +234,7 @@ export default function UserSearchScreen() {
   };
 
   const renderFilters = () => (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.filtersContainer,
         {
@@ -252,7 +244,7 @@ export default function UserSearchScreen() {
       ]}
     >
       <Text style={styles.filtersTitle}>Filters</Text>
-      
+
       {/* Sports Filter */}
       <View style={styles.filterSection}>
         <Text style={styles.filterLabel}>Sports</Text>
@@ -324,7 +316,7 @@ export default function UserSearchScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.filterRow}>
           <Text style={styles.filterLabel}>Has Events</Text>
           <TouchableOpacity
@@ -343,14 +335,14 @@ export default function UserSearchScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Find Friends</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.filterButton}
           onPress={() => setShowFilters(!showFilters)}
         >
@@ -369,7 +361,7 @@ export default function UserSearchScreen() {
           onSubmitEditing={handleSearch}
           returnKeyType="search"
         />
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.searchButton}
           onPress={handleSearch}
           disabled={isSearching}
@@ -386,7 +378,7 @@ export default function UserSearchScreen() {
       {showFilters && renderFilters()}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.content,
             {

@@ -1,13 +1,14 @@
-﻿import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
+﻿import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
   Alert,
   Image,
   Share,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +22,7 @@ import {
 } from '../utils/eventGrouping';
 import { useTranslation, Language } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
-import { supabaseService } from '../services/supabase';
+import { supabaseService, Event as SupabaseEvent } from '../services/supabase';
 import { notificationService } from '../services/notificationService';
 
 // Sport emoji mapping
@@ -53,20 +54,83 @@ const LOCALE_MAP: Record<Language, string> = {
 export default function EventDetailsScreen() {
   const navigation = useAppNavigation();
   const route = useAppRoute<'EventDetails'>();
-  const event = route.params?.game as MyEvent;
+  const initialEvent = route.params?.game as MyEvent;
+  const eventIdFromParams = route.params?.game?.id || (route.params as any)?.gameId || (route.params as any)?.id;
+
+  const [event, setEvent] = useState<MyEvent | null>(initialEvent || null);
   const { t, language } = useTranslation();
   const { getUserId, user: authUser } = useAuth();
   const userId = getUserId();
   const loginRequiredMessage = t.friends?.loginRequired || 'Please sign in to continue.';
   const locale = LOCALE_MAP[language] ?? 'en-US';
 
-  const [hasJoined, setHasJoined] = useState(event?.role === 'joined');
-  const [participantsState, setParticipantsState] = useState(event?.participants);
+  const [hasJoined, setHasJoined] = useState(initialEvent?.role === 'joined');
+  const [participantsState, setParticipantsState] = useState(initialEvent?.participants);
   const [isProcessing, setIsProcessing] = useState(false);
   const [requestPending, setRequestPending] = useState(false);
+  const [isLoadingEvent, setIsLoadingEvent] = useState(!initialEvent && !!eventIdFromParams);
+
   const relativeStart = event
     ? getTimeUntilEvent(event.startTime, locale, t.eventDetails.eventStarted)
     : '';
+
+  useEffect(() => {
+    if (!initialEvent && eventIdFromParams) {
+      loadEventById(eventIdFromParams);
+    }
+  }, [eventIdFromParams]);
+
+  const loadEventById = async (id: string) => {
+    try {
+      setIsLoadingEvent(true);
+      const rawEvent = await supabaseService.getEventById(id) as SupabaseEvent;
+      if (rawEvent) {
+        // Map raw event to MyEvent
+        const mappedEvent: MyEvent = {
+          id: rawEvent.id,
+          name: rawEvent.name,
+          activity: rawEvent.activity as any,
+          startTime: new Date(rawEvent.scheduled_datetime),
+          endTime: rawEvent.end_datetime ? new Date(rawEvent.end_datetime) : new Date(new Date(rawEvent.scheduled_datetime).getTime() + 2 * 60 * 60 * 1000),
+          location: {
+            name: rawEvent.location_name,
+            address: rawEvent.location_name, // fallback
+            lat: rawEvent.latitude,
+            lng: rawEvent.longitude,
+          },
+          participants: {
+            current: rawEvent.participants_count || 0,
+            max: rawEvent.max_participants || 0,
+          },
+          status: rawEvent.status as any,
+          role: 'joined', // Default, will check below
+          chatEnabled: rawEvent.chat_enabled !== false,
+          createdBy: {
+            id: rawEvent.created_by,
+            name: (rawEvent as any).creator_name || 'Organizer',
+          },
+          description: rawEvent.description,
+        };
+
+        // Check if current user is creator
+        if (userId === rawEvent.created_by) {
+          mappedEvent.role = 'created';
+        } else {
+          // Check if user is participant
+          const isParticipant = await supabaseService.isParticipant(id, userId || '');
+          mappedEvent.role = isParticipant ? 'joined' : 'invited'; // invited as fallback for "not joined"
+        }
+
+        setEvent(mappedEvent);
+        setHasJoined(mappedEvent.role === 'joined');
+        setParticipantsState(mappedEvent.participants);
+      }
+    } catch (error) {
+      console.error('Error loading event by ID:', error);
+    } finally {
+      setIsLoadingEvent(false);
+    }
+  };
 
   const handleBack = () => {
     navigation.goBack();
@@ -246,6 +310,17 @@ export default function EventDetailsScreen() {
     );
   };
 
+  if (isLoadingEvent) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <ActivityIndicator size="large" color="#FDB924" />
+          <Text style={[styles.errorTitle, { marginTop: 16 }]}>{t.common.loading}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!event) {
     return (
       <SafeAreaView style={styles.container}>
@@ -281,7 +356,7 @@ export default function EventDetailsScreen() {
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={24} color="#000000" />
-        </TouchableOpacity>
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>{t.eventDetails.title}</Text>
           <TouchableOpacity
             style={styles.shareButton}
@@ -301,7 +376,7 @@ export default function EventDetailsScreen() {
           </View>
           <Text style={styles.eventName}>{event.name}</Text>
           <Text style={styles.eventActivity}>{event.activity}</Text>
-          
+
           {/* Time Until Event */}
           <View style={styles.timeUntilBadge}>
             <Ionicons name="time-outline" size={16} color="#6B7280" />
@@ -326,13 +401,13 @@ export default function EventDetailsScreen() {
             </Text>
             <Text style={styles.statLabel}>{t.eventDetails.players}</Text>
           </View>
-          
+
           <View style={styles.statBox}>
             <Ionicons name="location" size={24} color="#FDB924" />
             <Text style={styles.statValue}>{event.location.distance?.toFixed(1) || '—'} km</Text>
             <Text style={styles.statLabel}>{t.eventDetails.distanceLabel}</Text>
           </View>
-          
+
           <View style={styles.statBox}>
             <Ionicons name="trophy" size={24} color="#FDB924" />
             <Text style={styles.statValue}>{t.eventDetails.skillLevelAll}</Text>
@@ -368,7 +443,7 @@ export default function EventDetailsScreen() {
         </View>
 
         {/* Location Section */}
-          <View style={styles.section}>
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="location-outline" size={20} color="#1F2937" />
             <Text style={styles.sectionTitle}>{t.eventDetails.location}</Text>
@@ -385,14 +460,14 @@ export default function EventDetailsScreen() {
               <Text style={styles.viewMapText}>{t.eventDetails.viewOnMap}</Text>
             </TouchableOpacity>
           </View>
-              </View>
+        </View>
 
         {/* Participants Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="people-outline" size={20} color="#1F2937" />
             <Text style={styles.sectionTitle}>{t.eventDetails.participantsSection}</Text>
-              </View>
+          </View>
           <View style={styles.sectionContent}>
             <View style={styles.participantsInfo}>
               <View style={styles.participantsStat}>
@@ -420,12 +495,12 @@ export default function EventDetailsScreen() {
               <Text style={styles.viewParticipantsText}>{t.eventDetails.viewParticipants}</Text>
               <Ionicons name="chevron-forward" size={16} color="#6B7280" />
             </TouchableOpacity>
-            </View>
           </View>
+        </View>
 
         {/* Description Section */}
         {event.description && (
-            <View style={styles.section}>
+          <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="document-text-outline" size={20} color="#1F2937" />
               <Text style={styles.sectionTitle}>{t.eventDetails.description}</Text>
@@ -433,11 +508,11 @@ export default function EventDetailsScreen() {
             <View style={styles.sectionContent}>
               <Text style={styles.descriptionText}>{event.description}</Text>
             </View>
-            </View>
-          )}
+          </View>
+        )}
 
         {/* Organizer Section */}
-            <View style={styles.section}>
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="person-outline" size={20} color="#1F2937" />
             <Text style={styles.sectionTitle}>{t.eventDetails.organizer}</Text>
@@ -463,16 +538,16 @@ export default function EventDetailsScreen() {
 
       {/* Action Buttons */}
       <SafeAreaView style={styles.actionSafeArea}>
-      <View style={styles.actionContainer}>
+        <View style={styles.actionContainer}>
           {event.chatEnabled && (
-        <TouchableOpacity
-          style={styles.chatButton}
-          onPress={handleChatPress}
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={handleChatPress}
               activeOpacity={0.7}
-        >
+            >
               <Ionicons name="chatbubble-outline" size={20} color="#1F2937" />
               <Text style={styles.chatButtonText}>{t.eventDetails.chat}</Text>
-        </TouchableOpacity>
+            </TouchableOpacity>
           )}
 
           {isCreator ? (
@@ -485,43 +560,43 @@ export default function EventDetailsScreen() {
               <Text style={styles.manageButtonText}>{t.eventDetails.manageEvent}</Text>
             </TouchableOpacity>
           ) : hasJoined ? (
-          <TouchableOpacity
-            style={styles.leaveButton}
+            <TouchableOpacity
+              style={styles.leaveButton}
               onPress={handleLeaveEvent}
               activeOpacity={0.7}
-          >
+            >
               <Ionicons name="exit-outline" size={20} color="#FFFFFF" />
               <Text style={styles.leaveButtonText}>{t.eventDetails.leaveGame}</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[
-              styles.joinButton,
-              ((isEventFull && !isPrivateEvent) || isProcessing || (isPrivateEvent && requestPending)) &&
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.joinButton,
+                ((isEventFull && !isPrivateEvent) || isProcessing || (isPrivateEvent && requestPending)) &&
                 styles.joinButtonDisabled,
-            ]}
-            onPress={handleJoinEvent}
-            activeOpacity={0.7}
-            disabled={
-              isProcessing ||
-              (!isPrivateEvent && isEventFull) ||
-              (isPrivateEvent && requestPending)
-            }
-          >
-            <Ionicons name="add-circle-outline" size={20} color="#000000" />
-            <Text style={styles.joinButtonText}>
-              {isPrivateEvent
-                ? requestPending
-                  ? t.eventDetails.requestPending
-                  : t.eventDetails.requestAccess
-                : isEventFull
-                  ? t.eventDetails.eventFull
-                  : t.eventDetails.joinGame}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </SafeAreaView>
+              ]}
+              onPress={handleJoinEvent}
+              activeOpacity={0.7}
+              disabled={
+                isProcessing ||
+                (!isPrivateEvent && isEventFull) ||
+                (isPrivateEvent && requestPending)
+              }
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#000000" />
+              <Text style={styles.joinButtonText}>
+                {isPrivateEvent
+                  ? requestPending
+                    ? t.eventDetails.requestPending
+                    : t.eventDetails.requestAccess
+                  : isEventFull
+                    ? t.eventDetails.eventFull
+                    : t.eventDetails.joinGame}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </SafeAreaView>
     </View>
   );
 }

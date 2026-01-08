@@ -17,7 +17,7 @@ export interface Translations {
     privacyPolicy: string;
     selectLanguage: string;
   };
-  
+
   // Auth Screen
   auth: {
     title: string;
@@ -28,7 +28,7 @@ export interface Translations {
     forgotPassword: string;
     createAccount: string;
   };
-  
+
   // Register Screen
   register: {
     title: string;
@@ -47,7 +47,7 @@ export interface Translations {
     alreadyHaveAccount: string;
     signIn: string;
   };
-  
+
   // Common
   common: {
     back: string;
@@ -61,7 +61,7 @@ export interface Translations {
     success: string;
     confirm: string;
   };
-  
+
   // Policy Screens
   policy: {
     privacyPolicy: string;
@@ -69,13 +69,13 @@ export interface Translations {
     lastUpdated: string;
     back: string;
   };
-  
+
   // Map Screen
   map: {
     permissionDenied: string;
     locationAccessNeeded: string;
   };
-  
+
   // Sports
   sports: {
     boxing: string;
@@ -94,7 +94,7 @@ export interface Translations {
     mma: string;
     judo: string;
   };
-  
+
   // Languages
   languages: {
     english: string;
@@ -103,7 +103,7 @@ export interface Translations {
     french: string;
     german: string;
   };
-  
+
   // Settings
   settings: {
     title: string;
@@ -125,7 +125,7 @@ export interface Translations {
     deleteMessage: string;
     deleteSuccess: string;
   };
-  
+
   // Profile Screen
   profile: {
     title: string;
@@ -148,7 +148,7 @@ export interface Translations {
     noGroupsSubtext: string;
     errorLoading: string;
   };
-  
+
   // My Events Screen
   myEvents: {
     title: string;
@@ -192,7 +192,19 @@ export interface Translations {
       started: string;
     };
   };
-  
+
+  // Create Event Screen
+  createEvent: {
+    title: string;
+    eventTitle: string;
+    sportType: string;
+    dateTime: string;
+    missingTitle: string;
+    invalidDate: string;
+    invalidParticipants: string;
+    missingLocation: string;
+  };
+
   // My Groups Screen
   myGroups: {
     title: string;
@@ -204,7 +216,7 @@ export interface Translations {
     members: string;
     viewDetails: string;
   };
-  
+
   // Create Group Screen
   createGroup: {
     title: string;
@@ -224,7 +236,7 @@ export interface Translations {
     error: string;
     fillFields: string;
   };
-  
+
   // Event Details Screen
   eventDetails: {
     title: string;
@@ -272,7 +284,7 @@ export interface Translations {
     errorMessage: string;
     errorButton: string;
   };
-  
+
   // All Badges Screen
   allBadges: {
     title: string;
@@ -298,7 +310,7 @@ export interface Translations {
       socialButterflyRequirement: string;
     };
   };
-  
+
   // Notifications
   notifications: {
     title: string;
@@ -338,7 +350,7 @@ export interface Translations {
     reminder12h: string;
     reminder1h: string;
   };
-  
+
   // Bottom Navigation
   bottomNav: {
     map: string;
@@ -411,7 +423,6 @@ const ENCODING_FIX_MAP: Record<string, string> = {
   'Ă©': 'é',
   'Ă­': 'í',
   'Ăł': 'ó',
-  'Ăł': 'ó',
   'Ăş': 'ú',
   'Ăš': 'Ú',
   'Â¿': '¿',
@@ -430,7 +441,6 @@ const ENCODING_FIX_MAP: Record<string, string> = {
   'Ă»': 'û',
   'Ă¹': 'ù',
   'Ă‰': 'É',
-  'ĂŠ': 'é',
 
   // German
   'Ă¤': 'ä',
@@ -447,13 +457,10 @@ const ENCODING_FIX_MAP: Record<string, string> = {
   'Ä‡': 'ć',
   'Ä™': 'ę',
   'Ä‡': 'ć',
-  'Ĺ‚': 'ł',
   'Ĺ': 'ł',
   'Ĺ„': 'ń',
   'Ăł': 'ó',
   'Ĺ›': 'ś',
-  'Ĺ›': 'ś',
-  'Ĺş': 'ź',
   'Ĺź': 'ź',
   'ĹĽ': 'ż',
 
@@ -641,30 +648,40 @@ const translations: Record<Language, Translations> = {
       intermediate: 'Intermediate',
       advanced: 'Advanced',
       expert: 'Expert',
-    errorLoading: 'Failed to load events',
-    filtersComingSoonTitle: 'Filters coming soon',
-    filtersComingSoonMessage: 'We\'re working on advanced filters for sports, date, and location.',
-    moreOptionsTitle: 'More options coming soon',
-    moreOptionsMessage: 'Sorting, past games, and settings will arrive shortly.',
-    leaveEventTitle: 'Leave Event',
-    leaveEventMessage: 'Do you want to leave "{name}"?',
-    leaveEventConfirm: 'Leave',
-    leaveEventSuccess: 'You left the event.',
-    participantsShort: 'joined',
-    almostFull: 'Almost full',
-    groupLabels: {
-      TODAY: 'Today',
-      TOMORROW: 'Tomorrow',
-      THIS_WEEK: 'This Week',
-      NEXT_WEEK: 'Next Week',
-      LATER: 'Later',
+      errorLoading: 'Failed to load events',
+      filtersComingSoonTitle: 'Filters coming soon',
+      filtersComingSoonMessage: "We're working on advanced filters for sports, date, and location.",
+      moreOptionsTitle: 'More options coming soon',
+      moreOptionsMessage: 'Sorting, past games, and settings will arrive shortly.',
+      leaveEventTitle: 'Leave Event',
+      leaveEventMessage: 'Do you want to leave "{name}"?',
+      leaveEventConfirm: 'Leave',
+      leaveEventSuccess: 'You left the event.',
+      participantsShort: 'joined',
+      almostFull: 'Almost full',
+      groupLabels: {
+        TODAY: 'Today',
+        TOMORROW: 'Tomorrow',
+        THIS_WEEK: 'This Week',
+        NEXT_WEEK: 'Next Week',
+        LATER: 'Later',
+      },
+      statusLabels: {
+        live: 'Live',
+        startingSoon: 'Starting soon',
+        cancelled: 'Cancelled',
+        started: 'Already started',
+      },
     },
-    statusLabels: {
-      live: 'Live',
-      startingSoon: 'Starting soon',
-      cancelled: 'Cancelled',
-      started: 'Already started',
-    },
+    createEvent: {
+      title: 'Create Event',
+      eventTitle: 'Event Title',
+      sportType: 'Sport Type',
+      dateTime: 'Date & Time',
+      missingTitle: 'Please enter an event title',
+      invalidDate: 'Event must be scheduled for a future time',
+      invalidParticipants: 'Minimum participants cannot exceed maximum',
+      missingLocation: 'Location information is missing',
     },
     myGroups: {
       title: 'My Groups',
@@ -1037,6 +1054,16 @@ const translations: Record<Language, Translations> = {
         started: 'Już się rozpoczęło',
       },
     },
+    createEvent: {
+      title: 'Stwórz wydarzenie',
+      eventTitle: 'Tytuł wydarzenia',
+      sportType: 'Typ sportu',
+      dateTime: 'Data i godzina',
+      missingTitle: 'Proszę podać tytuł wydarzenia',
+      invalidDate: 'Wydarzenie musi być zaplanowane na przyszłość',
+      invalidParticipants: 'Minimalna liczba uczestników nie może przekraczać maksymalnej',
+      missingLocation: 'Brak informacji o lokalizacji',
+    },
     myGroups: {
       title: 'Moje Grupy',
       allGroups: 'Wszystkie Grupy',
@@ -1407,6 +1434,16 @@ const translations: Record<Language, Translations> = {
         cancelled: 'Cancelado',
         started: 'Ya comenzó',
       },
+    },
+    createEvent: {
+      title: 'Crear evento',
+      eventTitle: 'Título del evento',
+      sportType: 'Tipo de deporte',
+      dateTime: 'Fecha y hora',
+      missingTitle: 'Por favor, introduce un título para el evento',
+      invalidDate: 'El evento debe programarse para una hora futura',
+      invalidParticipants: 'El número mínimo de participantes no puede superar al máximo',
+      missingLocation: 'Falta la información de la ubicación',
     },
     myGroups: {
       title: 'Mis Grupos',
@@ -1779,6 +1816,16 @@ const translations: Record<Language, Translations> = {
         started: 'Déjà commencé',
       },
     },
+    createEvent: {
+      title: 'Créer un événement',
+      eventTitle: "Titre de l'événement",
+      sportType: "Type d'activité",
+      dateTime: 'Date et heure',
+      missingTitle: "Veuillez saisir un titre d'événement",
+      invalidDate: "L'événement doit être planifié pour une heure future",
+      invalidParticipants: 'Le nombre minimum de participants ne peut pas dépasser le maximum',
+      missingLocation: 'Les informations de localisation sont manquantes',
+    },
     myGroups: {
       title: 'Mes Groupes',
       allGroups: 'Tous les Groupes',
@@ -2149,6 +2196,16 @@ const translations: Record<Language, Translations> = {
         cancelled: 'Abgesagt',
         started: 'Bereits gestartet',
       },
+    },
+    createEvent: {
+      title: 'Event erstellen',
+      eventTitle: 'Event-Titel',
+      sportType: 'Sportart',
+      dateTime: 'Datum & Uhrzeit',
+      missingTitle: 'Bitte geben Sie einen Event-Titel ein',
+      invalidDate: 'Das Event muss für einen zukünftigen Zeitpunkt geplant werden',
+      invalidParticipants: 'Die Mindestteilnehmerzahl darf das Maximum nicht überschreiten',
+      missingLocation: 'Standortinformationen fehlen',
     },
     myGroups: {
       title: 'Meine Gruppen',

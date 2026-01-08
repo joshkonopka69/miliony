@@ -15,15 +15,8 @@ import {
 import { useAppNavigation } from '../navigation';
 import { useFriends } from '../hooks/useFriends';
 import { useTranslation } from '../contexts/TranslationContext';
+import { SMLogo } from '../components';
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 export default function FriendRequestsScreen() {
   const navigation = useAppNavigation();
@@ -32,6 +25,7 @@ export default function FriendRequestsScreen() {
     friendRequests,
     acceptFriendRequest,
     declineFriendRequest,
+    cancelFriendRequest,
     isLoading,
     isUpdating,
     error,
@@ -111,8 +105,12 @@ export default function FriendRequestsScreen() {
           text: 'Cancel Request',
           style: 'destructive',
           onPress: async () => {
-            // TODO: Implement cancel friend request functionality
-            Alert.alert('Success', 'Friend request cancelled.');
+            const success = await cancelFriendRequest(requestId);
+            if (success) {
+              Alert.alert('Success', 'Friend request cancelled.');
+            } else {
+              Alert.alert('Error', 'Failed to cancel friend request. Please try again.');
+            }
           },
         },
       ]
@@ -120,7 +118,7 @@ export default function FriendRequestsScreen() {
   };
 
   const handleViewProfile = (userId: string) => {
-    // TODO: Navigate to user's profile
+    navigation.navigate('Profile', { userId });
     console.log('View profile for:', userId);
   };
 
@@ -133,16 +131,16 @@ export default function FriendRequestsScreen() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    
+
     if (diffMinutes < 1) return 'Just now';
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    
+
     const diffHours = Math.floor(diffMinutes / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
-    
+
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return date.toLocaleDateString();
   };
 
@@ -168,7 +166,7 @@ export default function FriendRequestsScreen() {
                 </View>
               )}
             </View>
-            
+
             <View style={styles.userDetails}>
               <Text style={styles.userName}>{user.display_name}</Text>
               <Text style={styles.requestTime}>{getTimeAgo(request.created_at)}</Text>
@@ -186,7 +184,7 @@ export default function FriendRequestsScreen() {
         </View>
 
         {isSelected && (
-          <Animated.View 
+          <Animated.View
             style={[
               styles.requestActions,
               {
@@ -197,19 +195,19 @@ export default function FriendRequestsScreen() {
           >
             {type === 'received' ? (
               <>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => handleViewProfile(user.id)}
                 >
                   <Text style={styles.actionButtonText}>👤</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionButton, styles.acceptButton]}
                   onPress={() => handleAcceptRequest(request.id, user.display_name)}
                 >
                   <Text style={[styles.actionButtonText, styles.acceptButtonText]}>✓</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionButton, styles.declineButton]}
                   onPress={() => handleDeclineRequest(request.id, user.display_name)}
                 >
@@ -218,13 +216,13 @@ export default function FriendRequestsScreen() {
               </>
             ) : (
               <>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => handleViewProfile(user.id)}
                 >
                   <Text style={styles.actionButtonText}>👤</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionButton, styles.cancelButton]}
                   onPress={() => handleCancelRequest(request.id, user.display_name)}
                 >
@@ -243,14 +241,14 @@ export default function FriendRequestsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Friend Requests</Text>
-        <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
+        <SMLogo />
       </View>
 
       {/* Error Display */}
@@ -266,7 +264,7 @@ export default function FriendRequestsScreen() {
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <View style={styles.tabs}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.tab, activeTab === 'received' && styles.activeTab]}
             onPress={() => handleTabChange('received')}
           >
@@ -274,7 +272,7 @@ export default function FriendRequestsScreen() {
               Received ({pendingRequestsCount})
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.tab, activeTab === 'sent' && styles.activeTab]}
             onPress={() => handleTabChange('sent')}
           >
@@ -286,7 +284,7 @@ export default function FriendRequestsScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.content,
             {
@@ -314,8 +312,8 @@ export default function FriendRequestsScreen() {
                     {activeTab === 'received' ? '📥' : '📤'}
                   </Text>
                   <Text style={styles.emptyTitle}>
-                    {activeTab === 'received' 
-                      ? 'No friend requests' 
+                    {activeTab === 'received'
+                      ? 'No friend requests'
                       : 'No sent requests'
                     }
                   </Text>
@@ -326,7 +324,7 @@ export default function FriendRequestsScreen() {
                     }
                   </Text>
                   {activeTab === 'received' && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.findFriendsButton}
                       onPress={() => navigation.navigate('UserSearch')}
                     >
@@ -387,27 +385,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FFD700',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoText: {
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: 1,
   },
   errorContainer: {
     flexDirection: 'row',

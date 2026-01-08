@@ -15,6 +15,7 @@ import Button from './ui/Button';
 import Input from './ui/Input';
 import Card from './ui/Card';
 import EventService, { CreateEventData } from '../services/eventService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface EventCreationModalProps {
   visible: boolean;
@@ -43,6 +44,7 @@ export default function EventCreationModal({
   coordinates,
   placeDetails,
 }: EventCreationModalProps) {
+  const { getUserId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -78,8 +80,15 @@ export default function EventCreationModal({
         end_time: formData.endTime || undefined,
       };
 
-      const event = await EventService.createEvent('current-user-id', eventData);
-      
+      const userId = getUserId();
+      if (!userId) {
+        Alert.alert('Error', 'You must be logged in to create events');
+        setLoading(false);
+        return;
+      }
+
+      const event = await EventService.createEvent(userId, eventData);
+
       if (event) {
         Alert.alert('Success', 'Event created successfully!');
         onEventCreated(event);
@@ -164,8 +173,8 @@ export default function EventCreationModal({
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Activity *</Text>
-              <ScrollView 
-                horizontal 
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.sportsContainer}
               >
@@ -260,7 +269,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700',
     color: theme.colors.textPrimary,
   },
   headerSpacer: {
@@ -280,13 +289,13 @@ const styles = StyleSheet.create({
   },
   venueTitle: {
     fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: '500',
     color: theme.colors.textPrimary,
     marginLeft: theme.spacing.sm,
   },
   venueName: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
   },
@@ -302,7 +311,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: '500',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
@@ -328,7 +337,7 @@ const styles = StyleSheet.create({
   },
   sportChipTextSelected: {
     color: theme.colors.textOnPrimary,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: '500',
   },
   timeRow: {
     flexDirection: 'row',

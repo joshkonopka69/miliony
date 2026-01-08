@@ -3,17 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert,
 import { useAppNavigation } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { supabaseService } from '../services/supabase';
+import { friendService } from '../services/friendService';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useFocusEffect } from '@react-navigation/native';
+import { SMLogo } from '../components';
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 interface User {
   id: string;
@@ -28,7 +22,7 @@ export default function AddFriendScreen() {
   const navigation = useAppNavigation();
   const { getUserId } = useAuth();
   const { t } = useTranslation();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -71,18 +65,22 @@ export default function AddFriendScreen() {
       try {
         // Search for users
         const users = await supabaseService.searchUsers(query, userId);
-        
-        // Check friendship status for each user
+
+        // Check friendship status and mutual friends for each user
         const usersWithStatus = await Promise.all(
           users.map(async (user: any) => {
-            const status = await supabaseService.getFriendshipStatus(userId, user.id);
+            const [status, mutualCount] = await Promise.all([
+              supabaseService.getFriendshipStatus(userId, user.id),
+              friendService.getMutualFriendsCount(userId, user.id)
+            ]);
+
             return {
               id: user.id,
               display_name: user.display_name,
               avatar_url: user.avatar_url,
               isFriend: status === 'accepted',
               friendshipStatus: status,
-              mutualFriends: 0, // TODO: Calculate mutual friends
+              mutualFriends: mutualCount,
             };
           })
         );
@@ -111,13 +109,13 @@ export default function AddFriendScreen() {
       t.friends.addConfirmMessage.replace('{name}', userName),
       [
         { text: t.common.cancel, style: 'cancel' },
-        { 
-          text: t.friends.sendRequest, 
+        {
+          text: t.friends.sendRequest,
           onPress: async () => {
             try {
               await supabaseService.sendFriendRequest(userId, friendId);
               Alert.alert(t.common.success, t.friends.addSuccess.replace('{name}', userName));
-              
+
               // Update search results to show pending status
               setSearchResults(prev =>
                 prev.map(user =>
@@ -148,14 +146,14 @@ export default function AddFriendScreen() {
       t.friends.removeConfirmMessage.replace('{name}', userName),
       [
         { text: t.common.cancel, style: 'cancel' },
-        { 
-          text: t.friends.removeConfirmButton, 
+        {
+          text: t.friends.removeConfirmButton,
           style: 'destructive',
           onPress: async () => {
             try {
               await supabaseService.removeFriend(userId, friendId);
               Alert.alert(t.common.success, t.friends.removeSuccess.replace('{name}', userName));
-              
+
               // Update search results and friends list
               setSearchResults(prev =>
                 prev.map(user =>
@@ -229,8 +227,8 @@ export default function AddFriendScreen() {
         </View>
         <TouchableOpacity
           style={[styles.actionButton, getButtonStyle()]}
-          onPress={() => 
-            item.isFriend 
+          onPress={() =>
+            item.isFriend
               ? handleRemoveFriend(item.id, item.display_name)
               : handleAddFriend(item.id, item.display_name)
           }
@@ -262,7 +260,7 @@ export default function AddFriendScreen() {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t.profile.addFriends}</Text>
-        <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
+        <SMLogo />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -272,7 +270,7 @@ export default function AddFriendScreen() {
           <Text style={styles.searchSubtitle}>
             {t.friends.searchSubtitle}
           </Text>
-          
+
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
@@ -284,7 +282,7 @@ export default function AddFriendScreen() {
               autoCorrect={false}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.clearButton}
                 onPress={() => {
                   setSearchQuery('');
@@ -305,7 +303,7 @@ export default function AddFriendScreen() {
                 ? t.common.loading
                 : `${t.friends.resultsTitle} (${searchResults.length})`}
             </Text>
-            
+
             {isSearching ? (
               <View style={styles.loadingContainer}>
                 <Text style={styles.loadingText}>{t.common.loading}</Text>
@@ -327,7 +325,7 @@ export default function AddFriendScreen() {
         {/* Quick Actions */}
         <View style={styles.quickActionsSection}>
           <Text style={styles.quickActionsTitle}>{t.friends.quickActionsTitle}</Text>
-          
+
           <TouchableOpacity style={styles.quickActionItem}>
             <View style={styles.quickActionIcon}>
               <Text style={styles.quickActionIconText}>📱</Text>

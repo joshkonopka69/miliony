@@ -44,6 +44,7 @@ export { default as GroupMembersScreen } from './groups/GroupMembersScreen';
 // Notification exports
 export { default as NotificationsScreen } from './NotificationsScreen';
 export { default as NotificationSettingsScreen } from './NotificationSettingsScreen';
+export { default as FriendRequestsScreen } from './FriendRequestsScreen';
 // Badge exports
 export { default as AllBadgesScreen } from './AllBadgesScreen';
 

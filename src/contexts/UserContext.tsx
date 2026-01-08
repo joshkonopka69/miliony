@@ -1,22 +1,22 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { 
-  userService, 
-  UserProfile, 
-  UserPreferences, 
+import {
+  userService,
+  UserProfile,
+  UserPreferences,
   UserStats,
   CreateUserProfileData,
   UpdateUserProfileData,
   UserSearchFilters
 } from '../services/userService';
-import { 
-  friendService, 
-  FriendRequest, 
+import {
+  friendService,
+  FriendRequest,
   FriendSuggestion,
   FriendSearchFilters
 } from '../services/friendService';
-import { 
-  privacyService, 
-  PrivacySettings, 
+import {
+  privacyService,
+  PrivacySettings,
   ConsentSettings,
   DataRetentionSettings
 } from '../services/privacyService';
@@ -50,43 +50,45 @@ export interface UserContextType {
   // User state
   userState: UserState;
   friendsState: FriendsState;
-  
+
   // User profile actions
   createUserProfile: (data: CreateUserProfileData) => Promise<boolean>;
   updateUserProfile: (updates: UpdateUserProfileData) => Promise<boolean>;
   refreshUserProfile: () => Promise<void>;
   uploadProfilePicture: (file: File) => Promise<string | null>;
   deleteProfilePicture: () => Promise<boolean>;
-  
+
   // User preferences
   updateUserPreferences: (preferences: Partial<UserPreferences>) => Promise<boolean>;
   refreshUserPreferences: () => Promise<void>;
-  
+
   // Privacy settings
   updatePrivacySettings: (settings: Partial<PrivacySettings>) => Promise<boolean>;
   updateConsentSettings: (consent: Partial<ConsentSettings>) => Promise<boolean>;
   refreshPrivacySettings: () => Promise<void>;
-  
+
   // User search
   searchUsers: (filters: UserSearchFilters) => Promise<UserProfile[]>;
-  
+
   // Friends actions
   sendFriendRequest: (userId: string, message?: string) => Promise<boolean>;
   acceptFriendRequest: (requestId: string) => Promise<boolean>;
   declineFriendRequest: (requestId: string) => Promise<boolean>;
+  cancelFriendRequest: (requestId: string) => Promise<boolean>;
   removeFriend: (friendId: string) => Promise<boolean>;
+  blockUser: (targetUserId: string) => Promise<boolean>;
   refreshFriends: () => Promise<void>;
   refreshFriendRequests: () => Promise<void>;
   refreshFriendSuggestions: () => Promise<void>;
   searchFriends: (filters: FriendSearchFilters) => Promise<UserProfile[]>;
-  
+
   // User statistics
   refreshUserStats: () => Promise<void>;
-  
+
   // Data management
   exportUserData: () => Promise<any>;
   deleteUserData: () => Promise<boolean>;
-  
+
   // Utility functions
   clearError: () => void;
   refreshAll: () => Promise<void>;
@@ -98,7 +100,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 // Provider component
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user: authUser, isAuthenticated } = useAuth();
-  
+
   // User state
   const [userState, setUserState] = useState<UserState>({
     profile: null,
@@ -539,6 +541,29 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const cancelFriendRequest = async (requestId: string): Promise<boolean> => {
+    if (!authUser) return false;
+
+    setFriendsState(prev => ({ ...prev, isUpdating: true, error: null }));
+
+    try {
+      const success = await friendService.cancelFriendRequest(requestId);
+      if (success) {
+        await refreshFriendRequests();
+        setFriendsState(prev => ({ ...prev, isUpdating: false }));
+      }
+      return success;
+    } catch (error: any) {
+      console.error('Error canceling friend request:', error);
+      setFriendsState(prev => ({
+        ...prev,
+        isUpdating: false,
+        error: error.message || 'Failed to cancel friend request',
+      }));
+      return false;
+    }
+  };
+
   const removeFriend = async (friendId: string): Promise<boolean> => {
     if (!authUser) return false;
 
@@ -557,6 +582,29 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ...prev,
         isUpdating: false,
         error: error.message || 'Failed to remove friend',
+      }));
+      return false;
+    }
+  };
+
+  const blockUser = async (targetUserId: string): Promise<boolean> => {
+    if (!authUser) return false;
+
+    setFriendsState(prev => ({ ...prev, isUpdating: true, error: null }));
+
+    try {
+      const success = await friendService.blockUser(authUser.id, targetUserId);
+      if (success) {
+        await Promise.all([refreshFriends(), refreshFriendRequests()]);
+        setFriendsState(prev => ({ ...prev, isUpdating: false }));
+      }
+      return success;
+    } catch (error: any) {
+      console.error('Error blocking user:', error);
+      setFriendsState(prev => ({
+        ...prev,
+        isUpdating: false,
+        error: error.message || 'Failed to block user',
       }));
       return false;
     }
@@ -685,43 +733,45 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // User state
     userState,
     friendsState,
-    
+
     // User profile actions
     createUserProfile,
     updateUserProfile,
     refreshUserProfile,
     uploadProfilePicture,
     deleteProfilePicture,
-    
+
     // User preferences
     updateUserPreferences,
     refreshUserPreferences,
-    
+
     // Privacy settings
     updatePrivacySettings,
     updateConsentSettings,
     refreshPrivacySettings,
-    
+
     // User search
     searchUsers,
-    
+
     // Friends actions
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
+    cancelFriendRequest,
     removeFriend,
+    blockUser,
     refreshFriends,
     refreshFriendRequests,
     refreshFriendSuggestions,
     searchFriends,
-    
+
     // User statistics
     refreshUserStats,
-    
+
     // Data management
     exportUserData,
     deleteUserData,
-    
+
     // Utility functions
     clearError,
     refreshAll,
@@ -744,4 +794,4 @@ export const useUser = (): UserContextType => {
 };
 
 // Export types for use in other components
-export type { UserState, FriendsState, UserContextType };
+// Removed redundant export type { UserState, FriendsState, UserContextType };

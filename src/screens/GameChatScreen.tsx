@@ -24,6 +24,7 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
     text: string;
     senderName: string;
     senderId: string;
+    senderAvatar?: string;
     timestamp: Date;
     isMine: boolean;
   }>>([]);
@@ -55,13 +56,14 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
         const senderName =
           isMine
             ? (user.email || 'You')
-            : (m.sender?.display_name || m.user?.display_name || 'Unknown');
+            : (m.sender?.display_name || 'Unknown');
 
         return {
           id: m.id,
           text,
           senderName,
           senderId: senderId || user.id,
+          senderAvatar: m.sender?.avatar_url,
           timestamp: new Date(m.created_at),
           isMine,
         };
@@ -95,8 +97,9 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
             {
               id: msg.id,
               text,
-              senderName,
+              senderName: msg.sender?.display_name || 'Unknown',
               senderId: senderId || user.id,
+              senderAvatar: msg.sender?.avatar_url,
               timestamp: new Date(msg.created_at),
               isMine,
             },
@@ -140,6 +143,7 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
             text,
             senderName: user.email || 'You',
             senderId,
+            senderAvatar: (user as any).avatar_url,
             timestamp: new Date(sent.created_at),
             isMine: true,
           },
@@ -160,13 +164,13 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
     <SafeAreaView style={styles.container}>
       {/* Header - matching ProfileScreen design */}
       <View style={styles.header}>
-        <Image 
-          source={require('../../assets/logo.png')} 
+        <Image
+          source={require('../../assets/logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
         <Text style={styles.headerTitle}>{game?.name || 'Game Chat'}</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
@@ -176,7 +180,7 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
       </View>
 
       {/* Messages Container */}
-      <ScrollView 
+      <ScrollView
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesContent}
         showsVerticalScrollIndicator={false}
@@ -185,26 +189,73 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
           <View
             key={message.id}
             style={[
-              styles.messageBubble,
-              message.isMine ? styles.myMessage : styles.otherMessage,
+              styles.messageWrapper,
+              message.isMine ? styles.myMessageWrapper : styles.otherMessageWrapper,
             ]}
           >
-            <Text 
-              style={[
-                styles.messageText,
-                message.isMine && styles.myMessageText
-              ]}
-            >
-              {message.text}
-            </Text>
-            <Text 
-              style={[
-                styles.messageTime,
-                message.isMine && styles.myMessageTime
-              ]}
-            >
-              {message.timestamp.toLocaleTimeString()}
-            </Text>
+            {!message.isMine && (
+              <View style={styles.avatarContainer}>
+                {message.senderAvatar ? (
+                  <Image source={{ uri: message.senderAvatar }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.avatarInitials}>
+                      {message.senderName.substring(0, 1).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            <View style={[
+              styles.messageContent,
+              message.isMine ? styles.myMessageContent : styles.otherMessageContent
+            ]}>
+              {!message.isMine && (
+                <Text style={styles.senderNickname}>{message.senderName}</Text>
+              )}
+              {message.isMine && (
+                <Text style={[styles.senderNickname, styles.myNickname]}>You</Text>
+              )}
+
+              <View
+                style={[
+                  styles.messageBubble,
+                  message.isMine ? styles.myMessage : styles.otherMessage,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.messageText,
+                    message.isMine && styles.myMessageText
+                  ]}
+                >
+                  {message.text}
+                </Text>
+                <Text
+                  style={[
+                    styles.messageTime,
+                    message.isMine && styles.myMessageTime
+                  ]}
+                >
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
+            </View>
+
+            {message.isMine && (
+              <View style={styles.avatarContainer}>
+                {message.senderAvatar ? (
+                  <Image source={{ uri: message.senderAvatar }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.avatarInitials}>
+                      {message.senderName.substring(0, 1).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         ))}
       </ScrollView>
@@ -221,19 +272,19 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
             multiline
             maxLength={500}
           />
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.sendButton,
               (!newMessage.trim() || isSending) && styles.sendButtonDisabled
-            ]} 
+            ]}
             onPress={sendMessage}
             disabled={!newMessage.trim() || isSending}
             activeOpacity={0.7}
           >
-            <Ionicons 
-              name="send" 
-              size={20} 
-              color={newMessage.trim() ? '#000000' : '#9CA3AF'} 
+            <Ionicons
+              name="send"
+              size={20}
+              color={newMessage.trim() ? '#000000' : '#9CA3AF'}
             />
           </TouchableOpacity>
         </View>
@@ -320,6 +371,59 @@ const styles = StyleSheet.create({
   myMessageTime: {
     color: '#000000',
     opacity: 0.6,
+  },
+  // New Styles
+  messageWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginVertical: 4,
+    gap: 8,
+  },
+  myMessageWrapper: {
+    justifyContent: 'flex-end',
+  },
+  otherMessageWrapper: {
+    justifyContent: 'flex-start',
+  },
+  messageContent: {
+    maxWidth: '75%',
+  },
+  myMessageContent: {
+    alignItems: 'flex-end',
+  },
+  otherMessageContent: {
+    alignItems: 'flex-start',
+  },
+  avatarContainer: {
+    width: 32,
+    height: 32,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+  },
+  avatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E5E7EB',
+  },
+  avatarInitials: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#374151',
+  },
+  senderNickname: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
+    marginBottom: 4,
+    marginLeft: 4,
+  },
+  myNickname: {
+    marginRight: 4,
+    marginLeft: 0,
   },
   // Input Styles
   inputSafeArea: {

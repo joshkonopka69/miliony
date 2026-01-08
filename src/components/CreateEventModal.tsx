@@ -10,10 +10,15 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { supabase } from '../services/supabase';
+import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../config/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { theme } from '../styles/theme';
+import { formatEventDate, formatEventTime } from '../utils/eventGrouping';
+import { useTranslation } from '../contexts/TranslationContext';
 
 interface Location {
   name: string;
@@ -31,16 +36,16 @@ interface CreateEventModalProps {
 }
 
 const SPORT_TYPES = [
-  { value: 'basketball', label: 'Basketball', emoji: '🏀' },
-  { value: 'football', label: 'Football', emoji: '⚽' },
-  { value: 'running', label: 'Running', emoji: '🏃‍♂️' },
-  { value: 'tennis', label: 'Tennis', emoji: '🎾' },
-  { value: 'cycling', label: 'Cycling', emoji: '🚴‍♂️' },
-  { value: 'swimming', label: 'Swimming', emoji: '🏊‍♂️' },
-  { value: 'gym', label: 'Gym/Fitness', emoji: '💪' },
-  { value: 'volleyball', label: 'Volleyball', emoji: '🏐' },
-  { value: 'climbing', label: 'Climbing', emoji: '🧗‍♂️' },
-  { value: 'boxing', label: 'Boxing', emoji: '🥊' },
+  { value: 'basketball', label: 'Basketball', emoji: '🏀', icon: 'basketball-outline' },
+  { value: 'football', label: 'Football', emoji: '⚽', icon: 'football-outline' },
+  { value: 'running', label: 'Running', emoji: '🏃‍♂️', icon: 'walk-outline' },
+  { value: 'tennis', label: 'Tennis', emoji: '🎾', icon: 'tennisball-outline' },
+  { value: 'cycling', label: 'Cycling', emoji: '🚴‍♂️', icon: 'bicycle-outline' },
+  { value: 'swimming', label: 'Swimming', emoji: '🏊‍♂️', icon: 'water-outline' },
+  { value: 'gym', label: 'Gym/Fitness', emoji: '💪', icon: 'barbell-outline' },
+  { value: 'volleyball', label: 'Volleyball', emoji: '🏐', icon: 'american-football-outline' },
+  { value: 'climbing', label: 'Climbing', emoji: '🧗‍♂️', icon: 'bonfire-outline' },
+  { value: 'boxing', label: 'Boxing', emoji: '🥊', icon: 'fitness-outline' },
 ];
 
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
@@ -49,9 +54,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onClose,
   onEventCreated,
 }) => {
-  // Get authenticated user from Auth Context
+  const { t, language } = useTranslation();
   const { getUserId } = useAuth();
-  
+
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -59,52 +64,59 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [dateTime, setDateTime] = useState(new Date(Date.now() + 24 * 60 * 60 * 1000)); // Tomorrow
   const [maxParticipants, setMaxParticipants] = useState(10);
   const [minParticipants, setMinParticipants] = useState(2);
-  
+
   // UI state
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
+  const mergeDatePreserveTime = (base: Date, picked: Date): Date => {
+    const newDate = new Date(base);
+    newDate.setFullYear(picked.getFullYear());
+    newDate.setMonth(picked.getMonth());
+    newDate.setDate(picked.getDate());
+    return newDate;
+  };
+
+  const mergeTimePreserveDate = (base: Date, picked: Date): Date => {
+    const newDate = new Date(base);
+    newDate.setHours(picked.getHours());
+    newDate.setMinutes(picked.getMinutes());
+    newDate.setSeconds(0);
+    newDate.setMilliseconds(0);
+    return newDate;
+  };
+
   const handleCreate = async () => {
-    // Validation
     if (!title.trim()) {
-      Alert.alert('Missing Information', 'Please enter an event title');
+      Alert.alert(t.common.error, t.createEvent?.missingTitle || 'Please enter an event title');
       return;
     }
 
     if (dateTime <= new Date()) {
-      Alert.alert('Invalid Date', 'Event must be scheduled for a future time');
+      Alert.alert(t.common.error, t.createEvent?.invalidDate || 'Event must be scheduled for a future time');
       return;
     }
 
     if (minParticipants > maxParticipants) {
-      Alert.alert('Invalid Participants', 'Minimum participants cannot exceed maximum');
+      Alert.alert(t.common.error, t.createEvent?.invalidParticipants || 'Minimum participants cannot exceed maximum');
       return;
     }
 
     if (!location) {
-      Alert.alert('Error', 'Location information is missing');
+      Alert.alert(t.common.error, t.createEvent?.missingLocation || 'Location information is missing');
       return;
     }
 
     setIsCreating(true);
 
     try {
-      // Get current user ID from Auth Context
       const userId = getUserId();
-      
-      console.log('🔍 Checking authentication...');
-      console.log('   User ID from AuthContext:', userId || 'None');
-      
       if (!userId) {
-        console.error('❌ No authenticated user found');
-        throw new Error('You must be logged in to create events. Please sign in and try again.');
+        throw new Error('You must be logged in to create events.');
       }
 
-      console.log('✅ User authenticated:', userId);
-
-      // Create event in database
-      const { data: event, error: eventError} = await supabase
+      const { data: event, error: eventError } = await supabase
         .from('events')
         .insert({
           created_by: userId,
@@ -124,40 +136,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         .select()
         .single();
 
-      if (eventError) {
-        console.error('❌ Error creating event:', eventError);
-        throw new Error(eventError.message || 'Failed to create event');
-      }
+      if (eventError) throw eventError;
 
-      console.log('✅ Event created:', event.id);
-
-      // Add creator as first participant
-      const { error: participantError } = await supabase
-        .from('event_participants')
-        .insert({
-          event_id: event.id,
-          user_id: userId,
-          joined_at: new Date().toISOString(),
-        });
-
-      if (participantError) {
-        console.warn('⚠️ Warning: Failed to add creator as participant:', participantError);
-        // Don't throw - event is created, this is just a bonus
-      } else {
-        console.log('✅ Creator added as participant');
-      }
+      await supabase.from('event_participants').insert({
+        event_id: event.id,
+        user_id: userId,
+        joined_at: new Date().toISOString(),
+      });
 
       Alert.alert('Success! 🎉', 'Your event has been created');
-      
-      // Reset form
       resetForm();
-      
-      // Notify parent with the created event
       onEventCreated(event);
-      
-      // Close modal
       onClose();
-
     } catch (error: any) {
       console.error('❌ Error creating event:', error);
       Alert.alert('Error', error.message || 'Failed to create event. Please try again.');
@@ -181,60 +171,35 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     onClose();
   };
 
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const formatTime = (date: Date): string => {
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
-
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleClose}
-    >
-      <View style={styles.container}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={handleClose}
-            style={styles.closeButton}
-            disabled={isCreating}
-          >
-            <Text style={styles.closeButtonText}>✕</Text>
+          <TouchableOpacity onPress={handleClose} style={styles.backButton} disabled={isCreating}>
+            <Ionicons name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Event</Text>
-          <View style={styles.closeButton} />
+          <Text style={styles.headerTitle}>{t.createEvent?.title || 'Create Event'}</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* Location Info */}
-          <View style={styles.locationBanner}>
-            <Text style={styles.locationEmoji}>📍</Text>
-            <View style={styles.locationInfo}>
-              <Text style={styles.locationName}>{location?.name}</Text>
-              <Text style={styles.locationAddress} numberOfLines={1}>
-                {location?.address}
-              </Text>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {/* Location Card */}
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="location" size={20} color={theme.colors.accent} />
+              <Text style={styles.sectionTitle}>{t.eventDetails?.location || 'Location'}</Text>
             </View>
+            <Text style={styles.locationName}>{location?.name}</Text>
+            <Text style={styles.locationAddress}>{location?.address}</Text>
           </View>
 
-          {/* Event Title */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>
-              Event Title <Text style={styles.required}>*</Text>
-            </Text>
+          {/* Title Input */}
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="pencil" size={20} color={theme.colors.accent} />
+              <Text style={styles.sectionTitle}>{t.createEvent?.eventTitle || 'Event Title'}</Text>
+            </View>
             <TextInput
               style={styles.input}
               placeholder="e.g., Friendly Basketball Game"
@@ -246,33 +211,21 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <Text style={styles.charCount}>{title.length}/50</Text>
           </View>
 
-          {/* Sport Type */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>
-              Sport Type <Text style={styles.required}>*</Text>
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.sportChipsContainer}
-            >
+          {/* Sport Selection */}
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="trophy" size={20} color={theme.colors.accent} />
+              <Text style={styles.sectionTitle}>{t.createEvent?.sportType || 'Sport Type'}</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sportScroll}>
               {SPORT_TYPES.map((sport) => (
                 <TouchableOpacity
                   key={sport.value}
-                  style={[
-                    styles.sportChip,
-                    selectedSport === sport.value && styles.sportChipSelected,
-                  ]}
+                  style={[styles.sportChip, selectedSport === sport.value && styles.sportChipActive]}
                   onPress={() => setSelectedSport(sport.value)}
-                  disabled={isCreating}
                 >
                   <Text style={styles.sportEmoji}>{sport.emoji}</Text>
-                  <Text
-                    style={[
-                      styles.sportLabel,
-                      selectedSport === sport.value && styles.sportLabelSelected,
-                    ]}
-                  >
+                  <Text style={[styles.sportLabel, selectedSport === sport.value && styles.sportLabelActive]}>
                     {sport.label}
                   </Text>
                 </TouchableOpacity>
@@ -281,363 +234,256 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           </View>
 
           {/* Date & Time */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>
-              Date & Time <Text style={styles.required}>*</Text>
-            </Text>
-            
-            <View style={styles.dateTimeRow}>
-              {/* Date Picker */}
-              <TouchableOpacity
-                style={styles.dateTimeButton}
-                onPress={() => setShowDatePicker(true)}
-                disabled={isCreating}
-              >
-                <Text style={styles.dateTimeEmoji}>📅</Text>
-                <Text style={styles.dateTimeText}>{formatDate(dateTime)}</Text>
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="calendar" size={20} color={theme.colors.accent} />
+              <Text style={styles.sectionTitle}>{t.createEvent?.dateTime || 'Date & Time'}</Text>
+            </View>
+            <View style={styles.row}>
+              <TouchableOpacity style={styles.pickerButton} onPress={() => setShowDatePicker(true)}>
+                <Ionicons name="calendar-outline" size={20} color={theme.colors.accent} />
+                <Text style={styles.pickerText}>{formatEventDate(dateTime, language)}</Text>
               </TouchableOpacity>
-
-              {/* Time Picker */}
-              <TouchableOpacity
-                style={styles.dateTimeButton}
-                onPress={() => setShowTimePicker(true)}
-                disabled={isCreating}
-              >
-                <Text style={styles.dateTimeEmoji}>🕐</Text>
-                <Text style={styles.dateTimeText}>{formatTime(dateTime)}</Text>
+              <TouchableOpacity style={styles.pickerButton} onPress={() => setShowTimePicker(true)}>
+                <Ionicons name="time-outline" size={20} color={theme.colors.accent} />
+                <Text style={styles.pickerText}>{formatEventTime(dateTime, language)}</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Date Picker Modal */}
+            {/* Date Picker */}
             {showDatePicker && (
-              <DateTimePicker
-                value={dateTime}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, selectedDate) => {
-                  setShowDatePicker(Platform.OS === 'ios');
-                  if (selectedDate) {
-                    setDateTime(selectedDate);
-                  }
-                }}
-                minimumDate={new Date()}
-              />
+              <View style={styles.pickerContainer}>
+                {Platform.OS === 'ios' && (
+                  <View style={styles.pickerHeader}>
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <Text style={styles.doneText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                <DateTimePicker
+                  value={dateTime}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, date) => {
+                    if (Platform.OS !== 'ios') {
+                      setShowDatePicker(false);
+                    }
+                    if (date) {
+                      setDateTime(prev => mergeDatePreserveTime(prev, date));
+                    }
+                  }}
+                  minimumDate={new Date()} // Keep it for date, usually safe here
+                  themeVariant="light"
+                />
+              </View>
             )}
 
-            {/* Time Picker Modal */}
+            {/* Time Picker */}
             {showTimePicker && (
-              <DateTimePicker
-                value={dateTime}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, selectedDate) => {
-                  setShowTimePicker(Platform.OS === 'ios');
-                  if (selectedDate) {
-                    setDateTime(selectedDate);
-                  }
-                }}
-              />
+              <View style={styles.pickerContainer}>
+                {Platform.OS === 'ios' && (
+                  <View style={styles.pickerHeader}>
+                    <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                      <Text style={styles.doneText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                <DateTimePicker
+                  value={dateTime}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, date) => {
+                    if (Platform.OS !== 'ios') {
+                      setShowTimePicker(false);
+                    }
+                    if (date) {
+                      setDateTime(prev => mergeTimePreserveDate(prev, date));
+                    }
+                  }}
+                  themeVariant="light"
+                />
+              </View>
             )}
           </View>
 
           {/* Participants */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Number of Players</Text>
-            
-            {/* Max Participants */}
-            <View style={styles.participantRow}>
-              <Text style={styles.participantLabel}>Maximum</Text>
-              <View style={styles.participantControls}>
-                <TouchableOpacity
-                  style={styles.participantButton}
-                  onPress={() => setMaxParticipants(Math.max(2, maxParticipants - 1))}
-                  disabled={isCreating}
-                >
-                  <Text style={styles.participantButtonText}>−</Text>
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="people" size={20} color={theme.colors.accent} />
+              <Text style={styles.sectionTitle}>{t.eventDetails?.players || 'Players'}</Text>
+            </View>
+            <View style={styles.counterRow}>
+              <Text style={styles.counterLabel}>Maximum</Text>
+              <View style={styles.counter}>
+                <TouchableOpacity style={styles.counterBtn} onPress={() => setMaxParticipants(Math.max(2, maxParticipants - 1))}>
+                  <Text style={styles.counterBtnText}>-</Text>
                 </TouchableOpacity>
-                <Text style={styles.participantValue}>{maxParticipants}</Text>
-                <TouchableOpacity
-                  style={styles.participantButton}
-                  onPress={() => setMaxParticipants(Math.min(50, maxParticipants + 1))}
-                  disabled={isCreating}
-                >
-                  <Text style={styles.participantButtonText}>+</Text>
+                <Text style={styles.counterValue}>{maxParticipants}</Text>
+                <TouchableOpacity style={styles.counterBtn} onPress={() => setMaxParticipants(Math.min(50, maxParticipants + 1))}>
+                  <Text style={styles.counterBtnText}>+</Text>
                 </TouchableOpacity>
               </View>
             </View>
-
-            {/* Min Participants */}
-            <View style={styles.participantRow}>
-              <Text style={styles.participantLabel}>Minimum</Text>
-              <View style={styles.participantControls}>
-                <TouchableOpacity
-                  style={styles.participantButton}
-                  onPress={() => setMinParticipants(Math.max(1, minParticipants - 1))}
-                  disabled={isCreating}
-                >
-                  <Text style={styles.participantButtonText}>−</Text>
+            <View style={styles.counterRow}>
+              <Text style={styles.counterLabel}>Minimum</Text>
+              <View style={styles.counter}>
+                <TouchableOpacity style={styles.counterBtn} onPress={() => setMinParticipants(Math.max(1, minParticipants - 1))}>
+                  <Text style={styles.counterBtnText}>-</Text>
                 </TouchableOpacity>
-                <Text style={styles.participantValue}>{minParticipants}</Text>
-                <TouchableOpacity
-                  style={styles.participantButton}
-                  onPress={() => setMinParticipants(Math.min(maxParticipants, minParticipants + 1))}
-                  disabled={isCreating}
-                >
-                  <Text style={styles.participantButtonText}>+</Text>
+                <Text style={styles.counterValue}>{minParticipants}</Text>
+                <TouchableOpacity style={styles.counterBtn} onPress={() => setMinParticipants(Math.min(maxParticipants, minParticipants + 1))}>
+                  <Text style={styles.counterBtnText}>+</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
 
           {/* Description */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Description (Optional)</Text>
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="document-text" size={20} color={theme.colors.accent} />
+              <Text style={styles.sectionTitle}>{t.eventDetails?.description || 'Description'}</Text>
+            </View>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Add details about skill level, equipment needed, etc..."
+              placeholder="Skill level, equipment needed..."
               value={description}
               onChangeText={setDescription}
               multiline
               numberOfLines={4}
               maxLength={500}
-              textAlignVertical="top"
-              editable={!isCreating}
             />
             <Text style={styles.charCount}>{description.length}/500</Text>
           </View>
 
-          <View style={{ height: 100 }} />
+          <View style={{ height: 40 }} />
         </ScrollView>
 
-        {/* Create Button */}
+        {/* Footer */}
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.createButton, isCreating && styles.createButtonDisabled]}
+            style={[styles.createBtn, isCreating && styles.createBtnDisabled]}
             onPress={handleCreate}
             disabled={isCreating}
           >
             {isCreating ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#000" />
             ) : (
-              <Text style={styles.createButtonText}>Create Event</Text>
+              <>
+                <Ionicons name="add-circle-outline" size={22} color="#000" />
+                <Text style={styles.createBtnText}>Create Event</Text>
+              </>
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
   header: {
+    height: 60,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#F0F0F0',
   },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 20,
-    color: '#6b7280',
-    fontWeight: '600',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  locationBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#eff6ff',
+  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+  headerSpacer: { width: 40 },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 16 },
+  card: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
     padding: 16,
-    marginHorizontal: 20,
-    marginTop: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#dbeafe',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  locationEmoji: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  locationInfo: {
-    flex: 1,
-  },
-  locationName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e40af',
-    marginBottom: 2,
-  },
-  locationAddress: {
-    fontSize: 13,
-    color: '#3b82f6',
-  },
-  formGroup: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  required: {
-    color: '#ef4444',
-  },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
+  locationName: { fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 4 },
+  locationAddress: { fontSize: 14, color: '#6B7280' },
   input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
     padding: 12,
-    fontSize: 16,
-    backgroundColor: '#f9fafb',
-    color: '#111827',
+    fontSize: 15,
+    color: '#1F2937',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  textArea: {
-    height: 100,
-    paddingTop: 12,
-  },
-  charCount: {
-    fontSize: 12,
-    color: '#9ca3af',
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  sportChipsContainer: {
-    paddingVertical: 8,
-    gap: 8,
-  },
+  textArea: { height: 100, textAlignVertical: 'top' },
+  charCount: { fontSize: 12, color: '#9CA3AF', textAlign: 'right', marginTop: 4 },
+  sportScroll: { paddingVertical: 4 },
   sportChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    gap: 6,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  sportChipSelected: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
-  },
-  sportEmoji: {
-    fontSize: 20,
-  },
-  sportLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  sportLabelSelected: {
-    color: '#fff',
-  },
-  dateTimeRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  dateTimeButton: {
+  sportChipActive: { backgroundColor: theme.colors.accent + '20', borderColor: theme.colors.accent },
+  sportEmoji: { fontSize: 18, marginRight: 6 },
+  sportLabel: { fontSize: 14, color: '#4B5563', fontWeight: '500' },
+  sportLabelActive: { color: theme.colors.accentDark, fontWeight: '700' },
+  row: { flexDirection: 'row', gap: 12 },
+  pickerButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
     gap: 8,
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  dateTimeEmoji: {
-    fontSize: 20,
-  },
-  dateTimeText: {
-    fontSize: 15,
-    color: '#111827',
-    fontWeight: '500',
-  },
-  participantRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  participantLabel: {
-    fontSize: 15,
-    color: '#374151',
-  },
-  participantControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  participantButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#6366f1',
+  pickerText: { fontSize: 15, color: '#1F2937', fontWeight: '500' },
+  pickerContainer: { marginTop: 12, backgroundColor: '#FFF', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#F0F0F0' },
+  pickerHeader: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', alignItems: 'flex-end' },
+  doneText: { color: theme.colors.accent, fontWeight: '700', fontSize: 16 },
+  counterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
+  counterLabel: { fontSize: 15, color: '#4B5563' },
+  counter: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  counterBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  participantButtonText: {
-    fontSize: 20,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  participantValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    minWidth: 30,
-    textAlign: 'center',
-  },
-  footer: {
-    padding: 20,
-    paddingBottom: 34,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    backgroundColor: '#fff',
-  },
-  createButton: {
-    backgroundColor: '#6366f1',
-    paddingVertical: 16,
-    borderRadius: 12,
+  counterBtnText: { color: '#000', fontSize: 20, fontWeight: '700' },
+  counterValue: { fontSize: 18, fontWeight: '700', color: '#1F2937', minWidth: 24, textAlign: 'center' },
+  footer: { padding: 16, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingBottom: Platform.OS === 'ios' ? 34 : 16 },
+  createBtn: {
+    backgroundColor: theme.colors.accent,
+    flexDirection: 'row',
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6366f1',
+    gap: 8,
+    shadowColor: theme.colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
-  createButtonDisabled: {
-    opacity: 0.6,
-  },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
+  createBtnDisabled: { opacity: 0.6 },
+  createBtnText: { color: '#000', fontSize: 17, fontWeight: '700' },
 });

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Alert, 
-  Platform, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  Platform,
   TouchableOpacity,
   Modal,
   Dimensions,
@@ -16,13 +16,15 @@ import EventPin from './EventPin';
 import EventSearchFilter, { EventSearchFilters } from './EventSearchFilter';
 import LiveEventStatus from './LiveEventStatus';
 import * as Location from 'expo-location';
-import { 
-  ActivityFilterModal, 
-  EventCreationModal, 
-  EventDetailsModal, 
+import {
   VenueInfoSheet,
-  PlaceInfoModal
+  PlaceInfoModal,
+  ActivityFilterModal,
+  EventCreationModal,
+  EventDetailsModal
 } from './index';
+import { Place, PlaceDetails } from '../services/placesApi';
+import { ActivityFilter } from './ActivityFilterModal';
 import LoadingSpinner from './LoadingSpinner';
 import { PlaceInfoSkeleton } from './SkeletonLoader';
 import { placesApiService } from '../services/placesApi';
@@ -32,6 +34,7 @@ import { authService } from '../services/authService';
 import { notificationService } from '../services/notificationService';
 import { useAppNavigation } from '../navigation';
 import { ROUTES } from '../navigation/types';
+import { useAuth } from '../contexts/AuthContext';
 import { errorHandler } from '../utils/errorHandler';
 import { hapticFeedback } from '../utils/hapticFeedback';
 import { performanceOptimizer } from '../utils/performanceOptimizer';
@@ -70,6 +73,7 @@ export default function EnhancedInteractiveMap({
   events = [], // Default to empty array
   externalFilters, // Filters from parent
 }: EnhancedInteractiveMapProps) {
+  const { getUserId } = useAuth();
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const navigation = useAppNavigation();
   const mapRef = useRef<any>(null);
@@ -103,7 +107,7 @@ export default function EnhancedInteractiveMap({
   }, [externalFilters]);
   const [loading, setLoading] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery || '');
-  
+
   // Custom pin state variables
   const [customPins, setCustomPins] = useState<Array<{
     id: string;
@@ -113,12 +117,12 @@ export default function EnhancedInteractiveMap({
   }>>([]);
   const [selectedPin, setSelectedPin] = useState<string | null>(null);
   const [showPinDetails, setShowPinDetails] = useState(false);
-  
+
   // Place details state variables
   const [showPlaceInfo, setShowPlaceInfo] = useState(false);
   const [selectedPlaceDetails, setSelectedPlaceDetails] = useState<PlaceDetails | null>(null);
   const [placeDetailsLoading, setPlaceDetailsLoading] = useState(false);
-  
+
   // Event management state
   const [showEventSearchFilter, setShowEventSearchFilter] = useState(false);
   const [eventSearchFilters, setEventSearchFilters] = useState<EventSearchFilters>({
@@ -195,7 +199,7 @@ export default function EnhancedInteractiveMap({
         event.placeName.toLowerCase().includes(localSearchQuery.toLowerCase())
       );
       setFilteredEvents(filteredEvents);
-      
+
       // Navigate to search results screen if there are results
       if (filteredEvents.length > 0) {
         navigation.navigate(ROUTES.EVENT_SEARCH_RESULTS, {
@@ -222,7 +226,7 @@ export default function EnhancedInteractiveMap({
 
       const location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
-      
+
       setUserLocation({ lat: latitude, lng: longitude });
       setRegion({
         latitude,
@@ -257,7 +261,7 @@ export default function EnhancedInteractiveMap({
         },
         ...eventSearchFilters,
       });
-      
+
       // Ensure events is an array and filter out any null/undefined events
       const validEvents = Array.isArray(events) ? events.filter(event => event && event.id) : [];
       setFilteredEvents(validEvents);
@@ -276,12 +280,12 @@ export default function EnhancedInteractiveMap({
 
     console.log('EnhancedInteractiveMap: searchPlaces called with filters:', currentFilters);
     console.log('EnhancedInteractiveMap: userLocation:', userLocation);
-    
+
     setLoading(true);
     try {
       const placesData = await placesApiService.searchNearby(userLocation, currentFilters);
       console.log('EnhancedInteractiveMap: Received places data:', placesData.length, 'places');
-      
+
       // Optimize markers for performance
       const optimizedPlaces = performanceOptimizer.optimizeMapMarkers(placesData, 50);
       setPlaces(optimizedPlaces);
@@ -302,7 +306,7 @@ export default function EnhancedInteractiveMap({
     } catch (error) {
       const appError = errorHandler.handleApiError(error, 'searchPlaces');
       errorHandler.showUserFriendlyError(appError, 'Search');
-      
+
       // Set empty results to clear the map
       setPlaces([]);
     } finally {
@@ -328,22 +332,22 @@ export default function EnhancedInteractiveMap({
   const handlePlacePress = async (place: Place) => {
     console.log('🎯 Place pressed:', place.name, place.placeId);
     setSelectedPlace(place);
-    
+
     // Haptic feedback for place selection
     try {
       await hapticFeedback.placeSelected();
     } catch (error) {
       console.log('Haptic feedback error:', error);
     }
-    
+
     // Fetch detailed place information with loading state
     setPlaceDetailsLoading(true);
     console.log('🔄 Fetching place details for:', place.placeId);
-    
+
     try {
       const placeDetails = await placesApiService.getPlaceDetails(place.placeId);
       console.log('📋 Place details received:', placeDetails);
-      
+
       if (placeDetails) {
         setSelectedPlaceDetails(placeDetails);
         setShowPlaceInfo(true);
@@ -379,8 +383,9 @@ export default function EnhancedInteractiveMap({
     if (!selectedPlace) return;
 
     try {
+      const userId = getUserId();
       const newEvent = await firestoreService.createEvent({
-        creatorId: 'user123', // Mock user ID
+        creatorId: userId || 'anonymous',
         activity: eventData.activity,
         placeId: selectedPlace.placeId,
         placeName: selectedPlace.name,
@@ -405,9 +410,14 @@ export default function EnhancedInteractiveMap({
       console.error('Event ID is null or undefined');
       return;
     }
-    
+
     try {
-      await firestoreService.deleteEvent(eventId, 'user123');
+      const userId = getUserId();
+      if (!userId) {
+        Alert.alert('Error', 'You must be logged in to delete events');
+        return;
+      }
+      await firestoreService.deleteEvent(eventId, userId);
       setFilteredEvents(prev => prev.filter(event => event && event.id !== eventId));
       setShowEventDetails(false);
       Alert.alert('Success', 'Event deleted');
@@ -420,20 +430,20 @@ export default function EnhancedInteractiveMap({
   const handleMapPress = async (event: any) => {
     const { coordinate } = event.nativeEvent;
     const pinId = `pin_${Date.now()}`;
-    
+
     const newPin = {
       id: pinId,
       coordinate,
       title: 'Custom Location',
       description: `Lat: ${coordinate.latitude.toFixed(6)}, Lng: ${coordinate.longitude.toFixed(6)}`
     };
-    
+
     setCustomPins(prev => [...prev, newPin]);
     setSelectedPin(pinId);
-    
+
     // Haptic feedback for pin placement
     await hapticFeedback.mapPinPlaced();
-    
+
     // Show coordinates in an alert
     Alert.alert(
       'Pin Placed',
@@ -474,11 +484,11 @@ export default function EnhancedInteractiveMap({
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Save',
-          onPress: (newTitle) => {
+          onPress: (newTitle: string | undefined) => {
             if (newTitle && newTitle.trim()) {
-              setCustomPins(prev => 
-                prev.map(p => 
-                  p.id === pinId 
+              setCustomPins(prev =>
+                prev.map(p =>
+                  p.id === pinId
                     ? { ...p, title: newTitle.trim() }
                     : p
                 )
@@ -501,7 +511,7 @@ export default function EnhancedInteractiveMap({
       return;
     }
 
-    const pinList = customPins.map(pin => 
+    const pinList = customPins.map(pin =>
       `${pin.title}\n${pin.description}`
     ).join('\n\n');
 
@@ -549,7 +559,7 @@ export default function EnhancedInteractiveMap({
   const handleCreateMeetupFromPlace = (placeDetails: PlaceDetails) => {
     // Close place info modal
     setShowPlaceInfo(false);
-    
+
     // Open event creation modal with place details pre-filled
     setShowEventCreation(true);
   };
@@ -583,7 +593,7 @@ export default function EnhancedInteractiveMap({
 
   const handleLocationLongPress = (location: { latitude: number; longitude: number }) => {
     console.log('🖐️ EnhancedInteractiveMap: Long press detected at:', location);
-    
+
     // Create a place object for the random location
     const randomPlace = {
       name: 'Custom Location',
@@ -595,7 +605,7 @@ export default function EnhancedInteractiveMap({
       types: ['custom_location'],
       isCustomLocation: true, // Flag to identify this as a random location
     };
-    
+
     // Forward to parent (MapScreen) to show PlaceInfoModal
     if (onLocationSelect) {
       onLocationSelect(randomPlace);
@@ -606,8 +616,8 @@ export default function EnhancedInteractiveMap({
         `Would you like to create an event at this location?\n\nLat: ${location.latitude.toFixed(5)}\nLng: ${location.longitude.toFixed(5)}`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Create Event', 
+          {
+            text: 'Create Event',
             onPress: () => {
               Alert.alert('Feature Coming Soon', 'Event creation at custom locations will be available in the next update!');
             }
@@ -630,7 +640,7 @@ export default function EnhancedInteractiveMap({
       console.error('Event ID is null or undefined');
       return;
     }
-    
+
     try {
       const result = await enhancedEventService.joinEvent(eventId);
       if (result.success) {
@@ -651,7 +661,7 @@ export default function EnhancedInteractiveMap({
       console.error('Event ID is null or undefined');
       return;
     }
-    
+
     try {
       const result = await enhancedEventService.leaveEvent(eventId);
       if (result.success) {
@@ -686,81 +696,78 @@ export default function EnhancedInteractiveMap({
 
       {/* Search and Filter Container - Only show if hideControls is false */}
       {!hideControls && (
-      <View style={styles.searchFilterContainer} pointerEvents="box-none">
-        {/* Search Field */}
-        <View style={styles.searchContainer} pointerEvents="auto">
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search events..."
-            placeholderTextColor="#9ca3af"
-            value={localSearchQuery}
-            onChangeText={setLocalSearchQuery}
-          />
-          {loading ? (
-            <View style={styles.searchLoading}>
-              <ActivityIndicator size="small" color="#3b82f6" />
-            </View>
-          ) : localSearchQuery.length > 0 ? (
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={() => setLocalSearchQuery('')}
-            >
-              <Text style={styles.clearIcon}>✕</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
+        <View style={styles.searchFilterContainer} pointerEvents="box-none">
+          {/* Search Field */}
+          <View style={styles.searchContainer} pointerEvents="auto">
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search events..."
+              placeholderTextColor="#9ca3af"
+              value={localSearchQuery}
+              onChangeText={setLocalSearchQuery}
+            />
+            {loading ? (
+              <View style={styles.searchLoading}>
+                <ActivityIndicator size="small" color="#3b82f6" />
+              </View>
+            ) : localSearchQuery.length > 0 ? (
+              <TouchableOpacity
+                style={styles.clearButton}
+                onPress={() => setLocalSearchQuery('')}
+              >
+                <Text style={styles.clearIcon}>✕</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
 
-        {/* Filter Button */}
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            (currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && styles.filterButtonActive
-          ]}
-          onPress={() => setShowFilterModal(true)}
-          activeOpacity={0.8}
-          pointerEvents="auto"
-        >
-          <Text style={[
-            styles.filterButtonText,
-            (currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && styles.filterButtonTextActive
-          ]}>
-            Filter {(currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && '●'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Event Search Filter Button */}
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            (eventSearchFilters.activities.length > 0 || eventSearchFilters.query) && styles.filterButtonActive
-          ]}
-          onPress={() => setShowEventSearchFilter(true)}
-          activeOpacity={0.8}
-          pointerEvents="auto"
-        >
-          <Text style={[
-            styles.filterButtonText,
-            (eventSearchFilters.activities.length > 0 || eventSearchFilters.query) && styles.filterButtonTextActive
-          ]}>
-            Events {(eventSearchFilters.activities.length > 0 || eventSearchFilters.query) && '●'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Pin Management Button */}
-        {customPins.length > 0 && (
+          {/* Filter Button */}
           <TouchableOpacity
-            style={styles.pinManagementButton}
-            onPress={handleShowPinList}
+            style={[
+              styles.filterButton,
+              (currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && styles.filterButtonActive
+            ]}
+            onPress={() => setShowFilterModal(true)}
             activeOpacity={0.8}
-            pointerEvents="auto"
           >
-            <Text style={styles.pinManagementButtonText}>
-              📍 {customPins.length}
+            <Text style={[
+              styles.filterButtonText,
+              (currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && styles.filterButtonTextActive
+            ]}>
+              Filter {(currentFilters.types.length > 0 || currentFilters.keywords.length > 0) && '●'}
             </Text>
           </TouchableOpacity>
-        )}
-      </View>
+
+          {/* Event Search Filter Button */}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              (eventSearchFilters.activities.length > 0 || eventSearchFilters.query) && styles.filterButtonActive
+            ]}
+            onPress={() => setShowEventSearchFilter(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={[
+              styles.filterButtonText,
+              (eventSearchFilters.activities.length > 0 || eventSearchFilters.query) && styles.filterButtonTextActive
+            ]}>
+              Events {(eventSearchFilters.activities.length > 0 || eventSearchFilters.query) && '●'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Pin Management Button */}
+          {customPins.length > 0 && (
+            <TouchableOpacity
+              style={styles.pinManagementButton}
+              onPress={handleShowPinList}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.pinManagementButtonText}>
+                📍 {customPins.length}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
 
       {/* Loading Indicator */}
@@ -790,7 +797,7 @@ export default function EnhancedInteractiveMap({
       <EventCreationModal
         visible={showEventCreation}
         onClose={() => setShowEventCreation(false)}
-        onCreateEvent={handleEventCreated}
+        onEventCreated={handleEventCreated}
         venueName={selectedPlace?.name || ''}
         venueAddress={selectedPlace?.address || ''}
         placeId={selectedPlace?.placeId}
@@ -803,10 +810,9 @@ export default function EnhancedInteractiveMap({
           visible={showEventDetails}
           onClose={() => setShowEventDetails(false)}
           event={selectedEvent}
-          currentUserId="user123"
+          currentUserId={getUserId() || undefined}
           onJoinEvent={handleJoinEvent}
           onLeaveEvent={handleLeaveEvent}
-          onDeleteEvent={handleDeleteEvent}
         />
       )}
 
@@ -843,7 +849,7 @@ export default function EnhancedInteractiveMap({
           visible={showEventDetails}
           onClose={() => setShowEventDetails(false)}
           event={selectedEvent}
-          currentUserId="current-user-id" // Replace with actual user ID
+          currentUserId={getUserId() || undefined}
           onJoinEvent={handleJoinEvent}
           onLeaveEvent={handleLeaveEvent}
         />
@@ -1052,5 +1058,24 @@ const styles = StyleSheet.create({
   customPinText: {
     fontSize: 16,
     color: '#ffffff',
+  },
+  pinManagementButton: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  pinManagementButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3b82f6',
   },
 });

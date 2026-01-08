@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
-import { BottomNavBar } from '../components';
+import { BottomNavBar, SMLogo } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/TranslationContext';
 import { groupService, Group } from '../services/groupService';
@@ -48,7 +48,7 @@ export default function MyGroupsScreen() {
   const navigation = useAppNavigation();
   const { user } = useAuth();
   const { t } = useTranslation();
-  
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [groups, setGroups] = useState<GroupWithRole[]>([]);
@@ -131,7 +131,7 @@ export default function MyGroupsScreen() {
 
       // Fetch user's groups
       const userGroups = await groupService.getUserGroups(user.id);
-      
+
       // Fetch user role for each group
       const groupsWithRoles = await Promise.all(
         userGroups.map(async (group) => {
@@ -212,11 +212,11 @@ export default function MyGroupsScreen() {
   };
 
   // Filter groups
-  const filteredGroups = selectedFilter === 'all' 
-    ? groups 
+  const filteredGroups = selectedFilter === 'all'
+    ? groups
     : selectedFilter === 'admin'
-    ? groups.filter(g => g.userRole === 'admin')
-    : groups.filter(g => g.userRole === 'member');
+      ? groups.filter(g => g.userRole === 'admin')
+      : groups.filter(g => g.userRole === 'member');
 
   // Group by role
   const adminGroups = filteredGroups.filter(g => g.userRole === 'admin');
@@ -246,7 +246,7 @@ export default function MyGroupsScreen() {
             </View>
           )}
         </View>
-        
+
         {group.description && (
           <Text style={styles.groupDescription} numberOfLines={1}>
             {group.description}
@@ -258,12 +258,12 @@ export default function MyGroupsScreen() {
             <Ionicons name="people" size={14} color="#6B7280" />
             <Text style={styles.memberCountText}>{group.member_count} members</Text>
           </View>
-          
+
           <View style={styles.privacyBadge}>
-            <Ionicons 
-              name={group.privacy === 'public' ? 'globe-outline' : 'lock-closed-outline'} 
-              size={12} 
-              color="#6B7280" 
+            <Ionicons
+              name={group.privacy === 'public' ? 'globe-outline' : 'lock-closed-outline'}
+              size={12}
+              color="#6B7280"
             />
             <Text style={styles.privacyText}>{group.privacy}</Text>
           </View>
@@ -303,7 +303,7 @@ export default function MyGroupsScreen() {
             <Text style={styles.emptyMessage}>
               Create or join groups to connect with other sports enthusiasts
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.createGroupButton}
               onPress={handleCreateGroup}
               activeOpacity={0.8}
@@ -325,7 +325,7 @@ export default function MyGroupsScreen() {
             <Text style={styles.emptyMessage}>
               No {selectedFilter} groups in your list
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.clearFilterButton}
               onPress={() => setSelectedFilter('all')}
               activeOpacity={0.8}
@@ -360,7 +360,7 @@ export default function MyGroupsScreen() {
               All ({groups.length})
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.filterTab, selectedFilter === 'admin' && styles.filterTabActive]}
             onPress={() => setSelectedFilter('admin')}
@@ -370,7 +370,7 @@ export default function MyGroupsScreen() {
               Admin ({adminGroups.length})
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.filterTab, selectedFilter === 'member' && styles.filterTabActive]}
             onPress={() => setSelectedFilter('member')}
@@ -435,7 +435,7 @@ export default function MyGroupsScreen() {
             onPress={handleCreateGroup}
             activeOpacity={0.7}
           >
-            <Ionicons name="add-circle" size={28} color="#FDB924" />
+            <SMLogo size={45} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>

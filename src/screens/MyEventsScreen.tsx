@@ -17,6 +17,7 @@ import { ROUTES } from '../navigation/types';
 import { BottomNavBar } from '../components';
 import { EmptyState, SectionHeader, EventCard } from '../components';
 import { MyEvent, SportActivity } from '../types/event';
+import { supabaseService } from '../services/supabase';
 
 export default function MyEventsScreen() {
   const navigation = useAppNavigation();
@@ -34,144 +35,43 @@ export default function MyEventsScreen() {
   const loadEvents = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const fetchedEvents = await eventService.getMyEvents();
-      
-      // Mock data for demonstration
-      const mockEvents: MyEvent[] = [
-        {
-          id: '1',
-          name: 'Pickup Basketball Game',
-          activity: 'Basketball',
-          startTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-          endTime: new Date(Date.now() + 4 * 60 * 60 * 1000),
-          location: {
-            name: 'Central Park Courts',
-            address: '123 Park Ave',
-            distance: 2.3,
-            lat: 40.7829,
-            lng: -73.9654,
-          },
-          participants: {
-            current: 5,
-            max: 10,
-          },
-          status: 'upcoming',
-          role: 'joined',
-          chatEnabled: true,
-          createdBy: {
-            id: 'user1',
-            name: 'John Doe',
-          },
-          description: 'Casual pickup basketball game for all skill levels. Bring your own water and we\'ll have a great time! Looking for players who can commit to the full 2 hours.',
-        },
-        {
-          id: '2',
-          name: 'Evening Football Match',
-          activity: 'Football',
-          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-          endTime: new Date(Date.now() + 26 * 60 * 60 * 1000),
-          location: {
-            name: 'Sports Complex Field',
-            address: '456 Sports Dr',
-            distance: 5.7,
-            lat: 40.7580,
-            lng: -73.9855,
-          },
-          participants: {
-            current: 18,
-            max: 22,
-          },
-          status: 'upcoming',
-          role: 'created',
-          chatEnabled: true,
-          createdBy: {
-            id: 'currentUser',
-            name: 'You',
-          },
-          description: 'Competitive 11v11 football match. We need skilled players for a full team game. Cleats recommended but not required. Game will go on rain or shine!',
-        },
-        {
-          id: '3',
-          name: 'Tennis Practice Session',
-          activity: 'Tennis',
-          startTime: new Date(Date.now() + 72 * 60 * 60 * 1000), // 3 days
-          endTime: new Date(Date.now() + 74 * 60 * 60 * 1000),
-          location: {
-            name: 'City Tennis Club',
-            address: '789 Tennis Rd',
-            distance: 1.2,
-            lat: 40.7489,
-            lng: -73.9680,
-          },
-          participants: {
-            current: 3,
-            max: 4,
-          },
-          status: 'upcoming',
-          role: 'joined',
-          chatEnabled: true,
-          createdBy: {
-            id: 'user3',
-            name: 'Sarah Smith',
-          },
-          description: 'Doubles tennis practice for intermediate players. We\'ll work on serves, volleys, and strategy. Bring your own racket and balls. Court fees are $10 per person.',
-        },
-        {
-          id: '4',
-          name: 'Morning Running Group',
-          activity: 'Running',
-          startTime: new Date(Date.now() + 48 * 60 * 60 * 1000), // 2 days
-          endTime: new Date(Date.now() + 49 * 60 * 60 * 1000),
-          location: {
-            name: 'Riverside Park',
-            address: '321 River Rd',
-            distance: 3.5,
-            lat: 40.7829,
-            lng: -73.9754,
-          },
-          participants: {
-            current: 8,
-            max: 15,
-          },
-          status: 'upcoming',
-          role: 'created',
-          chatEnabled: true,
-          createdBy: {
-            id: 'currentUser',
-            name: 'You',
-          },
-          description: 'Easy-paced 5K run along the riverside trail. Perfect for beginners and those getting back into running. We\'ll maintain a conversational pace and take a water break halfway.',
-        },
-        {
-          id: '5',
-          name: 'Volleyball Practice',
-          activity: 'Volleyball',
-          startTime: new Date(Date.now() + 96 * 60 * 60 * 1000), // 4 days
-          endTime: new Date(Date.now() + 98 * 60 * 60 * 1000),
-          location: {
-            name: 'Beach Volleyball Courts',
-            address: '555 Beach Ave',
-            distance: 4.2,
-            lat: 40.7689,
-            lng: -73.9580,
-          },
-          participants: {
-            current: 6,
-            max: 12,
-          },
-          status: 'upcoming',
-          role: 'joined',
-          chatEnabled: true,
-          createdBy: {
-            id: 'user5',
-            name: 'Mike Johnson',
-          },
-          description: 'Beach volleyball on the sand! All skill levels welcome. We\'ll play 6v6 games and rotate teams. Bring sunscreen and plenty of water. Nets and balls provided.',
-        },
-      ];
 
-      setEvents(mockEvents);
+      const user = await supabaseService.getCurrentUserProfile();
+      if (!user) {
+        setEvents([]);
+        return;
+      }
+
+      const fetchedEvents = await supabaseService.getUserEvents(user.id);
+
+      const mappedEvents: MyEvent[] = fetchedEvents.map(event => ({
+        id: event.id,
+        name: event.name || 'Unnamed Event',
+        activity: event.activity as SportActivity,
+        startTime: event.scheduled_datetime ? new Date(event.scheduled_datetime) : new Date(),
+        endTime: event.end_datetime ? new Date(event.end_datetime) : new Date(),
+        location: {
+          name: event.location_name || 'Generic Location',
+          address: event.address || '',
+          lat: event.lat || 0,
+          lng: event.lng || 0,
+        },
+        participants: {
+          current: event.currentParticipants || 1,
+          max: event.max_participants || 10,
+        },
+        status: event.status || 'upcoming',
+        role: event.role || 'joined',
+        chatEnabled: event.chat_enabled ?? true,
+        createdBy: {
+          id: event.creator?.id || event.created_by,
+          name: event.creator?.display_name || 'Organizatow',
+          avatarUrl: event.creator?.avatar_url,
+        },
+        description: event.description || '',
+      }));
+
+      setEvents(mappedEvents);
     } catch (error) {
       console.error('Error loading events:', error);
       Alert.alert('Error', 'Failed to load events');
@@ -205,10 +105,22 @@ export default function MyEventsScreen() {
         {
           text: t.eventDetails.leaveGame,
           style: 'destructive',
-          onPress: () => {
-            // TODO: Call API to leave event
-            setEvents(prev => prev.filter(e => e.id !== event.id));
-            Alert.alert(t.common.success, 'You have left the event');
+          onPress: async () => {
+            try {
+              const user = await supabaseService.getCurrentUserProfile();
+              if (!user) throw new Error('User not logged in');
+
+              const success = await supabaseService.leaveEvent(event.id, user.id);
+              if (success) {
+                setEvents(prev => prev.filter(e => e.id !== event.id));
+                Alert.alert(t.common.success, 'You have left the event');
+              } else {
+                Alert.alert('Error', 'Failed to leave event');
+              }
+            } catch (error) {
+              console.error('Error leaving event:', error);
+              Alert.alert('Error', 'An unexpected error occurred');
+            }
           },
         },
       ]
@@ -220,14 +132,14 @@ export default function MyEventsScreen() {
   };
 
   // Filter events
-  const filteredEvents = selectedFilter === 'all' 
-    ? events 
+  const filteredEvents = selectedFilter === 'all'
+    ? events
     : events.filter(e => e.activity === selectedFilter);
 
   // Group events by role (Joined vs Created)
   const joinedEvents = filteredEvents.filter(e => e.role === 'joined');
   const createdEvents = filteredEvents.filter(e => e.role === 'created');
-  
+
   const groupedEvents = [
     ...(joinedEvents.length > 0 ? [{ group: t.myEvents.joined, events: joinedEvents }] : []),
     ...(createdEvents.length > 0 ? [{ group: t.myEvents.created, events: createdEvents }] : []),
@@ -297,7 +209,7 @@ export default function MyEventsScreen() {
             ))}
           </View>
         ))}
-        
+
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -309,8 +221,8 @@ export default function MyEventsScreen() {
       {/* Top Bar */}
       <SafeAreaView style={styles.topBarSafeArea}>
         <View style={styles.topBar}>
-          <Image 
-            source={require('../../assets/logo.png')} 
+          <Image
+            source={require('../../assets/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />

@@ -7,9 +7,9 @@ export default function MyPlaceDetailsScreen() {
     <View style={styles.container}>
       <PlaceDetailsMap
         placeId="ChIJN1t_tDeuEmsRUsoyG83frY4"
-        apiKey="AIzaSyDBJ65DOu4WMoTRjvz1J6i6VbYbjOoEW2E"
+        apiKey={process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || ''}
         onPlaceDetailsLoaded={(place) => console.log(place)}
-     onError={(error) => console.error(error)}
+        onError={(error) => console.error(error)}
       />
     </View>
   );

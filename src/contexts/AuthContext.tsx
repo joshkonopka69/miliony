@@ -38,6 +38,8 @@ interface AuthContextType extends AuthState {
   getUserId: () => string | null;
   refreshUser: () => Promise<void>;
   sendEmailVerification: () => Promise<{ success: boolean; error?: AuthError }>;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: AuthError }>;
+  loginWithApple: () => Promise<{ success: boolean; error?: AuthError }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -109,7 +111,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen to auth state changes
     const { data: { subscription } } = BackendService.Auth.addAuthStateListener(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.id);
-      
+
       if (event === 'SIGNED_IN' && session?.user) {
         await loadUserProfile(session.user.id);
       } else if (event === 'SIGNED_OUT') {
@@ -129,9 +131,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (email: string, password: string) => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true }));
-      
+
       const result = await BackendService.Auth.signIn(email, password);
-      
+
       if (result.success && result.user) {
         await loadUserProfile(result.user.id);
         return { success: true };
@@ -152,9 +154,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }) => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true }));
-      
+
       const result = await BackendService.Auth.signUp(email, password, userData);
-      
+
       if (result.success && result.user) {
         await loadUserProfile(result.user.id);
         return { success: true };
@@ -171,9 +173,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signOut = async () => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true }));
-      
+
       await BackendService.Auth.signOut();
-      
+
       setAuthState({
         user: null,
         isLoading: false,
@@ -192,7 +194,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       const success = await BackendService.Users.updateUserProfile(authState.user.id, updates);
-      
+
       if (success) {
         // Reload user profile to get updated data
         await loadUserProfile(authState.user.id);
@@ -237,6 +239,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async (): Promise<{ success: boolean; error?: AuthError }> => {
+    // TODO: Implement actual Google Login via BackendService
+    console.warn('loginWithGoogle not fully implemented');
+    return { success: false, error: { message: 'Google Login not implemented yet.' } };
+  };
+
+  const loginWithApple = async (): Promise<{ success: boolean; error?: AuthError }> => {
+    // TODO: Implement actual Apple Login via BackendService
+    console.warn('loginWithApple not fully implemented');
+    return { success: false, error: { message: 'Apple Login not implemented yet.' } };
+  };
+
   const contextValue: AuthContextType = {
     ...authState,
     signIn,
@@ -246,6 +260,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     getUserId,
     refreshUser,
     sendEmailVerification,
+    loginWithGoogle,
+    loginWithApple,
   };
 
   return (

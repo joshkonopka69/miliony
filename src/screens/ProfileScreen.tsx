@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
   SafeAreaView,
   RefreshControl,
   StatusBar,
@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation/hooks';
-import { BottomNavBar } from '../components';
+import { BottomNavBar, SMLogo } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/TranslationContext';
 import { supabase } from '../config/supabase';
@@ -30,6 +30,9 @@ import {
 } from '../services/photoUploadService';
 import { supabaseService } from '../services/supabase';
 import { userService, UserGameStats } from '../services/userService';
+import { groupService, Group } from '../services/groupService';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import { RootStackParamList } from '../navigation/types';
 
 interface UserProfile {
   id: string;
@@ -42,15 +45,20 @@ interface UserProfile {
 
 export default function ProfileScreen() {
   const navigation = useAppNavigation();
-  const { user } = useAuth();
+  const route = useRoute<RouteProp<RootStackParamList, 'Profile'>>();
+  const { user: currentUser } = useAuth();
+  const targetUserId = route.params?.userId || currentUser?.id;
+  const isOwnProfile = !route.params?.userId || route.params?.userId === currentUser?.id;
   const { t } = useTranslation();
-  
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  
+  const [friends, setFriends] = useState<UserProfile[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+
   // User's game statistics (now loaded from backend for real-time achievements)
   const [gameStats, setGameStats] = useState<UserGameStats>({
     basketball: 0,
@@ -70,42 +78,42 @@ export default function ProfileScreen() {
     { id: 'basketball_player', sport: 'basketball', name: 'Basketball Player', icon: '🏀', description: 'Play 5 basketball games', required: 5, color: '#F97316' },
     { id: 'basketball_pro', sport: 'basketball', name: 'Basketball Pro', icon: '🏀', description: 'Play 10 basketball games', required: 10, color: '#F97316' },
     { id: 'basketball_legend', sport: 'basketball', name: 'Basketball Legend', icon: '🏆', description: 'Play 20 basketball games', required: 20, color: '#FFD700' },
-    
+
     // Football Badges
     { id: 'football_rookie', sport: 'football', name: 'Football Rookie', icon: '⚽', description: 'Play 1 football game', required: 1, color: '#10B981' },
     { id: 'football_player', sport: 'football', name: 'Football Player', icon: '⚽', description: 'Play 5 football games', required: 5, color: '#10B981' },
     { id: 'football_pro', sport: 'football', name: 'Football Pro', icon: '⚽', description: 'Play 10 football games', required: 10, color: '#10B981' },
     { id: 'football_legend', sport: 'football', name: 'Football Legend', icon: '🏆', description: 'Play 20 football games', required: 20, color: '#FFD700' },
-    
+
     // Tennis Badges
     { id: 'tennis_rookie', sport: 'tennis', name: 'Tennis Rookie', icon: '🎾', description: 'Play 1 tennis game', required: 1, color: '#EAB308' },
     { id: 'tennis_player', sport: 'tennis', name: 'Tennis Player', icon: '🎾', description: 'Play 5 tennis games', required: 5, color: '#EAB308' },
     { id: 'tennis_pro', sport: 'tennis', name: 'Tennis Pro', icon: '🎾', description: 'Play 10 tennis games', required: 10, color: '#EAB308' },
-    
+
     // Running Badges
     { id: 'running_rookie', sport: 'running', name: 'Running Rookie', icon: '🏃‍♂️', description: 'Complete 1 run', required: 1, color: '#EF4444' },
     { id: 'running_player', sport: 'running', name: 'Running Enthusiast', icon: '🏃‍♂️', description: 'Complete 5 runs', required: 5, color: '#EF4444' },
     { id: 'running_pro', sport: 'running', name: 'Marathon Runner', icon: '🏃‍♂️', description: 'Complete 10 runs', required: 10, color: '#EF4444' },
     { id: 'running_legend', sport: 'running', name: 'Running Legend', icon: '🏆', description: 'Complete 20 runs', required: 20, color: '#FFD700' },
-    
+
     // Volleyball Badges
     { id: 'volleyball_rookie', sport: 'volleyball', name: 'Volleyball Rookie', icon: '🏐', description: 'Play 1 volleyball game', required: 1, color: '#3B82F6' },
     { id: 'volleyball_player', sport: 'volleyball', name: 'Volleyball Player', icon: '🏐', description: 'Play 5 volleyball games', required: 5, color: '#3B82F6' },
-    
+
     // Cycling Badges
     { id: 'cycling_rookie', sport: 'cycling', name: 'Cycling Rookie', icon: '🚴‍♂️', description: 'Complete 1 ride', required: 1, color: '#8B5CF6' },
     { id: 'cycling_player', sport: 'cycling', name: 'Cycling Enthusiast', icon: '🚴‍♂️', description: 'Complete 5 rides', required: 5, color: '#8B5CF6' },
     { id: 'cycling_pro', sport: 'cycling', name: 'Cycling Pro', icon: '🚴‍♂️', description: 'Complete 10 rides', required: 10, color: '#8B5CF6' },
-    
+
     // Gym Badges
     { id: 'gym_rookie', sport: 'gym', name: 'Gym Rookie', icon: '💪', description: 'Complete 1 gym session', required: 1, color: '#6B7280' },
     { id: 'gym_player', sport: 'gym', name: 'Gym Regular', icon: '💪', description: 'Complete 5 gym sessions', required: 5, color: '#6B7280' },
     { id: 'gym_pro', sport: 'gym', name: 'Gym Pro', icon: '💪', description: 'Complete 10 gym sessions', required: 10, color: '#6B7280' },
-    
+
     // Swimming Badges
     { id: 'swimming_rookie', sport: 'swimming', name: 'Swimming Rookie', icon: '🏊‍♂️', description: 'Complete 1 swim', required: 1, color: '#06B6D4' },
     { id: 'swimming_player', sport: 'swimming', name: 'Swimming Enthusiast', icon: '🏊‍♂️', description: 'Complete 5 swims', required: 5, color: '#06B6D4' },
-    
+
     // Special Badges
     { id: 'all_rounder', sport: 'special', name: 'All-Rounder', icon: '⭐', description: 'Play 3 different sports', required: 3, color: '#FFD700' },
     { id: 'social_butterfly', sport: 'special', name: 'Social Butterfly', icon: '🦋', description: 'Join 10 events total', required: 10, color: '#EC4899' },
@@ -130,30 +138,33 @@ export default function ProfileScreen() {
 
   // Fetch profile data
   const fetchProfileData = useCallback(async () => {
-    if (!user?.id) {
-      // Mock data for preview
-      setProfile({
-        id: 'mock-user',
-        email: 'josh@sportmap.com',
-        display_name: 'josh',
-        favorite_sports: ['Basketball', 'Football'],
-        created_at: '2025-01-01T00:00:00.000Z',
-      });
-      setLoading(false);
+    if (!targetUserId) {
+      if (!currentUser?.id) {
+        // Mock data for preview if no user at all
+        setProfile({
+          id: 'mock-user',
+          email: 'josh@sportmap.com',
+          display_name: 'josh',
+          favorite_sports: ['Basketball', 'Football'],
+          created_at: '2025-01-01T00:00:00.000Z',
+        });
+        setLoading(false);
+        return;
+      }
       return;
     }
 
     try {
       setLoading(true);
 
-      console.log('📥 Fetching profile for user:', user.id);
+      console.log('📥 Fetching profile for user:', targetUserId);
 
       // Fetch user profile
       // Force fresh data by adding timestamp to bypass cache
       const { data: profileData, error: profileError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', targetUserId)
         .single();
 
       if (profileError) {
@@ -171,7 +182,7 @@ export default function ProfileScreen() {
       // Add cache-busting timestamp to avatar URL if it exists
       const profileWithFreshAvatar = {
         ...profileData,
-        avatar_url: profileData.avatar_url 
+        avatar_url: profileData.avatar_url
           ? `${profileData.avatar_url}?t=${Date.now()}`
           : profileData.avatar_url
       };
@@ -180,11 +191,29 @@ export default function ProfileScreen() {
 
       // Fetch user's game statistics from backend for real-time achievements
       try {
-        const stats = await userService.getUserGameStats(user.id);
+        const stats = await userService.getUserGameStats(targetUserId);
         setGameStats(stats);
         console.log('✅ Game stats loaded for achievements:', stats);
       } catch (statsError) {
         console.error('❌ Error fetching game stats for achievements:', statsError);
+      }
+
+      // Fetch friends for the profile
+      try {
+        const friendsList = await supabaseService.getFriends(targetUserId);
+        setFriends(friendsList);
+        console.log(`✅ Loaded ${friendsList.length} friends for profile`);
+      } catch (friendsError) {
+        console.error('❌ Error fetching friends for profile:', friendsError);
+      }
+
+      // Fetch groups for the profile
+      try {
+        const groupsList = await groupService.getUserGroups(targetUserId);
+        setGroups(groupsList);
+        console.log(`✅ Loaded ${groupsList.length} groups for profile`);
+      } catch (groupsError) {
+        console.error('❌ Error fetching groups for profile:', groupsError);
       }
 
     } catch (error: any) {
@@ -193,7 +222,7 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [targetUserId, currentUser]);
 
   useEffect(() => {
     fetchProfileData();
@@ -342,33 +371,39 @@ export default function ProfileScreen() {
     );
   }
 
-    return (
-      <SafeAreaView style={styles.container}>
+  return (
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <Image 
-          source={require('../../assets/logo.png')} 
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.headerTitle}>{t.profile.title}</Text>
-        <TouchableOpacity 
-          style={styles.editButton}
-          onPress={() => navigation.navigate(ROUTES.EDIT_PROFILE)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="create-outline" size={24} color="#000000" />
-        </TouchableOpacity>
+        <SMLogo />
+        <Text style={styles.headerTitle}>{isOwnProfile ? t.profile.title : profile?.display_name}</Text>
+        {isOwnProfile ? (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate(ROUTES.EDIT_PROFILE)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="create-outline" size={24} color="#000000" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate(ROUTES.CHAT, { userId: targetUserId })}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={24} color="#FFD700" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
+          <RefreshControl
+            refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#FFD700"
           />
@@ -379,9 +414,9 @@ export default function ProfileScreen() {
           {/* Profile Photo */}
           <View style={styles.profilePhotoContainer}>
             <TouchableOpacity
-              onPress={handlePhotoPress}
+              onPress={isOwnProfile ? handlePhotoPress : undefined}
               activeOpacity={0.7}
-              disabled={isUploadingPhoto}
+              disabled={isUploadingPhoto || !isOwnProfile}
             >
               <View style={styles.profilePhoto}>
                 {isUploadingPhoto ? (
@@ -398,10 +433,10 @@ export default function ProfileScreen() {
                 )}
               </View>
             </TouchableOpacity>
-            
+
             {/* Camera Button */}
-            {!isUploadingPhoto && (
-              <TouchableOpacity 
+            {isOwnProfile && !isUploadingPhoto && (
+              <TouchableOpacity
                 style={styles.cameraButton}
                 onPress={handlePhotoPress}
                 activeOpacity={0.7}
@@ -416,8 +451,8 @@ export default function ProfileScreen() {
           <Text style={styles.userHandle}>{getUserHandle(profile?.display_name || 'user')}</Text>
           <Text style={styles.joinDate}>
             {t.profile.joined} {getJoinYear(profile?.created_at || new Date().toISOString())}
-              </Text>
-            </View>
+          </Text>
+        </View>
 
         {/* Badge Stats Summary */}
         <View style={styles.badgeStatsContainer}>
@@ -438,7 +473,7 @@ export default function ProfileScreen() {
             <Text style={styles.badgeStatLabel}>{t.profile.progress}</Text>
           </View>
         </View>
-          
+
         {/* Achievements Section Header */}
         <View style={styles.achievementsHeader}>
           <Text style={styles.achievementsTitle}>{t.profile.achievements}</Text>
@@ -482,53 +517,115 @@ export default function ProfileScreen() {
             <Ionicons name="trophy-outline" size={48} color="#CCCCCC" />
             <Text style={styles.emptyBadgesText}>{t.profile.noBadges}</Text>
             <Text style={styles.emptyBadgesSubtext}>{t.profile.noBadgesSubtext}</Text>
-        </View>
+          </View>
         )}
 
         {/* Friends Section */}
         <View style={styles.friendsSection}>
           <View style={styles.friendsHeader}>
             <Text style={styles.friendsTitle}>{t.profile.friends}</Text>
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={handleAddFriends}
-              activeOpacity={0.7}
+            {isOwnProfile ? (
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={handleAddFriends}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="person-add" size={18} color="#FFD700" />
+                <Text style={styles.addButtonText}>{t.profile.addFriends}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => navigation.navigate(ROUTES.ADD_FRIEND)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.addButtonText}>{t.profile.viewAll}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {friends.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.friendsCarousel}
+              contentContainerStyle={styles.friendsCarouselContent}
             >
-              <Ionicons name="person-add" size={18} color="#FFD700" />
-              <Text style={styles.addButtonText}>{t.profile.addFriends}</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.friendsPlaceholder}>
-            <Ionicons name="people-outline" size={48} color="#CCCCCC" />
-            <Text style={styles.friendsPlaceholderText}>{t.profile.noFriends}</Text>
-            <Text style={styles.friendsPlaceholderSubtext}>
-              {t.profile.noFriendsSubtext}
-            </Text>
-          </View>
+              {friends.map(friend => (
+                <TouchableOpacity
+                  key={friend.id}
+                  style={styles.friendCard}
+                  onPress={() => navigation.push('Profile', { userId: friend.id })}
+                >
+                  <View style={styles.friendAvatar}>
+                    {friend.avatar_url ? (
+                      <Image source={{ uri: friend.avatar_url }} style={styles.friendImage} />
+                    ) : (
+                      <Text style={styles.friendInitials}>{getInitials(friend.display_name)}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.friendName} numberOfLines={1}>{friend.display_name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.friendsPlaceholder}>
+              <Ionicons name="people-outline" size={48} color="#CCCCCC" />
+              <Text style={styles.friendsPlaceholderText}>{t.profile.noFriends}</Text>
+              <Text style={styles.friendsPlaceholderSubtext}>
+                {isOwnProfile ? t.profile.noFriendsSubtext : `${profile?.display_name || 'User'} has no friends yet.`}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Groups Section */}
         <View style={styles.groupsSection}>
           <View style={styles.groupsHeader}>
             <Text style={styles.groupsTitle}>{t.profile.groups}</Text>
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={handleGroups}
+            <TouchableOpacity
+              style={styles.viewGroupsButton}
+              onPress={() => navigation.navigate(ROUTES.MY_GROUPS)}
               activeOpacity={0.7}
             >
-              <Ionicons name="add-circle" size={18} color="#FFD700" />
-              <Text style={styles.addButtonText}>{t.profile.viewGroups}</Text>
+              <Text style={styles.viewGroupsText}>{t.profile.viewGroups}</Text>
+              <Ionicons name="chevron-forward" size={16} color="#FFD700" />
             </TouchableOpacity>
           </View>
-          
-          <View style={styles.groupsPlaceholder}>
-            <Ionicons name="people-circle-outline" size={48} color="#CCCCCC" />
-            <Text style={styles.groupsPlaceholderText}>{t.profile.noGroups}</Text>
-            <Text style={styles.groupsPlaceholderSubtext}>
-              {t.profile.noGroupsSubtext}
-            </Text>
-          </View>
+
+          {groups.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.groupsCarousel}
+              contentContainerStyle={styles.groupsCarouselContent}
+            >
+              {groups.map(group => (
+                <TouchableOpacity
+                  key={group.id}
+                  style={styles.groupCard}
+                  onPress={() => navigation.navigate(ROUTES.GROUP_DETAILS, { id: group.id })}
+                >
+                  <View style={styles.groupAvatar}>
+                    {group.avatar_url ? (
+                      <Image source={{ uri: group.avatar_url }} style={styles.groupImage} />
+                    ) : (
+                      <Ionicons name="people" size={30} color="#CCCCCC" />
+                    )}
+                  </View>
+                  <Text style={styles.groupName} numberOfLines={1}>{group.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.groupsPlaceholder}>
+              <Ionicons name="people-circle-outline" size={48} color="#CCCCCC" />
+              <Text style={styles.groupsPlaceholderText}>{t.profile.noGroups}</Text>
+              <Text style={styles.groupsPlaceholderSubtext}>
+                {isOwnProfile ? t.profile.noGroupsSubtext : `${profile?.display_name || 'User'} isn't in any groups yet.`}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Bottom Spacing */}
@@ -850,6 +947,43 @@ const styles = StyleSheet.create({
     color: '#999999',
     textAlign: 'center',
   },
+  // Friends Carousel
+  friendsCarousel: {
+    marginBottom: 20,
+  },
+  friendsCarouselContent: {
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  friendCard: {
+    width: 80,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  friendAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  friendImage: {
+    width: '100%',
+    height: '100%',
+  },
+  friendInitials: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  friendName: {
+    fontSize: 12,
+    color: '#333333',
+    textAlign: 'center',
+  },
   groupsSection: {
     paddingHorizontal: 20,
     paddingTop: 32,
@@ -864,6 +998,48 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#000000',
+  },
+  viewGroupsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewGroupsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFD700',
+  },
+  groupsCarousel: {
+    marginBottom: 20,
+  },
+  groupsCarouselContent: {
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  groupCard: {
+    width: 100,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  groupAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  groupImage: {
+    width: '100%',
+    height: '100%',
+  },
+  groupName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333333',
+    textAlign: 'center',
   },
   groupsPlaceholder: {
     backgroundColor: '#FFFFFF',

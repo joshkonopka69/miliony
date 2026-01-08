@@ -16,15 +16,8 @@ import {
 import { useAppNavigation } from '../navigation';
 import { useFriends } from '../hooks/useFriends';
 import { useTranslation } from '../contexts/TranslationContext';
+import { SMLogo } from '../components';
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 export default function FriendsListScreen() {
   const navigation = useAppNavigation();
@@ -33,6 +26,7 @@ export default function FriendsListScreen() {
     friends,
     removeFriend,
     searchFriends,
+    blockUser,
     isLoading,
     isUpdating,
     error,
@@ -123,8 +117,12 @@ export default function FriendsListScreen() {
           text: 'Block',
           style: 'destructive',
           onPress: async () => {
-            // TODO: Implement block user functionality
-            Alert.alert('Success', 'User blocked successfully!');
+            const success = await blockUser(friendId);
+            if (success) {
+              Alert.alert('Success', 'User blocked successfully!');
+            } else {
+              Alert.alert('Error', 'Failed to block user. Please try again.');
+            }
           },
         },
       ]
@@ -132,12 +130,12 @@ export default function FriendsListScreen() {
   };
 
   const handleViewProfile = (friendId: string) => {
-    // TODO: Navigate to friend's profile
+    navigation.navigate('Profile', { userId: friendId });
     console.log('View profile for:', friendId);
   };
 
   const handleSendMessage = (friendId: string) => {
-    // TODO: Navigate to chat with friend
+    navigation.navigate('Chat'); // Or GameChat if it's a specific game chat
     console.log('Send message to:', friendId);
   };
 
@@ -147,32 +145,32 @@ export default function FriendsListScreen() {
 
   const getLastActiveText = (lastActive?: string) => {
     if (!lastActive) return 'Never';
-    
+
     const lastActiveDate = new Date(lastActive);
     const now = new Date();
     const diffMs = now.getTime() - lastActiveDate.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    
+
     if (diffMinutes < 1) return 'Just now';
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    
+
     const diffHours = Math.floor(diffMinutes / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
-    
+
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return lastActiveDate.toLocaleDateString();
   };
 
   const isOnline = (lastActive?: string) => {
     if (!lastActive) return false;
-    
+
     const lastActiveDate = new Date(lastActive);
     const now = new Date();
     const diffMs = now.getTime() - lastActiveDate.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    
+
     return diffMinutes < 15; // Consider online if active within last 15 minutes
   };
 
@@ -223,7 +221,7 @@ export default function FriendsListScreen() {
         </View>
 
         {isSelected && (
-          <Animated.View 
+          <Animated.View
             style={[
               styles.friendActions,
               {
@@ -232,25 +230,25 @@ export default function FriendsListScreen() {
               },
             ]}
           >
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleViewProfile(friend.id)}
             >
               <Text style={styles.actionButtonText}>👤</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleSendMessage(friend.id)}
             >
               <Text style={styles.actionButtonText}>💬</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.removeButton]}
               onPress={() => handleRemoveFriend(friend.id, friend.display_name)}
             >
               <Text style={[styles.actionButtonText, styles.removeButtonText]}>🗑️</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.blockButton]}
               onPress={() => handleBlockUser(friend.id, friend.display_name)}
             >
@@ -265,7 +263,7 @@ export default function FriendsListScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -301,7 +299,7 @@ export default function FriendsListScreen() {
       )}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.content,
             {
@@ -342,13 +340,13 @@ export default function FriendsListScreen() {
                     {searchQuery ? 'No friends found' : 'No friends yet'}
                   </Text>
                   <Text style={styles.emptySubtitle}>
-                    {searchQuery 
+                    {searchQuery
                       ? 'Try adjusting your search terms'
                       : 'Start building your network by adding friends!'
                     }
                   </Text>
                   {!searchQuery && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.addFriendsButton}
                       onPress={() => navigation.navigate('UserSearch')}
                     >
@@ -357,6 +355,7 @@ export default function FriendsListScreen() {
                   )}
                 </View>
               )}
+              <SMLogo />
             </>
           )}
 

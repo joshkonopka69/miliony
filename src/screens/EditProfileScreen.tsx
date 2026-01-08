@@ -20,14 +20,7 @@ import { useUserProfile } from '../hooks/useUserProfile';
 import { useTranslation } from '../contexts/TranslationContext';
 import * as ImagePicker from 'expo-image-picker';
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
+import { SMLogo } from '../components';
 
 export default function EditProfileScreen() {
   const navigation = useAppNavigation();
@@ -94,7 +87,7 @@ export default function EditProfileScreen() {
     const newSports = currentSports.includes(sport)
       ? currentSports.filter(s => s !== sport)
       : [...currentSports, sport];
-    
+
     setFormData(prev => ({ ...prev, favorite_sports: newSports }));
   };
 
@@ -130,7 +123,7 @@ export default function EditProfileScreen() {
       display_name: formData.display_name.trim(),
       bio: formData.bio.trim(),
       age: formData.age ? Number(formData.age) : undefined,
-      gender: formData.gender || undefined,
+      gender: (formData.gender as "male" | "female" | "other" | "prefer_not_to_say") || undefined,
       phone: formData.phone.trim() || undefined,
       favorite_sports: formData.favorite_sports,
     };
@@ -146,7 +139,7 @@ export default function EditProfileScreen() {
   const handleImagePicker = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (permissionResult.granted === false) {
         Alert.alert('Permission Required', 'Please grant camera roll permissions to upload a profile picture.');
         return;
@@ -162,7 +155,7 @@ export default function EditProfileScreen() {
       if (!result.canceled && result.assets[0]) {
         setIsUploadingImage(true);
         const asset = result.assets[0];
-        
+
         // Create a File object from the asset
         const response = await fetch(asset.uri);
         const blob = await response.blob();
@@ -235,8 +228,8 @@ export default function EditProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
-      <KeyboardAvoidingView 
+
+      <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
@@ -249,12 +242,12 @@ export default function EditProfileScreen() {
           <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
         </View>
 
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Animated.View 
+          <Animated.View
             style={[
               styles.content,
               {
@@ -273,8 +266,8 @@ export default function EditProfileScreen() {
                     <Text style={styles.profileImageText}>{getInitials()}</Text>
                   </View>
                 )}
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.cameraButton}
                   onPress={handleImagePicker}
                   disabled={isUploadingImage}
@@ -286,9 +279,9 @@ export default function EditProfileScreen() {
                   )}
                 </TouchableOpacity>
               </View>
-              
+
               <View style={styles.imageActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.imageActionButton}
                   onPress={handleImagePicker}
                   disabled={isUploadingImage}
@@ -296,7 +289,7 @@ export default function EditProfileScreen() {
                   <Text style={styles.imageActionText}>Change Photo</Text>
                 </TouchableOpacity>
                 {profile?.avatar_url && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.imageActionButton, styles.deleteButton]}
                     onPress={handleDeleteImage}
                   >
@@ -411,12 +404,12 @@ export default function EditProfileScreen() {
               {/* Favorite Sports */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Favorite Sports *</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.sportsSelector}
                   onPress={() => setShowSportsSelector(!showSportsSelector)}
                 >
                   <Text style={styles.sportsSelectorText}>
-                    {formData.favorite_sports.length > 0 
+                    {formData.favorite_sports.length > 0
                       ? `${formData.favorite_sports.length} sports selected`
                       : 'Select your favorite sports'
                     }
@@ -425,7 +418,7 @@ export default function EditProfileScreen() {
                     {showSportsSelector ? '▲' : '▼'}
                   </Text>
                 </TouchableOpacity>
-                
+
                 {showSportsSelector && (
                   <View style={styles.sportsContainer}>
                     {sports.map((sport) => {
@@ -456,7 +449,7 @@ export default function EditProfileScreen() {
             </View>
 
             {/* Save Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.saveButton, isUpdating && styles.saveButtonDisabled]}
               onPress={handleSave}
               activeOpacity={0.7}

@@ -52,12 +52,10 @@ export interface PlaceDetails {
     profilePhotoUrl?: string;
   }>;
   types: string[];
-  utcOffset?: number;
   vicinity?: string;
   formattedPhoneNumber?: string;
   internationalPhoneNumber?: string;
   url?: string;
-  utcOffsetMinutes?: number;
 }
 
 export interface ActivityFilter {
@@ -76,7 +74,7 @@ export const GOOGLE_PLACES_TYPES = {
   'park': 'park',
   'bowling_alley': 'bowling_alley',
   'campground': 'campground',
-  
+
   // ❌ INVALID types (use keywords instead):
   // These DO NOT exist in Google Places API - use point_of_interest + keywords
   'swimming_pool': null, // Use keywords: "swimming pool aquatic center basen"
@@ -591,9 +589,9 @@ const validatePlace = (
 
   // VALIDATION 2: Excluded Types (CRITICAL - eliminates false positives)
   if (rules.excludedTypes && rules.excludedTypes.length > 0) {
-    const hasExcludedType = types.some(type => rules.excludedTypes!.includes(type));
+    const hasExcludedType = types.some((type: string) => rules.excludedTypes!.includes(type));
     if (hasExcludedType) {
-      const excludedFound = types.filter(type => rules.excludedTypes!.includes(type));
+      const excludedFound = types.filter((type: string) => rules.excludedTypes!.includes(type));
       return {
         valid: false,
         reason: `Has excluded type: [${excludedFound.join(', ')}]`
@@ -621,7 +619,7 @@ const validatePlace = (
       };
     }
   }
-  
+
   // VALIDATION 4.5: EMERGENCY FAILSAFE - Check for common nursery/company terms one more time
   const emergencyNurseryPatterns = [
     /szkółk/i,       // Polish: nursery (any form)
@@ -637,7 +635,7 @@ const validatePlace = (
     /firma/i,        // Polish: firm
     /kruszywa/i,     // Aggregates companies
   ];
-  
+
   const emergencyMatch = emergencyNurseryPatterns.find(pattern => pattern.test(name));
   if (emergencyMatch) {
     return {
@@ -671,12 +669,12 @@ const validatePlace = (
 };
 
 class PlacesApiService {
-  private apiKey: string = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyDBJ65DOu4WMoTRjvz1J6i6VbYbjOoEW2E';
+  private apiKey: string = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
   private baseUrl: string = 'https://maps.googleapis.com/maps/api/place';
   private useMockData: boolean = false; // Set to false to use real API (CHANGED TO FALSE)
   private placeDetailsCache: Map<string, { data: PlaceDetails; timestamp: number }> = new Map();
   private cacheExpiryTime: number = 5 * 60 * 1000; // 5 minutes in milliseconds
-  
+
   // Mock data for fallback when API fails (Wrocław, Poland area)
   private mockPlaces: Place[] = [
     {
@@ -772,7 +770,7 @@ class PlacesApiService {
 
     // Create cache key for this search
     const cacheKey = `searchNearby_${location.lat}_${location.lng}_${JSON.stringify(filter)}`;
-    
+
     // Check cache first
     const cached = performanceOptimizer.getCache(cacheKey);
     if (cached) {
@@ -790,15 +788,15 @@ class PlacesApiService {
 
     try {
       const allResults: Place[] = [];
-      
+
       // Get the category from filter types (use first type as category)
       const category = filter.types.length > 0 ? filter.types[0] : 'all';
-      
+
       console.log(`🔑 Category detected: "${category}"`);
-      
+
       // Get rules for this category
       const rules = SPORT_CATEGORY_RULES[category];
-      
+
       if (!rules) {
         console.warn(`⚠️ No rules defined for category: ${category}`);
         console.warn(`   Available categories: ${Object.keys(SPORT_CATEGORY_RULES).join(', ')}`);
@@ -806,7 +804,7 @@ class PlacesApiService {
         // Fallback to old behavior
         return this.searchWithoutRules(location, filter);
       }
-      
+
       console.log(`✅ Found rules for: ${category}`);
       console.log(`   Description: ${rules.description}`);
 
@@ -830,7 +828,7 @@ class PlacesApiService {
         params.type = rules.primaryType;
         console.log(`🔎 API Query: type="${params.type}"`);
       }
-      
+
       if (rules.requiredKeywords && rules.requiredKeywords.length > 0) {
         params.keyword = rules.requiredKeywords.join(' ');
         console.log(`🔎 API Query: keyword="${params.keyword}"`);
@@ -838,14 +836,14 @@ class PlacesApiService {
 
       // Make API request
       const url = `${this.baseUrl}/nearbysearch/json?${new URLSearchParams(params).toString()}`;
-      
+
       console.log(`🌐 Fetching from Google Places API...`);
       const response = await fetch(url);
       const data = await response.json();
 
       // Check API response
       console.log(`📡 API Response: ${data.status}`);
-      
+
       if (data.status === 'ZERO_RESULTS') {
         console.log(`ℹ️  No results found for ${category}\n`);
         return [];
@@ -872,7 +870,7 @@ class PlacesApiService {
 
       rawResults.forEach((place: any, index: number) => {
         const validation = validatePlace(place, rules);
-        
+
         if (validation.valid) {
           validatedResults.push(place);
           console.log(`✅ [${index + 1}/${rawResults.length}] ${place.name}`);
@@ -917,12 +915,12 @@ class PlacesApiService {
 
       // Cache the results
       performanceOptimizer.setCache(cacheKey, mappedResults, 5 * 60 * 1000); // 5 minutes cache
-      
+
       return mappedResults;
     } catch (error) {
       console.error('❌ Error searching nearby places:', error);
       console.error('Falling back to old method...\n');
-      
+
       // Fallback to old method
       return this.searchWithoutRules(location, filter);
     }
@@ -934,9 +932,9 @@ class PlacesApiService {
     filter: ActivityFilter
   ): Promise<Place[]> {
     console.log('⚙️ Using fallback search method (no validation rules)');
-    
+
     const allResults: Place[] = [];
-    
+
     // If no types specified, search for general establishments
     if (filter.types.length === 0) {
       console.log('⚠️ No types specified, using keyword search');
@@ -949,7 +947,7 @@ class PlacesApiService {
       for (const type of filter.types) {
         const googleType = GOOGLE_PLACES_TYPES[type as keyof typeof GOOGLE_PLACES_TYPES];
         console.log(`🔎 Searching for type: ${type} -> Google type: ${googleType}`);
-        
+
         if (googleType) {
           // Valid Google type - use type-based search
           const results = await this.searchByType(location, googleType, filter);
@@ -979,7 +977,7 @@ class PlacesApiService {
     );
 
     console.log(`✅ Results after deduplication: ${uniqueResults.length}\n`);
-    
+
     return uniqueResults;
   }
 
@@ -988,7 +986,7 @@ class PlacesApiService {
     filter: ActivityFilter
   ): Place[] {
     console.log('Using mock data for search');
-    
+
     // Filter mock data based on criteria
     let results = this.mockPlaces.filter(place => {
       // Check if place is within radius (simplified distance calculation)
@@ -997,7 +995,7 @@ class PlacesApiService {
 
       // Check if place matches any selected types
       if (filter.types.length > 0) {
-        const hasMatchingType = filter.types.some(type => 
+        const hasMatchingType = filter.types.some(type =>
           place.types.includes(type)
         );
         if (!hasMatchingType) return false;
@@ -1086,7 +1084,7 @@ class PlacesApiService {
 
     console.log(`✅ Mapped ${results.length} results for type "${type}"`);
     if (results.length > 0 && results.length <= 3) {
-      console.log(`📍 Sample results for "${type}":`, results.map(r => ({ name: r.name, types: r.types, photosCount: r.photos?.length || 0 })));
+      console.log(`📍 Sample results for "${type}":`, results.map((r: Place) => ({ name: r.name, types: r.types, photosCount: r.photos?.length || 0 })));
     }
     return results;
   }
@@ -1155,7 +1153,7 @@ class PlacesApiService {
 
     console.log(`✅ Mapped ${results.length} results for keywords "${keywords}"`);
     if (results.length > 0 && results.length <= 3) {
-      console.log(`📍 Sample results:`, results.map(r => ({ name: r.name, types: r.types, photosCount: r.photos?.length || 0 })));
+      console.log(`📍 Sample results:`, results.map((r: Place) => ({ name: r.name, types: r.types, photosCount: r.photos?.length || 0 })));
     }
     return results;
   }
@@ -1165,8 +1163,8 @@ class PlacesApiService {
     filter: ActivityFilter
   ): Promise<Place[]> {
     // Use text search when no specific types are selected
-    const keyword = filter.keywords.length > 0 
-      ? filter.keywords.join(' ') 
+    const keyword = filter.keywords.length > 0
+      ? filter.keywords.join(' ')
       : 'sports fitness gym park';
 
     console.log('Using keyword search with:', keyword);
@@ -1248,7 +1246,7 @@ class PlacesApiService {
     try {
       const params = new URLSearchParams({
         place_id: placeId,
-        fields: 'place_id,name,formatted_address,geometry,rating,price_level,formatted_phone_number,website,opening_hours,photos,reviews,types,utc_offset,vicinity,international_phone_number,url,utc_offset_minutes',
+        fields: 'place_id,name,formatted_address,geometry,rating,price_level,formatted_phone_number,website,opening_hours,photos,reviews,types,vicinity,international_phone_number,url',
         key: this.apiKey,
       });
 
@@ -1297,12 +1295,10 @@ class PlacesApiService {
           profilePhotoUrl: review.profile_photo_url
         })) || [],
         types: result.types || [],
-        utcOffset: result.utc_offset,
         vicinity: result.vicinity,
         formattedPhoneNumber: result.formatted_phone_number,
         internationalPhoneNumber: result.international_phone_number,
         url: result.url,
-        utcOffsetMinutes: result.utc_offset_minutes
       };
 
       // Cache the result
@@ -1315,14 +1311,14 @@ class PlacesApiService {
       return placeDetails;
     } catch (error) {
       console.error('Error getting place details:', error);
-      
+
       // Fallback to mock data
       const mockDetails = this.getMockPlaceDetails(placeId);
       if (mockDetails) {
         console.log('Using mock data as fallback for:', placeId);
         return mockDetails;
       }
-      
+
       throw new Error('Failed to get place details');
     }
   }
@@ -1356,7 +1352,6 @@ class PlacesApiService {
           }
         ],
         types: ['park', 'tourist_attraction'],
-        utcOffset: -300,
         vicinity: 'Manhattan, New York'
       },
       'ChIJ987654321': {
@@ -1386,7 +1381,6 @@ class PlacesApiService {
           }
         ],
         types: ['gym', 'health'],
-        utcOffset: -300,
         vicinity: 'Manhattan, New York'
       }
     };
@@ -1430,7 +1424,7 @@ class PlacesApiService {
     const R = 6371; // Earth's radius in kilometers
     const dLat = this.toRad(point2.lat - point1.lat);
     const dLng = this.toRad(point2.lng - point1.lng);
-    const a = 
+    const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(this.toRad(point1.lat)) * Math.cos(this.toRad(point2.lat)) *
       Math.sin(dLng / 2) * Math.sin(dLng / 2);

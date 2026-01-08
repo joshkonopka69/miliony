@@ -8,7 +8,7 @@ export { useNotificationContext as useNotifications };
 // Additional hook for notification management
 export function useNotificationManager() {
   const context = useNotificationContext();
-  
+
   // Create and send notification
   const createNotification = async (
     userId: string,
@@ -27,19 +27,19 @@ export function useNotificationManager() {
         data,
         options
       );
-      
+
       if (notification) {
         // Send immediately if not scheduled
         if (!options.scheduled_at) {
           await notificationService.sendNotification(notification.id);
         }
-        
+
         // Refresh notifications if it's for current user
         if (context.notifications.length > 0) {
           await context.refreshNotifications();
         }
       }
-      
+
       return notification;
     } catch (error) {
       console.error('Error creating notification:', error);
@@ -54,6 +54,8 @@ export function useNotificationManager() {
     data: { [key: string]: any },
     options: {
       scheduled_at?: string;
+      title?: string;
+      body?: string;
       image_url?: string;
       action_url?: string;
     } = {}
@@ -65,7 +67,7 @@ export function useNotificationManager() {
         data,
         options
       );
-      
+
       return result;
     } catch (error) {
       console.error('Error sending bulk notification:', error);
@@ -80,6 +82,8 @@ export function useNotificationManager() {
     data: { [key: string]: any },
     scheduledAt: string,
     options: {
+      title?: string;
+      body?: string;
       image_url?: string;
       action_url?: string;
     } = {}
@@ -92,7 +96,7 @@ export function useNotificationManager() {
         scheduledAt,
         options
       );
-      
+
       return notification;
     } catch (error) {
       console.error('Error scheduling notification:', error);
@@ -119,7 +123,7 @@ export function useNotificationManager() {
 
   // Filter unread notifications
   const getUnreadNotifications = () => {
-    return context.notifications.filter(n => !n.is_read);
+    return context.notifications.filter(n => !n.read);
   };
 
   // Filter notifications by date range
@@ -133,7 +137,7 @@ export function useNotificationManager() {
   // Search notifications
   const searchNotifications = (query: string) => {
     const lowercaseQuery = query.toLowerCase();
-    return context.notifications.filter(n => 
+    return context.notifications.filter(n =>
       n.title.toLowerCase().includes(lowercaseQuery) ||
       n.body.toLowerCase().includes(lowercaseQuery)
     );
@@ -152,8 +156,8 @@ export function useNotificationManager() {
   const getRecentNotifications = () => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    return context.notifications.filter(n => 
+
+    return context.notifications.filter(n =>
       new Date(n.created_at) >= sevenDaysAgo
     );
   };
@@ -171,12 +175,12 @@ export function useNotificationManager() {
   // Check if quiet hours are active
   const isQuietHoursActive = () => {
     if (!context.preferences?.quiet_hours.enabled) return false;
-    
+
     const now = new Date();
     const currentTime = now.toTimeString().slice(0, 5);
     const startTime = context.preferences.quiet_hours.start_time;
     const endTime = context.preferences.quiet_hours.end_time;
-    
+
     if (startTime > endTime) {
       // Quiet hours span midnight
       return currentTime >= startTime || currentTime <= endTime;
@@ -287,13 +291,13 @@ export function useNotificationManager() {
   const clearAllNotifications = async () => {
     try {
       // Delete all notifications for current user
-      const deletePromises = context.notifications.map(n => 
+      const deletePromises = context.notifications.map(n =>
         context.deleteNotification(n.id)
       );
-      
+
       const results = await Promise.all(deletePromises);
       const successCount = results.filter(Boolean).length;
-      
+
       return successCount === context.notifications.length;
     } catch (error) {
       console.error('Error clearing all notifications:', error);
@@ -304,7 +308,7 @@ export function useNotificationManager() {
   // Get notification statistics
   const getNotificationStatistics = () => {
     if (!context.stats) return null;
-    
+
     return {
       totalSent: context.stats.total_sent,
       totalRead: context.stats.total_read,
@@ -331,7 +335,7 @@ export function useNotificationManager() {
       if (!context.isFCMInitialized) {
         return { success: false, error: 'FCM not initialized' };
       }
-      
+
       const success = await context.sendTestNotification();
       return { success, error: success ? null : 'Failed to send test notification' };
     } catch (error) {
@@ -343,7 +347,7 @@ export function useNotificationManager() {
   return {
     // Context
     ...context,
-    
+
     // Additional methods
     createNotification,
     sendBulkNotification,

@@ -2,6 +2,8 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from '../config/supabase';
+import { NavigationUtils } from '../navigation/utils';
+import { ROUTES } from '../navigation/types';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -9,6 +11,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -105,7 +109,7 @@ class FCMService {
   async registerToken(userId: string): Promise<boolean> {
     try {
       if (!this.fcmToken) {
-        console.error('No FCM token available');
+        console.warn('No FCM token available');
         return false;
       }
 
@@ -114,6 +118,7 @@ class FCMService {
         .upsert({
           user_id: userId,
           fcm_token: this.fcmToken,
+          expo_push_token: this.fcmToken, // Align with notificationService lookup
           device_type: Platform.OS,
           device_id: Device.osInternalBuildId || 'unknown',
           updated_at: new Date().toISOString(),
@@ -138,8 +143,7 @@ class FCMService {
       const { error } = await supabase
         .from('user_tokens')
         .delete()
-        .eq('user_id', userId)
-        .eq('fcm_token', this.fcmToken);
+        .eq('user_id', userId);
 
       if (error) {
         console.error('Error unregistering FCM token:', error);
@@ -180,7 +184,7 @@ class FCMService {
       });
 
       const result = await response.json();
-      
+
       if (result.data && result.data[0] && result.data[0].status === 'ok') {
         console.log('✅ Push notification sent successfully');
         return true;
@@ -211,7 +215,7 @@ class FCMService {
         body,
         data,
       });
-      
+
       if (sent) {
         success++;
       } else {
@@ -311,7 +315,7 @@ class FCMService {
   private handleNotificationTap(response: Notifications.NotificationResponse): void {
     try {
       const data = response.notification.request.content.data;
-      
+
       if (data?.action_url) {
         // Navigate to specific screen based on action_url
         console.log('Navigate to:', data.action_url);
@@ -324,18 +328,34 @@ class FCMService {
           case 'friend_request':
             // Navigate to friend requests screen
             console.log('Navigate to friend requests');
+            NavigationUtils.navigate(ROUTES.FRIEND_REQUESTS);
             break;
           case 'event_invitation':
+          case 'event_reminder':
+          case 'event_participant_joined':
             // Navigate to event details
-            console.log('Navigate to event:', data.event_id);
+            console.log('Navigate to event:', data.event_id || data.eventId);
+            NavigationUtils.navigate(ROUTES.EVENT_DETAILS, {
+              eventId: (data.event_id || data.eventId) as string,
+              id: (data.event_id || data.eventId) as string
+            });
             break;
           case 'chat_message':
             // Navigate to chat
-            console.log('Navigate to chat:', data.chat_id);
+            console.log('Navigate to chat:', data.chat_id || data.chatId);
+            NavigationUtils.navigate(ROUTES.GAME_CHAT, {
+              game: { id: data.event_id || data.eventId || data.chat_id || data.chatId }
+            });
             break;
           default:
             console.log('Handle notification type:', data.type);
+            // Default to notifications screen for unknown types
+            NavigationUtils.navigate(ROUTES.NOTIFICATIONS);
         }
+      } else if (data?.action_url) {
+        // Fallback for action_url if type is missing
+        console.log('Handle action_url:', data.action_url);
+        NavigationUtils.navigate(ROUTES.NOTIFICATIONS);
       }
     } catch (error) {
       console.error('Error handling notification tap:', error);
@@ -398,7 +418,7 @@ class FCMService {
       return await Notifications.getPermissionsAsync();
     } catch (error) {
       console.error('Error getting notification permissions:', error);
-      return { status: 'undetermined' };
+      return { status: Notifications.PermissionStatus.UNDETERMINED, expires: 'never', granted: false, canAskAgain: true };
     }
   }
 
@@ -408,7 +428,7 @@ class FCMService {
       return await Notifications.requestPermissionsAsync();
     } catch (error) {
       console.error('Error requesting notification permissions:', error);
-      return { status: 'denied' };
+      return { status: Notifications.PermissionStatus.DENIED, expires: 'never', granted: false, canAskAgain: true };
     }
   }
 

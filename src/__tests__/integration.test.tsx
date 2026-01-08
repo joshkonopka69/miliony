@@ -22,6 +22,7 @@ jest.mock('react-native-maps', () => {
 
 const mockPlacesApiService = placesApiService as jest.Mocked<typeof placesApiService>;
 const mockFirestoreService = firestoreService as jest.Mocked<typeof firestoreService>;
+let alertSpy: jest.SpyInstance<void, Parameters<typeof Alert.alert>>;
 
 describe('Integration Tests', () => {
   const mockProps = {
@@ -32,7 +33,7 @@ describe('Integration Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
   describe('Complete User Workflows', () => {
@@ -167,8 +168,10 @@ describe('Integration Tests', () => {
       });
 
       // Simulate retry
-      const retryButton = Alert.alert.mock.calls[0][2][1];
-      retryButton.onPress();
+      const retryCall = alertSpy.mock.calls[0];
+      const retryButton = retryCall?.[2]?.[1];
+      expect(retryButton).toBeDefined();
+      retryButton?.onPress?.();
 
       await waitFor(() => {
         expect(mockPlacesApiService.searchNearby).toHaveBeenCalledTimes(2);

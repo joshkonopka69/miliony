@@ -19,15 +19,8 @@ import {
 import { useAppNavigation } from '../../navigation';
 import { useGroupManager } from '../../hooks/useGroups';
 import { CreateGroupData } from '../../services/groupService';
+import { SMLogo } from '../../components';
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 const SPORTS = [
   'Basketball', 'Football', 'Soccer', 'Tennis', 'Volleyball', 'Baseball',
@@ -132,10 +125,10 @@ export default function CreateGroupScreen() {
   };
 
   const handleAddTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+    if (newTag.trim() && !(formData.tags || []).includes(newTag.trim())) {
       setFormData(prev => ({
         ...prev,
-        tags: [...prev.tags, newTag.trim()],
+        tags: [...(prev.tags || []), newTag.trim()],
       }));
       setNewTag('');
       setShowTagInput(false);
@@ -145,15 +138,15 @@ export default function CreateGroupScreen() {
   const handleRemoveTag = (tagToRemove: string) => {
     setFormData(prev => ({
       ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove),
+      tags: (prev.tags || []).filter(tag => tag !== tagToRemove),
     }));
   };
 
   const handleAddRule = () => {
-    if (newRule.trim() && !formData.rules.includes(newRule.trim())) {
+    if (newRule.trim() && !(formData.rules || []).includes(newRule.trim())) {
       setFormData(prev => ({
         ...prev,
-        rules: [...prev.rules, newRule.trim()],
+        rules: [...(prev.rules || []), newRule.trim()],
       }));
       setNewRule('');
       setShowRulesInput(false);
@@ -163,7 +156,7 @@ export default function CreateGroupScreen() {
   const handleRemoveRule = (ruleToRemove: string) => {
     setFormData(prev => ({
       ...prev,
-      rules: prev.rules.filter(rule => rule !== ruleToRemove),
+      rules: (prev.rules || []).filter(rule => rule !== ruleToRemove),
     }));
   };
 
@@ -231,14 +224,14 @@ export default function CreateGroupScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Group</Text>
-        <Image source={require('../../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
+        <SMLogo />
       </View>
 
       {/* Error Display */}
@@ -252,7 +245,7 @@ export default function CreateGroupScreen() {
       )}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.content,
             {
@@ -264,7 +257,7 @@ export default function CreateGroupScreen() {
           {/* Basic Information */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Basic Information</Text>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Group Name *</Text>
               <TextInput
@@ -281,7 +274,7 @@ export default function CreateGroupScreen() {
               <Text style={styles.inputLabel}>Description</Text>
               <TextInput
                 style={[styles.textInput, styles.textArea]}
-                value={formData.description}
+                value={formData.description || ''}
                 onChangeText={(value) => handleInputChange('description', value)}
                 placeholder="Describe your group"
                 placeholderTextColor="#8e8e93"
@@ -290,7 +283,7 @@ export default function CreateGroupScreen() {
                 maxLength={500}
               />
               <Text style={styles.characterCount}>
-                {formData.description.length}/500
+                {(formData.description || '').length}/500
               </Text>
             </View>
 
@@ -336,7 +329,7 @@ export default function CreateGroupScreen() {
           {/* Location */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Location (Optional)</Text>
-            
+
             <TouchableOpacity
               style={styles.locationButton}
               onPress={() => setShowLocationPicker(true)}
@@ -359,9 +352,9 @@ export default function CreateGroupScreen() {
           {/* Tags */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tags</Text>
-            
+
             <View style={styles.tagsContainer}>
-              {formData.tags.map((tag, index) => (
+              {(formData.tags || []).map((tag, index) => (
                 <View key={index} style={styles.tag}>
                   <Text style={styles.tagText}>{tag}</Text>
                   <TouchableOpacity
@@ -404,9 +397,9 @@ export default function CreateGroupScreen() {
           {/* Rules */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Group Rules</Text>
-            
+
             <View style={styles.rulesContainer}>
-              {formData.rules.map((rule, index) => (
+              {(formData.rules || []).map((rule, index) => (
                 <View key={index} style={styles.rule}>
                   <Text style={styles.ruleText}>{rule}</Text>
                   <TouchableOpacity
@@ -449,14 +442,14 @@ export default function CreateGroupScreen() {
           {/* Requirements */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Member Requirements</Text>
-            
+
             <View style={styles.requirementsContainer}>
               <View style={styles.requirementRow}>
                 <Text style={styles.requirementLabel}>Age Range</Text>
                 <View style={styles.ageInputs}>
                   <TextInput
                     style={styles.ageInput}
-                    value={formData.requirements.age_min?.toString() || ''}
+                    value={formData.requirements?.age_min?.toString() || ''}
                     onChangeText={(value) => handleRequirementsChange('age_min', value ? parseInt(value) : undefined)}
                     placeholder="Min"
                     placeholderTextColor="#8e8e93"
@@ -465,7 +458,7 @@ export default function CreateGroupScreen() {
                   <Text style={styles.ageSeparator}>-</Text>
                   <TextInput
                     style={styles.ageInput}
-                    value={formData.requirements.age_max?.toString() || ''}
+                    value={formData.requirements?.age_max?.toString() || ''}
                     onChangeText={(value) => handleRequirementsChange('age_max', value ? parseInt(value) : undefined)}
                     placeholder="Max"
                     placeholderTextColor="#8e8e93"
@@ -481,7 +474,7 @@ export default function CreateGroupScreen() {
                   onPress={() => setShowSkillPicker(true)}
                 >
                   <Text style={styles.pickerButtonText}>
-                    {getSkillLabel(formData.requirements.skill_level)}
+                    {getSkillLabel(formData.requirements?.skill_level || '')}
                   </Text>
                   <Text style={styles.pickerIcon}>▼</Text>
                 </TouchableOpacity>
@@ -494,7 +487,7 @@ export default function CreateGroupScreen() {
                   onPress={() => setShowGenderPicker(true)}
                 >
                   <Text style={styles.pickerButtonText}>
-                    {getGenderLabel(formData.requirements.gender_preference)}
+                    {getGenderLabel(formData.requirements?.gender_preference || '')}
                   </Text>
                   <Text style={styles.pickerIcon}>▼</Text>
                 </TouchableOpacity>

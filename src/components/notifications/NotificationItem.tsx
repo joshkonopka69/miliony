@@ -42,7 +42,7 @@ export default function NotificationItem({
   compact = false,
 }: NotificationItemProps) {
   const [showActionMenu, setShowActionMenu] = useState(false);
-  
+
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -115,27 +115,27 @@ export default function NotificationItem({
 
   const formatNotificationTime = (dateString: string): string => {
     if (timeAgo) return timeAgo;
-    
+
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    
+
     if (diffMinutes < 1) return 'Just now';
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    
+
     const diffHours = Math.floor(diffMinutes / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
-    
+
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return date.toLocaleDateString();
   };
 
   const getNotificationIcon = (): string => {
     if (icon) return icon;
-    
+
     const icons: { [key: string]: string } = {
       new_event_nearby: '📍',
       friend_request: '👤',
@@ -159,7 +159,7 @@ export default function NotificationItem({
 
   const getNotificationColor = (): string => {
     if (color !== '#666666') return color;
-    
+
     const colors: { [key: string]: string } = {
       new_event_nearby: '#4CAF50',
       friend_request: '#2196F3',
@@ -182,7 +182,7 @@ export default function NotificationItem({
   };
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.container,
         {
@@ -194,7 +194,7 @@ export default function NotificationItem({
       <TouchableOpacity
         style={[
           styles.notificationItem,
-          !notification.is_read && styles.notificationItemUnread,
+          !notification.read && styles.notificationItemUnread,
           isSelected && styles.notificationItemSelected,
           compact && styles.notificationItemCompact,
         ]}
@@ -213,13 +213,13 @@ export default function NotificationItem({
                   {getNotificationIcon()}
                 </Text>
               </View>
-              {!notification.is_read && <View style={styles.unreadIndicator} />}
+              {!notification.read && <View style={styles.unreadIndicator} />}
             </View>
-            
+
             <View style={styles.notificationInfo}>
               <Text style={[
                 styles.notificationTitle,
-                !notification.is_read && styles.notificationTitleUnread
+                !notification.read && styles.notificationTitleUnread
               ]} numberOfLines={compact ? 1 : 2}>
                 {notification.title}
               </Text>
@@ -227,7 +227,7 @@ export default function NotificationItem({
                 {formatNotificationTime(notification.created_at)}
               </Text>
             </View>
-            
+
             {isSelectionMode && (
               <TouchableOpacity
                 style={[styles.selectionIndicator, isSelected && styles.selectionIndicatorSelected]}
@@ -238,7 +238,7 @@ export default function NotificationItem({
                 )}
               </TouchableOpacity>
             )}
-            
+
             {!isSelectionMode && showActions && (
               <TouchableOpacity
                 style={styles.actionMenuButton}
@@ -248,25 +248,25 @@ export default function NotificationItem({
               </TouchableOpacity>
             )}
           </View>
-          
+
           {/* Body */}
           {!compact && (
             <Text style={styles.notificationBody} numberOfLines={3}>
               {notification.body}
             </Text>
           )}
-          
+
           {/* Image */}
           {notification.image_url && !compact && (
             <View style={styles.notificationImageContainer}>
-              <Image 
-                source={{ uri: notification.image_url }} 
+              <Image
+                source={{ uri: notification.image_url }}
                 style={styles.notificationImage}
                 resizeMode="cover"
               />
             </View>
           )}
-          
+
           {/* Data Preview */}
           {notification.data && Object.keys(notification.data).length > 0 && !compact && (
             <View style={styles.dataPreview}>
@@ -284,18 +284,18 @@ export default function NotificationItem({
       {/* Action Menu */}
       {showActionMenu && !isSelectionMode && (
         <Animated.View style={styles.actionMenu}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionMenuItem}
             onPress={handleMarkAsRead}
-            disabled={notification.is_read}
+            disabled={notification.read}
           >
             <Text style={styles.actionMenuIcon}>✓</Text>
-            <Text style={[styles.actionMenuText, notification.is_read && styles.actionMenuTextDisabled]}>
-              {notification.is_read ? 'Already Read' : 'Mark as Read'}
+            <Text style={[styles.actionMenuText, notification.read && styles.actionMenuTextDisabled]}>
+              {notification.read ? 'Already Read' : 'Mark as Read'}
             </Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.actionMenuItem}
             onPress={handleDelete}
           >

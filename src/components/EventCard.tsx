@@ -2,15 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MyEvent, SPORT_COLORS } from '../types/event';
-import {
-  formatEventDate,
-  formatEventTime,
-  formatDistance,
-  getStatusBadge,
-  isEventLive,
-  getTimeUntilEvent,
-} from '../utils/eventGrouping';
+import { formatEventDate, formatEventTime, formatDistance, getStatusBadge, isEventLive, getTimeUntilEvent } from '../utils/eventGrouping';
 import { useTranslation, Language } from '../contexts/TranslationContext';
+import { Image } from 'react-native';
+import placesApiService from '../services/placesApi';
 
 const LOCALE_MAP: Record<Language, string> = {
   en: 'en-US',
@@ -34,6 +29,31 @@ export default function EventCard({
   onLeavePress,
 }: EventCardProps) {
   const { t, language } = useTranslation();
+  const [locationPhoto, setLocationPhoto] = React.useState<string | null>(null);
+  const [loadingPhoto, setLoadingPhoto] = React.useState(false);
+
+  React.useEffect(() => {
+    const fetchLocationPhoto = async () => {
+      if (!event.placeId) return;
+
+      try {
+        setLoadingPhoto(true);
+        const details = await placesApiService.getPlaceDetails(event.placeId);
+        if (details?.photos && details.photos.length > 0) {
+          // Increase resolution for the bigger banner
+          const photoUrl = placesApiService.getPlacePhotoUrl(details.photos[0].photoReference, 600, 400);
+          setLocationPhoto(photoUrl);
+        }
+      } catch (error) {
+        console.error('Error fetching location photo for card:', error);
+      } finally {
+        setLoadingPhoto(false);
+      }
+    };
+
+    fetchLocationPhoto();
+  }, [event.placeId]);
+
   const locale = LOCALE_MAP[language] ?? 'en-US';
   const sportColor = SPORT_COLORS[event.activity];
   const statusBadge = getStatusBadge(event);
@@ -44,7 +64,7 @@ export default function EventCard({
     locale,
     t.eventDetails.eventStarted
   );
-  
+
   // Calculate participant percentage for progress bar
   const participantPercent = (event.participants.current / event.participants.max) * 100;
   const isAlmostFull = participantPercent >= 80;
@@ -53,31 +73,40 @@ export default function EventCard({
     <TouchableOpacity
       style={styles.container}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
     >
-      {/* Header Row: Sport Icon + Name + Status Badge */}
-      <View style={styles.header}>
-        {/* Sport Icon */}
-        <View style={[styles.sportIcon, { backgroundColor: sportColor }]}>
-          <Ionicons 
-            name={getSportIcon(event.activity)} 
-            size={22} 
-            color="#000000" 
+      {/* Location Banner Image */}
+      <View style={styles.bannerContainer}>
+        {locationPhoto ? (
+          <Image
+            source={{ uri: locationPhoto }}
+            style={styles.bannerImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.bannerPlaceholder, { backgroundColor: sportColor + '20' }]}>
+            <Ionicons
+              name={getSportIcon(event.activity)}
+              size={48}
+              color={sportColor}
+              style={{ opacity: 0.5 }}
+            />
+          </View>
+        )}
+
+        {/* Sport Icon Overlay */}
+        <View style={[styles.sportIconBadge, { backgroundColor: sportColor }]}>
+          <Ionicons
+            name={getSportIcon(event.activity)}
+            size={18}
+            color="#000000"
           />
         </View>
 
-        {/* Event Name */}
-        <View style={styles.headerInfo}>
-          <Text style={styles.eventName} numberOfLines={1}>
-            {event.name}
-          </Text>
-          <Text style={styles.activityLabel}>{event.activity}</Text>
-        </View>
-
-        {/* Status Badge */}
+        {/* Status Badge Overlay */}
         {statusLabel && (
           <View style={[
-            styles.statusBadge,
+            styles.statusBadgeOverlay,
             isLive && styles.statusBadgeLive
           ]}>
             <Text style={[
@@ -90,93 +119,105 @@ export default function EventCard({
         )}
       </View>
 
-      <View style={styles.timeUntilContainer}>
-        <Ionicons name="time-outline" size={14} color="#6B7280" />
-        <Text style={styles.timeUntilText}>{relativeStart}</Text>
-      </View>
+      <View style={styles.cardContent}>
+        {/* Title and Activity */}
+        <View style={styles.titleRow}>
+          <View style={styles.headerInfo}>
+            <Text style={styles.eventName} numberOfLines={1}>
+              {event.name}
+            </Text>
+            <Text style={styles.activityLabel}>{event.activity}</Text>
+          </View>
+        </View>
 
-      {/* Participants Progress */}
-      <View style={styles.participantsSection}>
-        <View style={styles.participantsRow}>
-          <Ionicons name="people" size={16} color="#6B7280" />
-          <Text style={styles.participantsText}>
-            {event.participants.current}/{event.participants.max} {t.myEvents.participantsShort}
+        <View style={styles.timeUntilContainer}>
+          <Ionicons name="time-outline" size={14} color="#6B7280" />
+          <Text style={styles.timeUntilText}>{relativeStart}</Text>
+        </View>
+
+        {/* Participants Progress */}
+        <View style={styles.participantsSection}>
+          <View style={styles.participantsRow}>
+            <Ionicons name="people" size={16} color="#6B7280" />
+            <Text style={styles.participantsText}>
+              {event.participants.current}/{event.participants.max} {t.myEvents.participantsShort}
+            </Text>
+            {isAlmostFull && (
+              <View style={styles.almostFullBadge}>
+                <Text style={styles.almostFullText}>{t.myEvents.almostFull}</Text>
+              </View>
+            )}
+          </View>
+          {/* Progress Bar */}
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${participantPercent}%`,
+                  backgroundColor: isAlmostFull ? '#F59E0B' : '#10B981'
+                }
+              ]}
+            />
+          </View>
+        </View>
+
+        {/* Location */}
+        <View style={styles.infoRow}>
+          <Ionicons name="location" size={16} color="#6B7280" />
+          <Text style={styles.infoText} numberOfLines={1}>
+            {event.location.name}
+            {event.location.distance && ` (${formatDistance(event.location.distance)})`}
           </Text>
-          {isAlmostFull && (
-            <View style={styles.almostFullBadge}>
-              <Text style={styles.almostFullText}>{t.myEvents.almostFull}</Text>
-            </View>
+        </View>
+
+        {/* Time */}
+        <View style={styles.infoRow}>
+          <Ionicons name="time" size={16} color="#6B7280" />
+          <Text style={styles.infoText}>
+            {formatEventDate(event.startTime, locale, {
+              today: t.myEvents.groupLabels.TODAY,
+              tomorrow: t.myEvents.groupLabels.TOMORROW,
+            })}, {formatEventTime(event.startTime, locale)}
+          </Text>
+        </View>
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Action Buttons */}
+        <View style={styles.actionsRow}>
+          {/* Primary: View Details */}
+          <TouchableOpacity
+            style={[styles.actionButton, styles.primaryButton]}
+            onPress={onPress}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.primaryButtonText}>{t.myEvents.viewDetails}</Text>
+          </TouchableOpacity>
+
+          {/* Secondary: Chat */}
+          {event.chatEnabled && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.secondaryButton]}
+              onPress={onChatPress}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chatbubble" size={18} color="#000000" />
+            </TouchableOpacity>
+          )}
+
+          {/* Tertiary: Leave */}
+          {event.role === 'joined' && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.tertiaryButton]}
+              onPress={onLeavePress}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="exit-outline" size={18} color="#EF4444" />
+            </TouchableOpacity>
           )}
         </View>
-        {/* Progress Bar */}
-        <View style={styles.progressBar}>
-          <View 
-            style={[
-              styles.progressFill, 
-              { 
-                width: `${participantPercent}%`,
-                backgroundColor: isAlmostFull ? '#F59E0B' : '#10B981'
-              }
-            ]} 
-          />
-        </View>
-      </View>
-
-      {/* Location */}
-      <View style={styles.infoRow}>
-        <Ionicons name="location" size={16} color="#6B7280" />
-        <Text style={styles.infoText} numberOfLines={1}>
-          {event.location.name}
-          {event.location.distance && ` (${formatDistance(event.location.distance)})`}
-        </Text>
-      </View>
-
-      {/* Time */}
-      <View style={styles.infoRow}>
-        <Ionicons name="time" size={16} color="#6B7280" />
-        <Text style={styles.infoText}>
-          {formatEventDate(event.startTime, locale, {
-            today: t.myEvents.groupLabels.TODAY,
-            tomorrow: t.myEvents.groupLabels.TOMORROW,
-          })}, {formatEventTime(event.startTime, locale)}
-        </Text>
-      </View>
-
-      {/* Divider */}
-      <View style={styles.divider} />
-
-      {/* Action Buttons */}
-      <View style={styles.actionsRow}>
-        {/* Primary: View Details */}
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.primaryButton]}
-          onPress={onPress}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.primaryButtonText}>{t.myEvents.viewDetails}</Text>
-        </TouchableOpacity>
-
-        {/* Secondary: Chat */}
-        {event.chatEnabled && (
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.secondaryButton]}
-            onPress={onChatPress}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chatbubble" size={18} color="#000000" />
-          </TouchableOpacity>
-        )}
-
-        {/* Tertiary: Leave */}
-        {event.role === 'joined' && (
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.tertiaryButton]}
-            onPress={onLeavePress}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="exit-outline" size={18} color="#EF4444" />
-          </TouchableOpacity>
-        )}
       </View>
     </TouchableOpacity>
   );
@@ -200,41 +241,84 @@ function getSportIcon(activity: string): keyof typeof Ionicons.glyphMap {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    overflow: 'hidden',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+  bannerContainer: {
+    height: 160,
+    width: '100%',
+    backgroundColor: '#F3F4F6',
+    position: 'relative',
   },
-  sportIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerPlaceholder: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+  },
+  sportIconBadge: {
+    position: 'absolute',
+    bottom: -20,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    zIndex: 10,
+  },
+  statusBadgeOverlay: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  cardContent: {
+    padding: 16,
+    paddingTop: 12,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   headerInfo: {
     flex: 1,
   },
   eventName: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 2,
   },
   activityLabel: {
     fontSize: 14,
+    fontWeight: '500',
     color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -247,7 +331,7 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#374151',
   },
   statusBadgeTextLive: {

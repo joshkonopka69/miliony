@@ -1,25 +1,25 @@
 import React, { useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  SafeAreaView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
   ScrollView,
   StatusBar,
   Animated,
   Dimensions,
-  Image
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useTranslation, Language } from '../contexts/TranslationContext';
+import { SMLogo } from '../components';
 
 const { width } = Dimensions.get('window');
 
 export default function LanguageScreen() {
   const navigation = useAppNavigation();
   const { language, setLanguage, availableLanguages, t } = useTranslation();
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -51,7 +51,7 @@ export default function LanguageScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -61,12 +61,12 @@ export default function LanguageScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <Animated.View 
+        <Animated.View
           style={[
             styles.content,
             {
@@ -77,11 +77,7 @@ export default function LanguageScreen() {
         >
           {/* Logo and Title */}
           <View style={styles.titleSection}>
-            <Image 
-              source={require('../../assets/logo.png')} 
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <SMLogo size={50} style={{ marginBottom: 16 }} />
             <Text style={styles.title}>{t.languageScreen.title}</Text>
             <Text style={styles.subtitle}>
               {t.languageScreen.subtitle}

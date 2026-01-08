@@ -50,8 +50,8 @@ const getSportEmoji = (activity: string): string => {
   return emojiMap[activity.toLowerCase()] || '🏃';
 };
 
-export default function GoogleMapsView({ 
-  onPlaceSelect, 
+export default function GoogleMapsView({
+  onPlaceSelect,
   onLocationSelect,
   onLocationLongPress,
   searchQuery,
@@ -93,13 +93,13 @@ export default function GoogleMapsView({
   const generateMapHtml = () => {
     const lat = initialLocation?.latitude || location?.coords.latitude || 51.1079;
     const lng = initialLocation?.longitude || location?.coords.longitude || 17.0385;
-    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyD6nUmyKQ_9EqPpv4axk8J5YhZlI9J0fak';
-    
+    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+
     console.log('🗺️ GoogleMapsView: Generating map HTML with API key:', apiKey ? '✅ Loaded' : '❌ Missing');
     console.log('🗺️ GoogleMapsView: Map center:', { lat, lng });
     console.log('🗺️ GoogleMapsView: Events count:', events.length);
     console.log('🗺️ GoogleMapsView: Places count:', places.length);
-    
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -536,7 +536,7 @@ export default function GoogleMapsView({
       </body>
       </html>
     `;
-    
+
     console.log('🗺️ GoogleMapsView: HTML generated, length:', html.length);
     setMapHtml(html);
   };
@@ -544,7 +544,7 @@ export default function GoogleMapsView({
   const handleWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      
+
       // Handle logs from WebView
       if (data.type === 'log') {
         console.log(data.message);

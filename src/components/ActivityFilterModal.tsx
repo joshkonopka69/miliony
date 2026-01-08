@@ -9,19 +9,13 @@ import {
   TextInput,
   SafeAreaView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { useTranslation } from '../contexts/TranslationContext';
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
+import { SMLogo } from './index';
 
-interface ActivityFilter {
+export interface ActivityFilter {
   types: string[];
   keywords: string[];
   radius: number;
@@ -34,18 +28,22 @@ interface ActivityFilterModalProps {
   currentFilters: ActivityFilter;
 }
 
+// Map IDs to specific assets
+// Using standard require for assets. 
+// Note: For icons that failed generation (bowling, golf, ice_rink, tennis), we fallback to trophy or similar for now to maintain the style consistency.
 const BASE_ACTIVITY_TYPES = [
-  { id: 'gym', icon: '💪' },
-  { id: 'stadium', icon: '🏟️' },
-  { id: 'swimming_pool', icon: '🏊' },
-  { id: 'park', icon: '🌳' },
-  { id: 'sports_complex', icon: '🏟️' },
-  { id: 'bowling_alley', icon: '🎳' },
-  { id: 'golf_course', icon: '⛳' },
-  { id: 'ice_rink', icon: '⛸️' },
-  { id: 'tennis_court', icon: '🎾' },
-  { id: 'basketball_court', icon: '🏀' },
-];
+  { id: 'gym', iconSource: require('../../assets/filters/icon_gym_gold.png') },
+  { id: 'stadium', iconSource: require('../../assets/filters/icon_stadium_gold.png') },
+  { id: 'swimming_pool', iconSource: require('../../assets/filters/icon_swimming_gold.png') },
+  { id: 'park', iconSource: require('../../assets/filters/icon_park_gold.png') },
+  { id: 'sports_complex', iconSource: require('../../assets/filters/icon_trophy_gold.png') },
+  // Fallbacks for missing assets to prevent crash, using trophy as generic premium icon
+  { id: 'bowling_alley', iconSource: require('../../assets/filters/icon_trophy_gold.png') },
+  { id: 'golf_course', iconSource: require('../../assets/filters/icon_park_gold.png') },
+  { id: 'ice_rink', iconSource: require('../../assets/filters/icon_stadium_gold.png') },
+  { id: 'tennis_court', iconSource: require('../../assets/filters/icon_trophy_gold.png') },
+  { id: 'basketball_court', iconSource: require('../../assets/filters/icon_basketball_gold.png') },
+] as const;
 
 export default function ActivityFilterModal({
   visible,
@@ -97,12 +95,8 @@ export default function ActivityFilterModal({
       keywords: keywords.split(',').map(k => k.trim()).filter(k => k.length > 0),
       radius: radius,
     };
-    
+
     console.log('ActivityFilterModal: Applying filters:', filters);
-    console.log('ActivityFilterModal: Selected types:', selectedTypes);
-    console.log('ActivityFilterModal: Keywords:', keywords);
-    console.log('ActivityFilterModal: Radius:', radius);
-    
     onApplyFilters(filters);
     onClose();
   };
@@ -117,14 +111,14 @@ export default function ActivityFilterModal({
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        
+
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
             <Text style={styles.cancelText}>{t.activityFilter.cancel}</Text>
           </TouchableOpacity>
           <Text style={styles.title}>{t.activityFilter.title}</Text>
-          <SMLogo size={30} />
+          <SMLogo size={40} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -132,27 +126,40 @@ export default function ActivityFilterModal({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t.activityFilter.venueTypes}</Text>
             <View style={styles.typesGrid}>
-              {activityTypes.map((type) => (
-                <TouchableOpacity
-                  key={type.id}
-                  style={[
-                    styles.typeChip,
-                    selectedTypes.includes(type.id) && styles.typeChipSelected
-                  ]}
-                  onPress={() => handleTypeToggle(type.id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.typeIcon}>{type.icon}</Text>
-                  <Text
+              {activityTypes.map((type) => {
+                const isSelected = selectedTypes.includes(type.id);
+                return (
+                  <TouchableOpacity
+                    key={type.id}
                     style={[
-                      styles.typeLabel,
-                      selectedTypes.includes(type.id) && styles.typeLabelSelected,
+                      styles.typeChip,
+                      isSelected && styles.typeChipSelected
                     ]}
+                    onPress={() => handleTypeToggle(type.id)}
+                    activeOpacity={0.7}
                   >
-                    {type.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <View style={styles.typeIconContainer}>
+                      <Image
+                        source={type.iconSource}
+                        style={{
+                          width: 50, // Increased size for detail visibility
+                          height: 50,
+                        }}
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <Text
+                      style={[
+                        styles.typeLabel,
+                        isSelected && styles.typeLabelSelected,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {type.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -216,7 +223,7 @@ export default function ActivityFilterModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF', // White background
   },
   header: {
     flexDirection: 'row',
@@ -225,7 +232,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
   },
   cancelButton: {
     paddingVertical: 8,
@@ -233,118 +241,113 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 16,
-    color: '#6b7280',
+    color: '#6B7280',
     fontWeight: '500',
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#fbbf24',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#fbbf24',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoText: {
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#000000',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
   },
   section: {
     marginTop: 24,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 16,
+    marginLeft: 4,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 12,
+    color: '#6B7280',
+    marginBottom: 16,
     lineHeight: 20,
+    marginLeft: 4,
   },
   typesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'space-between',
+    gap: 8, // Tighter gap for compact grid
   },
   typeChip: {
-    flexDirection: 'row',
+    width: '31%', // 3 columns
+    aspectRatio: 1, // Square
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#ffffff',
-    minWidth: 120,
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB', // Light Gray Border
+    backgroundColor: '#FFFFFF', // White card background
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   typeChipSelected: {
-    backgroundColor: '#f9bc06',
-    borderColor: '#f9bc06',
+    backgroundColor: '#000000', // Solid Black Background
+    borderColor: '#FDB924', // Gold Border
+    borderWidth: 2,
+    shadowColor: '#FDB924',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  typeIcon: {
-    fontSize: 16,
-    marginRight: 8,
+  typeIconContainer: {
+    marginBottom: 8,
   },
   typeLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#000000', // Black Text
+    textAlign: 'center',
+    marginTop: 4,
   },
   typeLabelSelected: {
-    color: '#ffffff',
+    color: '#FDB924', // Gold Text on Black
+    fontWeight: '700',
   },
   keywordInput: {
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#ffffff',
+    color: '#000000',
+    backgroundColor: '#FAFAFA',
     minHeight: 80,
     textAlignVertical: 'top',
   },
   radiusContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   radiusChip: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20, // Pill shape for radius options
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
   },
   radiusChipSelected: {
-    backgroundColor: '#f9bc06',
-    borderColor: '#f9bc06',
+    backgroundColor: '#000000',
+    borderColor: '#FDB924',
+    borderWidth: 1,
   },
   radiusLabel: {
     fontSize: 14,
@@ -352,32 +355,34 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   radiusLabelSelected: {
-    color: '#ffffff',
+    color: '#FDB924',
+    fontWeight: '600',
   },
   footer: {
     paddingHorizontal: 20,
     paddingVertical: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
   },
   applyButton: {
     height: 56,
-    backgroundColor: '#f9bc06',
-    borderRadius: 12,
+    backgroundColor: '#FDB924',
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#f9bc06',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
   applyButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: '700',
+    color: '#000000',
   },
 });

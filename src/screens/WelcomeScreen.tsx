@@ -3,12 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Anim
 import { useAppNavigation } from '../navigation/hooks-only';
 import { useTranslation, Language } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { SMLogo } from '../components';
 
 const { width } = Dimensions.get('window');
 
 // Google Icon using PNG from assets
 const GoogleIcon = ({ size = 24 }: { size?: number }) => (
-  <Image 
+  <Image
     source={require('../../assets/google.png')}
     style={{ width: size, height: size }}
     resizeMode="contain"
@@ -17,7 +18,7 @@ const GoogleIcon = ({ size = 24 }: { size?: number }) => (
 
 // Apple Icon using PNG from assets
 const AppleIcon = ({ size = 24 }: { size?: number }) => (
-  <Image 
+  <Image
     source={require('../../assets/apple.png')}
     style={{ width: size, height: size, tintColor: '#FFFFFF' }}
     resizeMode="contain"
@@ -29,7 +30,7 @@ export default function WelcomeScreen() {
   const { t, language, setLanguage, availableLanguages } = useTranslation();
   const { loginWithGoogle, loginWithApple } = useAuth();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -101,10 +102,10 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.content}>
         {/* Header with Logo and Title */}
-        <Animated.View 
+        <Animated.View
           style={[
             styles.header,
             {
@@ -116,19 +117,19 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          <Image 
-            source={require('../../assets/logo.png')} 
-            style={styles.logo}
+          <SMLogo size={180} style={{ marginBottom: 0, zIndex: 10 }} />
+          <Image
+            source={require('../../assets/logo_text.png')}
+            style={styles.logoText}
             resizeMode="contain"
           />
-          <Text style={styles.title}>{t.welcome.title}</Text>
           <Text style={styles.subtitle}>
             {t.welcome.subtitle}
           </Text>
         </Animated.View>
 
         {/* Authentication Section */}
-        <Animated.View 
+        <Animated.View
           style={[
             styles.authSection,
             {
@@ -139,7 +140,7 @@ export default function WelcomeScreen() {
         >
           <View style={styles.buttonContainer}>
             {/* Google Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.googleButton}
               onPress={handleGoogleAuth}
               activeOpacity={0.7}
@@ -149,7 +150,7 @@ export default function WelcomeScreen() {
             </TouchableOpacity>
 
             {/* Apple Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.appleButton}
               onPress={handleAppleAuth}
               activeOpacity={0.7}
@@ -166,7 +167,7 @@ export default function WelcomeScreen() {
             </View>
 
             {/* Email Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.emailButton}
               onPress={handleEmailAuth}
               activeOpacity={0.7}
@@ -184,7 +185,7 @@ export default function WelcomeScreen() {
           </Text>
 
           {/* Language Selection */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.languageButton}
             onPress={() => setShowLanguageModal(true)}
             activeOpacity={0.7}
@@ -247,15 +248,14 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingTop: 60,
+    paddingTop: 20, // Reduced from 60
     paddingBottom: 40,
     paddingHorizontal: 24,
   },
   header: {
-    flex: 1,
-    justifyContent: 'center',
+    // Removed flex: 1 to prevent centering vertically in a way that pushes content down too much
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: 0, // Reduced from 40
   },
   logo: {
     width: 72,
@@ -270,6 +270,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
     marginBottom: 12,
     lineHeight: 38,
+  },
+  logoText: {
+    width: 360,
+    height: 160,
+    marginBottom: 0,
+    marginTop: -30, // Reduced overlap to prevent hiding text
+    zIndex: 1, // Ensure it stays behind SMLogo
   },
   subtitle: {
     fontSize: 16,

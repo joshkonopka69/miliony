@@ -8,9 +8,9 @@ export type RootStackParamList = {
   Map: undefined;
   Chat: undefined;
   Events: undefined;
-  EventDetails: { game?: any };
+  EventDetails: { game?: any; id?: string; eventId?: string };
   Settings: undefined;
-  Profile: undefined;
+  Profile: { userId?: string } | undefined;
   EditProfile: undefined;
   AddFriend: undefined;
   CreateGroup: undefined;
@@ -23,14 +23,14 @@ export type RootStackParamList = {
   PrivacySettings: undefined;
   EventTest: undefined;
   BackendTest: undefined;
-  
+
   // Analytics Routes
   AnalyticsDashboard: undefined;
   UserAnalytics: undefined;
   EventAnalytics: undefined;
   SocialAnalytics: undefined;
   PerformanceAnalytics: undefined;
-  
+
   // Security/Moderation Routes
   ReportContent: { contentId: string; contentType: string; contentData: any };
   ModerationQueue: undefined;
@@ -38,24 +38,25 @@ export type RootStackParamList = {
   BlockedUsers: undefined;
   Appeal: undefined;
   ModerationDashboard: undefined;
-  
+
   // Group Routes
   GroupDetails: { groupId: string };
   GroupMembers: { groupId: string };
-  
+
   // Notification Routes
   Notifications: undefined;
   NotificationSettings: undefined;
-  
+  FriendRequests: undefined;
+
   // Search Routes
   EventSearchResults: { searchQuery: string; events: any[] };
-  
+
   // Badge Routes
   AllBadges: undefined;
 };
 
 // Screen Props Types
-export type RootStackScreenProps<T extends keyof RootStackParamList> = 
+export type RootStackScreenProps<T extends keyof RootStackParamList> =
   StackScreenProps<RootStackParamList, T>;
 
 // Navigation Props for screens
@@ -94,7 +95,7 @@ export const ROUTES = {
   WELCOME: 'Welcome' as const,
   AUTH: 'Auth' as const,
   REGISTER: 'Register' as const,
-  
+
   // Main App Routes
   MAP: 'Map' as const,
   CHAT: 'Chat' as const,
@@ -114,14 +115,14 @@ export const ROUTES = {
   PRIVACY_SETTINGS: 'PrivacySettings' as const,
   EVENT_TEST: 'EventTest' as const,
   BACKEND_TEST: 'BackendTest' as const,
-  
+
   // Analytics Routes
   ANALYTICS_DASHBOARD: 'AnalyticsDashboard' as const,
   USER_ANALYTICS: 'UserAnalytics' as const,
   EVENT_ANALYTICS: 'EventAnalytics' as const,
   SOCIAL_ANALYTICS: 'SocialAnalytics' as const,
   PERFORMANCE_ANALYTICS: 'PerformanceAnalytics' as const,
-  
+
   // Security/Moderation Routes
   REPORT_CONTENT: 'ReportContent' as const,
   MODERATION_QUEUE: 'ModerationQueue' as const,
@@ -129,18 +130,19 @@ export const ROUTES = {
   BLOCKED_USERS: 'BlockedUsers' as const,
   APPEAL: 'Appeal' as const,
   MODERATION_DASHBOARD: 'ModerationDashboard' as const,
-  
+
   // Group Routes
   GROUP_DETAILS: 'GroupDetails' as const,
   GROUP_MEMBERS: 'GroupMembers' as const,
-  
+
   // Notification Routes
   NOTIFICATIONS: 'Notifications' as const,
   NOTIFICATION_SETTINGS: 'NotificationSettings' as const,
-  
+  FRIEND_REQUESTS: 'FriendRequests' as const,
+
   // Search Routes
   EVENT_SEARCH_RESULTS: 'EventSearchResults' as const,
-  
+
   // Badge Routes
   ALL_BADGES: 'AllBadges' as const,
 } as const;

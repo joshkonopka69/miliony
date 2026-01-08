@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../config/supabase';
 import { notificationService } from './notificationService';
 
 // Types for our database
@@ -14,7 +14,6 @@ export interface User {
   created_at: string;
   updated_at: string;
 }
-
 export interface Event {
   id: string;
   name: string;
@@ -22,6 +21,10 @@ export interface Event {
   description?: string;
   min_participants: number;
   max_participants: number;
+  participants_count: number;
+  scheduled_datetime: string;
+  end_datetime?: string;
+  chat_enabled?: boolean;
   media_url?: string;
   location_name: string;
   latitude: number;
@@ -29,7 +32,6 @@ export interface Event {
   place_id?: string;
   created_by: string;
   status: 'live' | 'past' | 'cancelled';
-  participants_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +56,10 @@ export interface EventMessage {
   message_text: string;
   message_type: 'text' | 'image' | 'system';
   created_at: string;
+  sender?: {
+    display_name: string;
+    avatar_url?: string;
+  };
 }
 
 export interface CreateEventData {
@@ -80,13 +86,8 @@ export interface EventFilters {
   status?: 'live' | 'past' | 'cancelled';
 }
 
-// Initialize Supabase client - CONFIGURED
-const supabaseUrl = 'https://ujfeqshqhlplmolfrlvc.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZmVxc2hxaGxwbG1vbGZybHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzI0NDQsImV4cCI6MjA3NTQwODQ0NH0.vUEi4gl7qsl7fU518CMV79TJG9j3MWgwBQHEzbfuwIA';
-
-console.log('✅ Supabase connected to:', supabaseUrl);
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Use centralized Supabase client
+export { supabase };
 
 class SupabaseService {
   // User operations
@@ -120,7 +121,7 @@ class SupabaseService {
 
       if (error) {
         console.error('Error creating user with function:', error);
-        
+
         // Fallback to direct insert (this will work if RLS is disabled)
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('users')
@@ -183,31 +184,33 @@ class SupabaseService {
           .from('events')
           .select(`
             *,
-            created_by:users!events_created_by_fkey(id, display_name, avatar_url)
+            created_by:users!events_created_by_fkey(id, display_name, avatar_url),
+            event_participants(user_id)
           `)
           .in('status', ['live', 'active', 'upcoming'])
           .eq('place_id', placeId)
           .gte('scheduled_datetime', new Date().toISOString())
           .order('scheduled_datetime', { ascending: true });
-        
+
         if (error) throw error;
-        
+
         if (data && data.length > 0) {
           console.log(`✓ Found ${data.length} events by place_id`);
           return this.formatEventsWithParticipants(data);
         }
-        
+
         console.log(`⚠️  No events found by place_id, checking proximity...`);
       }
 
       // Fallback: Match by proximity (within ~100m = 0.001 degrees)
       const proximityThreshold = 0.001;
-      
+
       const { data, error } = await supabase
         .from('events')
         .select(`
           *,
-          created_by:users!events_created_by_fkey(id, display_name, avatar_url)
+          created_by:users!events_created_by_fkey(id, display_name, avatar_url),
+          event_participants(user_id)
         `)
         .in('status', ['live', 'active', 'upcoming'])
         .gte('scheduled_datetime', new Date().toISOString())
@@ -215,12 +218,12 @@ class SupabaseService {
         .lte('latitude', latitude + proximityThreshold)
         .gte('longitude', longitude - proximityThreshold)
         .lte('longitude', longitude + proximityThreshold)
-        .order('scheduled_datetime', { ascending: true});
+        .order('scheduled_datetime', { ascending: true });
 
       if (error) throw error;
 
       console.log(`✓ Found ${data?.length || 0} events by proximity`);
-      
+
       return this.formatEventsWithParticipants(data || []);
 
     } catch (error) {
@@ -230,14 +233,20 @@ class SupabaseService {
   }
 
   /**
-   * Format events with participant counts
+   * Format events with participant counts - counts from event_participants table
    */
   private formatEventsWithParticipants(events: any[]): any[] {
-    return events.map(event => ({
-      ...event,
-      currentParticipants: event.participants_count || 0,
-      creator: event.created_by,
-    }));
+    return events.map(event => {
+      // Count actual participants from the joined event_participants relation
+      const actualParticipantCount = event.event_participants?.length || 0;
+
+      return {
+        ...event,
+        currentParticipants: actualParticipantCount,
+        participants_count: actualParticipantCount, // Keep consistent
+        creator: event.created_by,
+      };
+    });
   }
 
   /**
@@ -272,7 +281,7 @@ class SupabaseService {
   async getCurrentUserProfile(): Promise<User | null> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         throw new Error('No authenticated user');
       }
@@ -409,6 +418,17 @@ class SupabaseService {
   // Event participation
   async joinEvent(eventId: string, userId: string): Promise<boolean> {
     try {
+      // Fetch minimal event info for notifications (do not block on errors)
+      const { data: eventMeta, error: eventMetaError } = await supabase
+        .from('events')
+        .select('id, name, created_by')
+        .eq('id', eventId)
+        .single();
+
+      if (eventMetaError) {
+        console.warn('joinEvent: could not load event metadata for notifications', eventMetaError);
+      }
+
       const { error } = await supabase
         .from('event_participants')
         .insert({
@@ -424,6 +444,34 @@ class SupabaseService {
         }
         console.error('Error joining event:', error);
         return false;
+      }
+
+      // Update participants_count in the events table
+      const { data: participantCountData } = await supabase
+        .from('event_participants')
+        .select('user_id')
+        .eq('event_id', eventId);
+
+      const newCount = participantCountData?.length || 1;
+      await supabase
+        .from('events')
+        .update({ participants_count: newCount })
+        .eq('id', eventId);
+
+      console.log(`✅ Updated participants_count to ${newCount} for event ${eventId}`);
+
+      // Notify organizer that someone joined (skip if user is the organizer)
+      if (eventMeta?.created_by && eventMeta.created_by !== userId) {
+        await notificationService.sendNotificationWithStorage(eventMeta.created_by, {
+          title: 'New participant joined',
+          body: `${eventMeta?.name || 'Your event'} has a new participant.`,
+          type: 'event_participant_joined',
+          data: {
+            eventId,
+            participantId: userId,
+            eventName: eventMeta?.name,
+          },
+        });
       }
 
       return true;
@@ -446,6 +494,20 @@ class SupabaseService {
         return false;
       }
 
+      // Update participants_count in the events table
+      const { data: participantCountData } = await supabase
+        .from('event_participants')
+        .select('user_id')
+        .eq('event_id', eventId);
+
+      const newCount = participantCountData?.length || 0;
+      await supabase
+        .from('events')
+        .update({ participants_count: newCount })
+        .eq('id', eventId);
+
+      console.log(`✅ Updated participants_count to ${newCount} for event ${eventId} (user left)`);
+
       return true;
     } catch (error) {
       console.error('Unexpected error leaving event:', error);
@@ -453,13 +515,60 @@ class SupabaseService {
     }
   }
 
+  /**
+   * Get all events for a user (created and joined)
+   */
+  async getUserEvents(userId: string): Promise<any[]> {
+    try {
+      console.log('Fetching events for user:', userId);
+
+      // Since creators are automatically added as participants, 
+      // we only need to query event_participants to get BOTH created and joined events
+      const { data, error } = await supabase
+        .from('event_participants')
+        .select(`
+          joined_at,
+          event:events (
+            *,
+            created_by:users!events_created_by_fkey(id, display_name, avatar_url)
+          )
+        `)
+        .eq('user_id', userId)
+        .order('joined_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!data) return [];
+
+      // Map the nested event objects to a flat array and add role info
+      const events = data.map((item: any) => {
+        const event = item.event;
+        const isCreator = event.created_by.id === userId;
+
+        return {
+          ...event,
+          role: isCreator ? 'created' : 'joined',
+          // Ensure we have participant counts
+          currentParticipants: event.participants_count || 1,
+          maxParticipants: event.max_participants,
+          creator: event.created_by
+        };
+      });
+
+      return events;
+    } catch (error) {
+      console.error('Error fetching user events:', error);
+      return [];
+    }
+  }
+
   async getEventParticipants(eventId: string): Promise<EventParticipant[]> {
     const { data, error } = await supabase
       .from('event_participants')
       .select(`
-        *,
-        user:users!event_participants_user_id_fkey(display_name, avatar_url)
-      `)
+          *,
+          user:users!event_participants_user_id_fkey(display_name, avatar_url)
+        `)
       .eq('event_id', eventId);
 
     if (error) {
@@ -485,90 +594,6 @@ class SupabaseService {
     return !!data;
   }
 
-  /**
-   * Get all events for a user (both created and joined)
-   * Returns upcoming events sorted by scheduled_datetime
-   */
-  async getUserEvents(userId: string): Promise<Event[]> {
-    try {
-      console.log(`\n👤 Fetching events for user: ${userId}`);
-
-      // Get event IDs where user is a participant
-      const { data: participantData, error: participantError } = await supabase
-        .from('event_participants')
-        .select('event_id')
-        .eq('user_id', userId);
-
-      if (participantError) {
-        console.error('❌ Error fetching participant events:', participantError);
-        // Don't throw - user might just not have joined any events yet
-      }
-
-      const participantEventIds = participantData?.map(p => p.event_id) || [];
-      console.log(`   Found ${participantEventIds.length} joined events`);
-      console.log(`   Participant event IDs:`, participantEventIds);
-
-      // Build query for events where user is creator OR participant
-      let query = supabase
-        .from('events')
-        .select('*')
-        .in('status', ['live', 'upcoming', 'active'])
-        .gte('scheduled_datetime', new Date().toISOString())
-        .order('scheduled_datetime', { ascending: true });
-
-      // Add creator OR participant filter
-      if (participantEventIds.length > 0) {
-        // User has joined events - get created OR joined
-        query = query.or(`created_by.eq.${userId},id.in.(${participantEventIds.join(',')})`);
-      } else {
-        // User has no joined events - get only created events
-        query = query.eq('created_by', userId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('❌ Error fetching user events:', error);
-        throw error;
-      }
-
-      console.log(`✅ Found ${data?.length || 0} total events for user`);
-      console.log(`   Events:`, data?.map(e => ({ id: e.id, name: e.name, created_by: e.created_by })));
-
-      // Get creator details for each event
-      const eventsWithCreators = await Promise.all(
-        (data || []).map(async (event) => {
-          let creatorData = null;
-          
-          // Fetch creator details from users table
-          if (event.created_by) {
-            const { data: userData } = await supabase
-              .from('users')
-              .select('id, display_name, avatar_url')
-              .eq('id', event.created_by)
-              .single();
-            
-            creatorData = userData;
-          }
-
-          return {
-            ...event,
-            currentParticipants: event.participants_count || 0,
-            creator: creatorData,
-            isCreator: event.created_by === userId,
-            isParticipant: participantEventIds.includes(event.id),
-          };
-        })
-      );
-
-      return eventsWithCreators;
-
-    } catch (error) {
-      console.error('❌ Error in getUserEvents:', error);
-      return [];
-    }
-  }
-
   // Sports operations
   async getSports(): Promise<Sport[]> {
     const { data, error } = await supabase
@@ -587,22 +612,31 @@ class SupabaseService {
   // Event messages (for persistent chat history)
   async getEventMessages(eventId: string, limit: number = 50): Promise<EventMessage[]> {
     try {
-      console.log('💬 [SupabaseService] Loading event messages for event (via RPC):', eventId);
+      console.log('💬 [SupabaseService] Loading event messages for event (direct query with joins):', eventId);
 
-      const { data, error } = await supabase.rpc('get_event_messages', {
-        p_event_id: eventId,
-        p_limit: limit,
-      });
+      // Using direct query instead of RPC to easily join with user profiles
+      const { data, error } = await supabase
+        .from('event_messages')
+        .select(`
+          *,
+          sender:sender_id (
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
       if (error) {
-        console.error('❌ [SupabaseService] Error fetching event messages via RPC:', error);
+        console.error('❌ [SupabaseService] Error fetching event messages:', error);
         return [];
       }
 
-      console.log('✅ [SupabaseService] Loaded messages count (via RPC):', data?.length || 0);
+      console.log('✅ [SupabaseService] Loaded messages count:', data?.length || 0);
       return (data || []) as EventMessage[];
     } catch (error) {
-      console.error('❌ [SupabaseService] Unexpected error fetching event messages via RPC:', error);
+      console.error('❌ [SupabaseService] Unexpected error fetching event messages:', error);
       return [];
     }
   }
@@ -730,7 +764,7 @@ class SupabaseService {
   async searchUsers(query: string, currentUserId: string): Promise<any[]> {
     try {
       console.log('🔍 Searching for users:', query);
-      
+
       const { data, error } = await supabase
         .from('users')
         .select('id, display_name, avatar_url, created_at')
@@ -898,15 +932,15 @@ class SupabaseService {
       const { data, error } = await supabase
         .from('user_friendships')
         .select(`
-          friend_id,
-          status,
-          users:friend_id (
-            id,
-            display_name,
-            avatar_url,
-            created_at
-          )
-        `)
+            friend_id,
+            status,
+            users:friend_id (
+              id,
+              display_name,
+              avatar_url,
+              created_at
+            )
+          `)
         .eq('user_id', userId)
         .eq('status', 'accepted');
 
@@ -922,6 +956,26 @@ class SupabaseService {
   }
 
   /**
+   * Check if a user is a participant of an event
+   */
+  async isParticipant(eventId: string, userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('event_participants')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return !!data;
+    } catch (error) {
+      console.error('Error checking event participation:', error);
+      return false;
+    }
+  }
+
+  /**
    * Get pending friend requests for a user
    */
   async getPendingRequests(userId: string): Promise<any[]> {
@@ -931,14 +985,14 @@ class SupabaseService {
       const { data, error } = await supabase
         .from('user_friendships')
         .select(`
-          user_id,
-          created_at,
-          users:user_id (
-            id,
-            display_name,
-            avatar_url
-          )
-        `)
+            user_id,
+            created_at,
+            users:user_id (
+              id,
+              display_name,
+              avatar_url
+            )
+          `)
         .eq('friend_id', userId)
         .eq('status', 'pending');
 

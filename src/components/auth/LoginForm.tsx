@@ -14,6 +14,7 @@ import {
 import { useAuth, AuthError } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
 import ErrorMessage from './ErrorMessage';
+import { SMLogo } from '../index';
 
 // Types
 export interface LoginFormProps {
@@ -38,18 +39,18 @@ export default function LoginForm({
 }: LoginFormProps) {
   const { t } = useTranslation();
   const { signIn } = useAuth();
-  
+
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
-  
+
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({});
 
   useEffect(() => {
@@ -101,8 +102,8 @@ export default function LoginForm({
         onSuccess?.();
       } else {
         const error = result.error as any;
-        const errorMessage = typeof error === 'string' 
-          ? error 
+        const errorMessage = typeof error === 'string'
+          ? error
           : error?.message || 'Login failed';
         setErrors({ general: errorMessage });
         if (error) {
@@ -137,11 +138,11 @@ export default function LoginForm({
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={[styles.container, style]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <Animated.View 
+      <Animated.View
         style={[
           styles.content,
           {
@@ -152,11 +153,7 @@ export default function LoginForm({
       >
         {/* Logo and Title */}
         <View style={styles.header}>
-          <Image 
-            source={require('../../../assets/logo.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <SMLogo size={80} style={{ marginBottom: 20 }} />
           <Text style={styles.title}>{t.auth.title}</Text>
           <Text style={styles.subtitle}>{t.auth.subtitle}</Text>
         </View>
@@ -209,7 +206,7 @@ export default function LoginForm({
           </View>
 
           {/* Submit Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             activeOpacity={0.7}
@@ -223,7 +220,7 @@ export default function LoginForm({
           </TouchableOpacity>
 
           {/* Forgot Password */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.forgotPasswordButton}
             onPress={onForgotPassword}
             activeOpacity={0.7}

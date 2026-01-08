@@ -18,15 +18,8 @@ import {
 import { useAppNavigation } from '../../navigation';
 import { useGroupManager } from '../../hooks/useGroups';
 import { GroupMember } from '../../services/groupService';
+import { SMLogo } from '../../components';
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 interface GroupMembersScreenProps {
   route: {
@@ -196,7 +189,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
           style: 'destructive',
           onPress: async () => {
             try {
-              const promises = Array.from(selectedMembers).map(memberId => 
+              const promises = Array.from(selectedMembers).map(memberId =>
                 removeMember(groupId, memberId)
               );
               await Promise.all(promises);
@@ -218,7 +211,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(member => 
+      filtered = filtered.filter(member =>
         member.user?.display_name?.toLowerCase().includes(query) ||
         member.role.toLowerCase().includes(query)
       );
@@ -250,7 +243,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -268,14 +261,14 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Group Members</Text>
-        <Image source={require('../../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
+        <SMLogo />
       </View>
 
       {/* Error Display */}
@@ -330,8 +323,8 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
               {selectedMembers.size === filteredMembers.length ? 'Deselect All' : 'Select All'}
             </Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.actionButton, styles.removeButton]}
             onPress={handleRemoveSelected}
             disabled={selectedMembers.size === 0}
@@ -344,7 +337,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
       )}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.content,
             {
@@ -379,8 +372,8 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                         <View style={styles.memberHeader}>
                           <View style={styles.memberAvatar}>
                             {member.user?.avatar_url ? (
-                              <Image 
-                                source={{ uri: member.user.avatar_url }} 
+                              <Image
+                                source={{ uri: member.user.avatar_url }}
                                 style={styles.memberAvatarImage}
                               />
                             ) : (
@@ -391,7 +384,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                               </View>
                             )}
                           </View>
-                          
+
                           <View style={styles.memberInfo}>
                             <Text style={styles.memberName}>
                               {member.user?.display_name || 'Unknown User'}
@@ -400,7 +393,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                               Joined {formatJoinDate(member.joined_at)}
                             </Text>
                           </View>
-                          
+
                           <View style={styles.memberRole}>
                             <View style={[styles.roleBadge, { backgroundColor: getRoleColor(member.role) }]}>
                               <Text style={styles.roleIcon}>
@@ -411,7 +404,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                               </Text>
                             </View>
                           </View>
-                          
+
                           {isSelectionMode && (
                             <TouchableOpacity
                               style={[styles.selectionIndicator, selectedMembers.has(member.user_id) && styles.selectionIndicatorSelected]}
@@ -423,7 +416,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                             </TouchableOpacity>
                           )}
                         </View>
-                        
+
                         {/* Member Actions */}
                         {!isSelectionMode && (userRole === 'admin' || userRole === 'moderator') && member.role !== 'admin' && (
                           <View style={styles.memberActions}>
@@ -433,7 +426,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                             >
                               <Text style={styles.memberActionButtonText}>Change Role</Text>
                             </TouchableOpacity>
-                            
+
                             <TouchableOpacity
                               style={[styles.memberActionButton, styles.removeMemberButton]}
                               onPress={() => handleRemoveMember(member)}
@@ -455,7 +448,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                     {searchQuery ? 'No members found' : 'No members yet'}
                   </Text>
                   <Text style={styles.emptySubtitle}>
-                    {searchQuery 
+                    {searchQuery
                       ? 'Try adjusting your search terms'
                       : 'Members will appear here when they join the group'
                     }
@@ -470,14 +463,14 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
       {/* Bottom Actions */}
       {!isSelectionMode && (userRole === 'admin' || userRole === 'moderator') && (
         <View style={styles.bottomActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.bottomActionButton}
             onPress={() => setIsSelectionMode(true)}
           >
             <Text style={styles.bottomActionButtonText}>Select Members</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.bottomActionButton}
             onPress={() => navigation.navigate('GroupInvite', { groupId })}
           >
@@ -494,7 +487,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
             <Text style={styles.rolePickerSubtitle}>
               {selectedMemberForRole?.user?.display_name}
             </Text>
-            
+
             <View style={styles.roleOptions}>
               <TouchableOpacity
                 style={styles.roleOption}
@@ -504,7 +497,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                 <Text style={styles.roleOptionText}>Admin</Text>
                 <Text style={styles.roleOptionDescription}>Full group control</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.roleOption}
                 onPress={() => handleRoleChange('moderator')}
@@ -513,7 +506,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                 <Text style={styles.roleOptionText}>Moderator</Text>
                 <Text style={styles.roleOptionDescription}>Moderate content and members</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.roleOption}
                 onPress={() => handleRoleChange('member')}
@@ -523,7 +516,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                 <Text style={styles.roleOptionDescription}>Basic group access</Text>
               </TouchableOpacity>
             </View>
-            
+
             <TouchableOpacity
               style={styles.rolePickerCancelButton}
               onPress={() => setShowRolePicker(false)}

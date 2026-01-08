@@ -44,3 +44,4 @@ export { default as ProfileEditModal } from './ProfileEditModal';
 // Map enhancement components
 // LocationDetailsModal was merged into PlaceInfoModal
 export { CreateEventModal } from './CreateEventModal';
+export { default as SMLogo } from './SMLogo';

@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
 import ErrorMessage from './ErrorMessage';
+import { SMLogo } from '../index';
 
 // Types
 export interface RegisterFormProps {
@@ -40,7 +41,7 @@ export default function RegisterForm({
 }: RegisterFormProps) {
   const { t } = useTranslation();
   const { signUp } = useAuth();
-  
+
   const [formData, setFormData] = useState<RegisterFormData>({
     email: '',
     displayName: '',
@@ -48,13 +49,13 @@ export default function RegisterForm({
     confirmPassword: '',
     favoriteSports: [],
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
-  
+
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({});
 
   useEffect(() => {
@@ -132,8 +133,8 @@ export default function RegisterForm({
         onSuccess?.();
       } else {
         const error = result.error as any;
-        const errorMessage = typeof error === 'string' 
-          ? error 
+        const errorMessage = typeof error === 'string'
+          ? error
           : error?.message || 'Registration failed';
         setErrors({ general: errorMessage });
         if (error) {
@@ -163,7 +164,7 @@ export default function RegisterForm({
     const newSports = currentSports.includes(sport)
       ? currentSports.filter(s => s !== sport)
       : [...currentSports, sport];
-    
+
     handleInputChange('favoriteSports', newSports);
   };
 
@@ -178,16 +179,16 @@ export default function RegisterForm({
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={[styles.container, style]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Animated.View 
+        <Animated.View
           style={[
             styles.content,
             {
@@ -198,11 +199,7 @@ export default function RegisterForm({
         >
           {/* Logo and Title */}
           <View style={styles.header}>
-            <Image 
-              source={require('../../../assets/logo.png')} 
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <SMLogo size={70} style={{ marginBottom: 16 }} />
             <Text style={styles.title}>{t.register.title}</Text>
             <Text style={styles.subtitle}>{t.register.subtitle}</Text>
           </View>
@@ -325,7 +322,7 @@ export default function RegisterForm({
             </View>
 
             {/* Submit Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
               onPress={handleSubmit}
               activeOpacity={0.7}

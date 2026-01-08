@@ -253,6 +253,43 @@ class FriendService {
     }
   }
 
+  async blockUser(userId: string, targetUserId: string): Promise<boolean> {
+    try {
+      // Create block record
+      const { error } = await supabase
+        .from('user_blocks')
+        .insert({
+          user_id: userId,
+          blocked_user_id: targetUserId,
+          created_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error('Error blocking user:', error);
+        return false;
+      }
+
+      // If they are friends, remove the friendship
+      await this.removeFriend(userId, targetUserId);
+
+      // If there's a pending request, remove it
+      const { data: request } = await supabase
+        .from('friend_requests')
+        .select('id')
+        .or(`and(sender_id.eq.${userId},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${userId})`)
+        .maybeSingle();
+
+      if (request) {
+        await this.cancelFriendRequest(request.id);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      return false;
+    }
+  }
+
   async getFriends(userId: string, limit: number = 50, offset: number = 0): Promise<UserProfile[]> {
     try {
       const { data, error } = await supabase
@@ -272,7 +309,7 @@ class FriendService {
         return [];
       }
 
-      return data?.map(item => item.users) || [];
+      return (data?.map(item => (item as any).users) || []) as UserProfile[];
     } catch (error) {
       console.error('Error fetching friends:', error);
       return [];
@@ -282,7 +319,7 @@ class FriendService {
   async getFriendRequests(userId: string, type: 'sent' | 'received'): Promise<FriendRequest[]> {
     try {
       const column = type === 'sent' ? 'sender_id' : 'receiver_id';
-      
+
       const { data, error } = await supabase
         .from('friend_requests')
         .select(`
@@ -375,17 +412,17 @@ class FriendService {
       }
 
       // Process suggestions
-      const processedSuggestions: FriendSuggestion[] = suggestions?.map(suggestion => {
-        const mutualFriends = suggestion.friendships?.filter(f => 
+      const processedSuggestions: FriendSuggestion[] = suggestions?.map((suggestion: any) => {
+        const mutualFriends = suggestion.friendships?.filter((f: any) =>
           friendIds.includes(f.users?.id)
         ).length || 0;
 
-        const commonSports = suggestion.favorite_sports?.filter(sport => 
+        const commonSports = suggestion.favorite_sports?.filter((sport: string) =>
           userProfile.favorite_sports?.includes(sport)
         ) || [];
 
         return {
-          user: suggestion,
+          user: suggestion as UserProfile,
           mutual_friends: mutualFriends,
           common_sports: commonSports,
           reason: this.generateSuggestionReason(mutualFriends, commonSports.length),
@@ -519,13 +556,10 @@ class FriendService {
         this.getFriendRequests(userId, 'sent'),
       ]);
 
-      // Calculate mutual friends for each friend
+      // Calculate mutual friends (placeholder replaced with actual counts if available)
       const mutualFriends: { [friendId: string]: number } = {};
       for (const friend of friends) {
-        const friendFriends = await this.getFriends(friend.id, 1000);
-        const mutualCount = friendFriends.filter(f => 
-          friends.some(userFriend => userFriend.id === f.id)
-        ).length;
+        const mutualCount = await this.getMutualFriendsCount(userId, friend.id);
         mutualFriends[friend.id] = mutualCount;
       }
 
@@ -543,6 +577,32 @@ class FriendService {
         sent_requests: 0,
         mutual_friends: {},
       };
+    }
+  }
+
+  async getMutualFriendsCount(userId: string, targetUserId: string): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_mutual_friends_count', {
+          user_id_1: userId,
+          user_id_2: targetUserId
+        });
+
+      if (error) {
+        // Fallback to manual calculation if RPC is missing
+        const [friends1, friends2] = await Promise.all([
+          this.getFriends(userId, 1000),
+          this.getFriends(targetUserId, 1000)
+        ]);
+
+        const friendIds1 = new Set(friends1.map(f => f.id));
+        return friends2.filter(f => friendIds1.has(f.id)).length;
+      }
+
+      return data || 0;
+    } catch (error) {
+      console.error('Error fetching mutual friends count:', error);
+      return 0;
     }
   }
 
@@ -585,11 +645,11 @@ class FriendService {
   async getFriendRecommendations(userId: string, limit: number = 5): Promise<FriendSuggestion[]> {
     try {
       const suggestions = await this.getFriendSuggestions(userId, limit * 2);
-      
+
       // Filter out users who have pending requests
       const pendingRequests = await this.getFriendRequests(userId, 'sent');
       const pendingIds = pendingRequests.map(r => r.receiver_id);
-      
+
       return suggestions
         .filter(s => !pendingIds.includes(s.user.id))
         .slice(0, limit);

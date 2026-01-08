@@ -5,6 +5,7 @@ export interface AppError {
   message: string;
   details?: any;
   timestamp: Date;
+  context?: string;
 }
 
 export class ErrorHandler {
@@ -24,6 +25,7 @@ export class ErrorHandler {
       message: this.getErrorMessage(error),
       details: error,
       timestamp: new Date(),
+      context,
     };
 
     this.errorLog.push(appError);

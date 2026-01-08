@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { 
-  UserProfile, 
-  FriendRequest, 
+import {
+  FriendRequest,
   FriendSuggestion,
   FriendSearchFilters
 } from '../services/friendService';
+import { UserProfile } from '../services/userService';
 
 // Hook for friends management
 export const useFriends = () => {
@@ -19,6 +19,8 @@ export const useFriends = () => {
     refreshFriendRequests,
     refreshFriendSuggestions,
     searchFriends,
+    cancelFriendRequest,
+    blockUser,
     clearError,
   } = useUser();
 
@@ -63,6 +65,22 @@ export const useFriends = () => {
     }
     return success;
   }, [removeFriend, refreshFriends]);
+
+  const handleCancelFriendRequest = useCallback(async (requestId: string) => {
+    const success = await cancelFriendRequest(requestId);
+    if (success) {
+      await refreshFriendRequests();
+    }
+    return success;
+  }, [cancelFriendRequest, refreshFriendRequests]);
+
+  const handleBlockUser = useCallback(async (userId: string) => {
+    const success = await blockUser(userId);
+    if (success) {
+      await Promise.all([refreshFriends(), refreshFriendRequests()]);
+    }
+    return success;
+  }, [blockUser, refreshFriends, refreshFriendRequests]);
 
   // Data refresh
   const handleRefreshFriends = useCallback(async () => {
@@ -139,18 +157,20 @@ export const useFriends = () => {
     isUpdating: friendsState.isUpdating,
     error: friendsState.error,
     isInitialized,
-    
+
     // Actions
     sendFriendRequest: handleSendFriendRequest,
     acceptFriendRequest: handleAcceptFriendRequest,
     declineFriendRequest: handleDeclineFriendRequest,
+    cancelFriendRequest: handleCancelFriendRequest,
     removeFriend: handleRemoveFriend,
+    blockUser: handleBlockUser,
     refreshFriends: handleRefreshFriends,
     refreshFriendRequests: handleRefreshFriendRequests,
     refreshFriendSuggestions: handleRefreshFriendSuggestions,
     searchFriends: handleSearchFriends,
     clearError: handleClearError,
-    
+
     // Computed values
     friendsCount: getFriendsCount(),
     pendingRequestsCount: getPendingRequestsCount(),
@@ -376,7 +396,7 @@ export const useFriendSearch = () => {
   }, [searchResults]);
 
   const getSearchResultsBySport = useCallback((sport: string) => {
-    return searchResults.filter(friend => 
+    return searchResults.filter(friend =>
       friend.favorite_sports?.includes(sport)
     );
   }, [searchResults]);
@@ -389,9 +409,9 @@ export const useFriendSearch = () => {
 
   const getSearchResultsByActivity = useCallback((isActive: boolean) => {
     if (!isActive) return searchResults;
-    
+
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    return searchResults.filter(friend => 
+    return searchResults.filter(friend =>
       friend.last_active && friend.last_active >= oneHourAgo
     );
   }, [searchResults]);
@@ -462,8 +482,9 @@ export const useFriendStats = () => {
       return lastActive >= oneWeekAgo;
     }).length;
 
-    const activityLevel = activeFriends > friends.length * 0.7 ? 'high' :
-                         activeFriends > friends.length * 0.3 ? 'medium' : 'low';
+    const activityLevel: 'high' | 'medium' | 'low' =
+      activeFriends > friends.length * 0.7 ? 'high' :
+        activeFriends > friends.length * 0.3 ? 'medium' : 'low';
 
     return {
       totalFriends,
@@ -472,7 +493,7 @@ export const useFriendStats = () => {
       suggestions: suggestionsCount,
       mutualFriends,
       commonSports,
-      activityLevel,
+      activityLevel: activityLevel as 'high' | 'medium' | 'low',
     };
   }, [friends, friendRequests, suggestions]);
 
@@ -483,7 +504,7 @@ export const useFriendStats = () => {
 
   const getTopCommonSports = useCallback((limit: number = 5) => {
     if (!stats) return [];
-    
+
     return Object.entries(stats.commonSports)
       .sort(([, a], [, b]) => b - a)
       .slice(0, limit)
@@ -502,7 +523,7 @@ export const useFriendStats = () => {
   }, [friends]);
 
   const getFriendsBySport = useCallback((sport: string) => {
-    return friends.filter(friend => 
+    return friends.filter(friend =>
       friend.favorite_sports?.includes(sport)
     );
   }, [friends]);

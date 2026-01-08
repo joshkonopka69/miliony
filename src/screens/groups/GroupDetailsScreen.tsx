@@ -16,17 +16,10 @@ import {
 import { useAppNavigation } from '../../navigation';
 import { useGroupManager } from '../../hooks/useGroups';
 import { Group, GroupMember } from '../../services/groupService';
+import { SMLogo } from '../../components';
 
 const { width } = Dimensions.get('window');
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 interface GroupDetailsScreenProps {
   route: {
@@ -89,11 +82,11 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
       getGroupMembers(groupId),
       getGroupAnalytics(groupId),
     ]);
-    
+
     // Check user membership and role
     const membership = await isMember(groupId, currentGroup?.created_by || '');
     const role = await getUserRole(groupId, currentGroup?.created_by || '');
-    
+
     setIsUserMember(membership);
     setUserRole(role);
   };
@@ -250,14 +243,14 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Group Details</Text>
-        <Image source={require('../../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
+        <SMLogo />
       </View>
 
       {/* Error Display */}
@@ -271,7 +264,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
       )}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.content,
             {
@@ -291,7 +284,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
                 </Text>
               </View>
             )}
-            
+
             <View style={styles.groupInfo}>
               <View style={styles.groupTitleRow}>
                 <Text style={styles.groupTitle}>{currentGroup.name}</Text>
@@ -304,7 +297,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.groupMeta}>
                 <Text style={styles.sportText}>
                   {getSportIcon(currentGroup.sport)} {currentGroup.sport}
@@ -313,7 +306,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
                   👥 {currentGroup.member_count} member{currentGroup.member_count !== 1 ? 's' : ''}
                 </Text>
               </View>
-              
+
               {currentGroup.description && (
                 <Text style={styles.groupDescription}>
                   {currentGroup.description}
@@ -380,7 +373,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
                     </Text>
                   </View>
                 )}
-                
+
                 {currentGroup.requirements.skill_level && currentGroup.requirements.skill_level !== 'any' && (
                   <View style={styles.requirementItem}>
                     <Text style={styles.requirementIcon}>⭐</Text>
@@ -389,7 +382,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
                     </Text>
                   </View>
                 )}
-                
+
                 {currentGroup.requirements.gender_preference && currentGroup.requirements.gender_preference !== 'any' && (
                   <View style={styles.requirementItem}>
                     <Text style={styles.requirementIcon}>👤</Text>
@@ -483,7 +476,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
                 <Text style={styles.leaveButtonText}>Leave Group</Text>
               )}
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[styles.actionButton, styles.chatButton]}
               onPress={handleViewChat}
@@ -501,19 +494,19 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
             <Text style={styles.navTabIcon}>👥</Text>
             <Text style={styles.navTabText}>Members</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.navTab} onPress={handleViewEvents}>
             <Text style={styles.navTabIcon}>📅</Text>
             <Text style={styles.navTabText}>Events</Text>
           </TouchableOpacity>
-          
+
           {(userRole === 'admin' || userRole === 'moderator') && (
             <TouchableOpacity style={styles.navTab} onPress={handleViewSettings}>
               <Text style={styles.navTabIcon}>⚙️</Text>
               <Text style={styles.navTabText}>Settings</Text>
             </TouchableOpacity>
           )}
-          
+
           {userRole === 'admin' && (
             <TouchableOpacity style={styles.navTab} onPress={handleInviteMembers}>
               <Text style={styles.navTabIcon}>➕</Text>

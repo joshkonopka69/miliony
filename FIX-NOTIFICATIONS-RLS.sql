@@ -32,3 +32,5 @@ CREATE POLICY "Notifications delete own"
 
 COMMIT;
 
+
+

@@ -19,6 +19,7 @@ import { ROUTES } from '../navigation/types';
 import { useNotificationManager } from '../hooks/useNotifications';
 import { NotificationData, NotificationType } from '../services/notificationService';
 import { useTranslation, Language } from '../contexts/TranslationContext';
+import { SMLogo } from '../components';
 
 const LOCALE_MAP: Record<Language, string> = {
   en: 'en-US',
@@ -28,14 +29,6 @@ const LOCALE_MAP: Record<Language, string> = {
   de: 'de-DE',
 };
 
-// Custom SM Logo Component
-const SMLogo = ({ size = 30 }: { size?: number }) => (
-  <View style={[styles.logoContainer, { width: size, height: size }]}>
-    <View style={styles.logoBackground}>
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>SM</Text>
-    </View>
-  </View>
-);
 
 export default function NotificationsScreen() {
   const navigation = useAppNavigation();
@@ -151,13 +144,15 @@ export default function NotificationsScreen() {
 
   const handleNotificationPress = async (notification: NotificationData) => {
     if (isSelectionMode) {
-      toggleNotificationSelection(notification.id);
+      if (notification.id) {
+        toggleNotificationSelection(notification.id);
+      }
     } else {
       // Mark as read if unread
-      if (!notification.is_read) {
+      if (!notification.read && notification.id) {
         await markAsRead(notification.id);
       }
-      
+
       // Navigate based on notification type
       handleNotificationNavigation(notification);
     }
@@ -171,8 +166,12 @@ export default function NotificationsScreen() {
       case 'event_invitation':
       case 'event_updated':
       case 'event_cancelled':
-        if (notification.data?.event_id) {
-          navigation.navigate('EventDetails', { eventId: notification.data.event_id });
+      case 'event_reminder':
+      case 'event_starting_soon':
+      case 'event_participant_joined':
+        const eventId = notification.data?.event_id || notification.data?.eventId;
+        if (eventId) {
+          navigation.navigate('EventDetails', { id: eventId } as any);
         }
         break;
       case 'group_invite':
@@ -189,7 +188,8 @@ export default function NotificationsScreen() {
     }
   };
 
-  const toggleNotificationSelection = (notificationId: string) => {
+  const toggleNotificationSelection = (notificationId?: string) => {
+    if (!notificationId) return;
     const newSelection = new Set(selectedNotifications);
     if (newSelection.has(notificationId)) {
       newSelection.delete(notificationId);
@@ -203,8 +203,10 @@ export default function NotificationsScreen() {
     if (selectedNotifications.size === getFilteredNotifications().length) {
       setSelectedNotifications(new Set());
     } else {
-      const allIds = new Set(getFilteredNotifications().map(n => n.id));
-      setSelectedNotifications(allIds);
+      const validIds = getFilteredNotifications()
+        .map(n => n.id)
+        .filter((id): id is string => id !== undefined);
+      setSelectedNotifications(new Set(validIds));
     }
   };
 
@@ -276,9 +278,11 @@ export default function NotificationsScreen() {
       friend_request: '👤',
       friend_request_accepted: '✅',
       event_invitation: '📅',
+      event_invite: '📅',
       group_invite: '👥',
       event_cancelled: '❌',
       event_updated: '📝',
+      event_update: '📝',
       event_reminder: '⏰',
       chat_message: '💬',
       system_announcement: '📢',
@@ -288,6 +292,7 @@ export default function NotificationsScreen() {
       weather_alert: '🌤️',
       achievement_unlocked: '🏆',
       friend_activity: '🎯',
+      general: '🔔',
     };
     return icons[type] || '🔔';
   };
@@ -298,9 +303,11 @@ export default function NotificationsScreen() {
       friend_request: '#2196F3',
       friend_request_accepted: '#4CAF50',
       event_invitation: '#FF9800',
+      event_invite: '#FF9800',
       group_invite: '#3B82F6',
       event_cancelled: '#F44336',
       event_updated: '#FF9800',
+      event_update: '#FF9800',
       event_reminder: '#9C27B0',
       chat_message: '#2196F3',
       system_announcement: '#607D8B',
@@ -310,6 +317,7 @@ export default function NotificationsScreen() {
       weather_alert: '#FFC107',
       achievement_unlocked: '#FFD700',
       friend_activity: '#E91E63',
+      general: '#666666',
     };
     return colors[type] || '#666666';
   };
@@ -320,16 +328,16 @@ export default function NotificationsScreen() {
     const diffMs = now.getTime() - date.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
     const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
-    
+
     if (diffMinutes < 1) return rtf.format(0, 'minute');
     if (diffMinutes < 60) return rtf.format(-diffMinutes, 'minute');
-    
+
     const diffHours = Math.floor(diffMinutes / 60);
     if (diffHours < 24) return rtf.format(-diffHours, 'hour');
-    
+
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return rtf.format(-diffDays, 'day');
-    
+
     return date.toLocaleDateString(locale);
   };
 
@@ -338,7 +346,7 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -346,7 +354,7 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t.notifications.title}</Text>
         <View style={styles.headerActions}>
-          <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
+          <SMLogo />
         </View>
       </View>
 
@@ -386,7 +394,7 @@ export default function NotificationsScreen() {
                 {t.notifications.filterAll} ({notifications.length})
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[styles.filterChip, activeFilter === 'unread' && styles.filterChipActive]}
               onPress={() => handleFilterChange('unread')}
@@ -396,14 +404,14 @@ export default function NotificationsScreen() {
               </Text>
             </TouchableOpacity>
 
-            {['friend_request', 'event_invitation', 'group_invite', 'chat_message', 'system_announcement'].map((type) => (
+            {(['friend_request', 'event_invitation', 'group_invite', 'chat_message', 'system_announcement'] as NotificationType[]).map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[styles.filterChip, activeFilter === type && styles.filterChipActive]}
-                onPress={() => handleFilterChange(type as NotificationType)}
+                onPress={() => handleFilterChange(type)}
               >
                 <Text style={[styles.filterChipText, activeFilter === type && styles.filterChipTextActive]}>
-                  {t.notifications.filterLabels[type as NotificationType] ?? type}
+                  {(t.notifications.filterLabels as any)[type] ?? type}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -421,9 +429,9 @@ export default function NotificationsScreen() {
                 : t.notifications.selectAll}
             </Text>
           </TouchableOpacity>
-          
+
           <View style={styles.actionButtonGroup}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={handleMarkSelectedAsRead}
               disabled={selectedNotifications.size === 0}
@@ -432,8 +440,8 @@ export default function NotificationsScreen() {
                 {t.notifications.markAsRead}
               </Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[styles.actionButton, styles.deleteButton]}
               onPress={handleDeleteSelected}
               disabled={selectedNotifications.size === 0}
@@ -447,14 +455,14 @@ export default function NotificationsScreen() {
       )}
 
       {/* Notifications List */}
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        <Animated.View 
+        <Animated.View
           style={[
             styles.content,
             {
@@ -481,13 +489,13 @@ export default function NotificationsScreen() {
                         key={notification.id}
                         style={[
                           styles.notificationItem,
-                          !notification.is_read && styles.notificationItemUnread,
-                          selectedNotifications.has(notification.id) && styles.notificationItemSelected,
+                          !notification.read && styles.notificationItemUnread,
+                          notification.id ? selectedNotifications.has(notification.id) && styles.notificationItemSelected : false,
                         ]}
                         onPress={() => handleNotificationPress(notification)}
                         onLongPress={() => {
                           setIsSelectionMode(true);
-                          toggleNotificationSelection(notification.id);
+                          if (notification.id) toggleNotificationSelection(notification.id);
                         }}
                         activeOpacity={0.7}
                       >
@@ -497,19 +505,19 @@ export default function NotificationsScreen() {
                               <Text style={styles.notificationIcon}>
                                 {getNotificationIcon(notification.type)}
                               </Text>
-                              {!notification.is_read && <View style={styles.unreadIndicator} />}
+                              {!notification.read && <View style={styles.unreadIndicator} />}
                             </View>
-                            
+
                             <View style={styles.notificationInfo}>
-                              <Text style={[styles.notificationTitle, !notification.is_read && styles.notificationTitleUnread]}>
+                              <Text style={[styles.notificationTitle, !notification.read && styles.notificationTitleUnread]}>
                                 {copy.title}
                               </Text>
                               <Text style={styles.notificationTime}>
-                                {formatNotificationTime(notification.created_at)}
+                                {notification.created_at ? formatNotificationTime(notification.created_at) : ''}
                               </Text>
                             </View>
-                            
-                            {isSelectionMode && (
+
+                            {isSelectionMode && notification.id && (
                               <TouchableOpacity
                                 style={[styles.selectionIndicator, selectedNotifications.has(notification.id) && styles.selectionIndicatorSelected]}
                                 onPress={() => toggleNotificationSelection(notification.id)}
@@ -520,11 +528,11 @@ export default function NotificationsScreen() {
                               </TouchableOpacity>
                             )}
                           </View>
-                          
+
                           <Text style={styles.notificationBody} numberOfLines={2}>
                             {copy.body}
                           </Text>
-                          
+
                           {notification.image_url && (
                             <View style={styles.notificationImageContainer}>
                               <Text style={styles.notificationImagePlaceholder}>📷</Text>
@@ -542,7 +550,7 @@ export default function NotificationsScreen() {
                     {searchQuery ? t.notifications.emptySearchTitle : t.notifications.emptyTitle}
                   </Text>
                   <Text style={styles.emptySubtitle}>
-                    {searchQuery 
+                    {searchQuery
                       ? t.notifications.emptySearchSubtitle
                       : t.notifications.emptySubtitle
                     }
@@ -568,7 +576,7 @@ export default function NotificationsScreen() {
           <TouchableOpacity style={styles.bottomActionButton} onPress={() => setIsSelectionMode(true)}>
             <Text style={styles.bottomActionButtonText}>{t.notifications.select}</Text>
           </TouchableOpacity>
-          
+
           {unreadCount > 0 && (
             <TouchableOpacity style={styles.bottomActionButton} onPress={handleMarkAllAsRead}>
               <Text style={styles.bottomActionButtonText}>{t.notifications.markAllReadButton}</Text>
