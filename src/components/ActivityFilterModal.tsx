@@ -30,19 +30,21 @@ interface ActivityFilterModalProps {
 
 // Map IDs to specific assets
 // Using standard require for assets. 
-// Note: For icons that failed generation (bowling, golf, ice_rink, tennis), we fallback to trophy or similar for now to maintain the style consistency.
 const BASE_ACTIVITY_TYPES = [
-  { id: 'gym', iconSource: require('../../assets/filters/icon_gym_gold.png') },
-  { id: 'stadium', iconSource: require('../../assets/filters/icon_stadium_gold.png') },
-  { id: 'swimming_pool', iconSource: require('../../assets/filters/icon_swimming_gold.png') },
-  { id: 'park', iconSource: require('../../assets/filters/icon_park_gold.png') },
+  { id: 'gym', iconSource: require('../../assets/filter icons/gym.png') },
+  { id: 'stadium', iconSource: require('../../assets/filter icons/stadium.png') },
+  { id: 'swimming_pool', iconSource: require('../../assets/filter icons/swimming pool.png') },
+  { id: 'park', iconSource: require('../../assets/filter icons/park.png') },
+  // Keeping fallback for sports_complex as no specific icon was found in the new folder
   { id: 'sports_complex', iconSource: require('../../assets/filters/icon_trophy_gold.png') },
-  // Fallbacks for missing assets to prevent crash, using trophy as generic premium icon
-  { id: 'bowling_alley', iconSource: require('../../assets/filters/icon_trophy_gold.png') },
-  { id: 'golf_course', iconSource: require('../../assets/filters/icon_park_gold.png') },
-  { id: 'ice_rink', iconSource: require('../../assets/filters/icon_stadium_gold.png') },
-  { id: 'tennis_court', iconSource: require('../../assets/filters/icon_trophy_gold.png') },
-  { id: 'basketball_court', iconSource: require('../../assets/filters/icon_basketball_gold.png') },
+  { id: 'bowling_alley', iconSource: require('../../assets/filter icons/bowling alley.png') },
+  { id: 'golf_course', iconSource: require('../../assets/filter icons/golf course.png') },
+  { id: 'ice_rink', iconSource: require('../../assets/filter icons/ice rink.png') },
+  { id: 'tennis_court', iconSource: require('../../assets/filter icons/tennis court.png') },
+  { id: 'basketball_court', iconSource: require('../../assets/filter icons/basketball court.png') },
+  // New Categories
+  { id: 'martial_arts_gym', iconSource: require('../../assets/filter icons/Martial arts gyms.png') },
+  { id: 'grappling_hall', iconSource: require('../../assets/filter icons/Grappling sport halls.png') },
 ] as const;
 
 export default function ActivityFilterModal({
@@ -296,11 +298,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   typeChipSelected: {
-    backgroundColor: '#000000', // Solid Black Background
-    borderColor: '#FDB924', // Gold Border
+    backgroundColor: '#FFFFFF', // Keep White Background
+    borderColor: '#FFD700', // Gold/Yellow Border
     borderWidth: 2,
-    shadowColor: '#FDB924',
-    shadowOpacity: 0.2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
   },
@@ -315,7 +317,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   typeLabelSelected: {
-    color: '#FDB924', // Gold Text on Black
+    color: '#000000', // Black Text on Gold
     fontWeight: '700',
   },
   keywordInput: {
@@ -345,9 +347,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   radiusChipSelected: {
-    backgroundColor: '#000000',
-    borderColor: '#FDB924',
-    borderWidth: 1,
+    backgroundColor: '#FFFFFF', // Keep White Background
+    borderColor: '#FFD700', // Gold/Yellow Border
+    borderWidth: 2,
   },
   radiusLabel: {
     fontSize: 14,
@@ -355,7 +357,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   radiusLabelSelected: {
-    color: '#FDB924',
+    color: '#000000',
     fontWeight: '600',
   },
   footer: {
@@ -367,7 +369,7 @@ const styles = StyleSheet.create({
   },
   applyButton: {
     height: 56,
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',

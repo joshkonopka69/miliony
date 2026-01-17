@@ -16,7 +16,7 @@ export const NavigationUtils = {
     params?: RootStackParamList[T]
   ) => {
     if (navigationRef?.isReady()) {
-      navigationRef.navigate(name, params);
+      (navigationRef as any).navigate(name as any, params as any);
     }
   },
 
@@ -88,7 +88,7 @@ export const DeepLinkUtils = {
       const parsed = new URL(url);
       const path = parsed.pathname.replace(/^\//, '');
       const params = Object.fromEntries(parsed.searchParams);
-      
+
       return {
         path,
         params,
@@ -107,12 +107,12 @@ export const DeepLinkUtils = {
   routeToUrl: (routeName: string, params?: any) => {
     const baseUrl = 'sportapp://';
     let url = `${baseUrl}${routeName.toLowerCase()}`;
-    
+
     if (params && Object.keys(params).length > 0) {
       const searchParams = new URLSearchParams(params);
       url += `?${searchParams.toString()}`;
     }
-    
+
     return url;
   },
 };

@@ -103,97 +103,104 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      <View style={styles.content}>
-        {/* Header with Logo and Title */}
-        <Animated.View
-          style={[
-            styles.header,
-            {
-              opacity: fadeAnim,
-              transform: [
-                { translateY: slideAnim },
-                { scale: scaleAnim }
-              ],
-            },
-          ]}
-        >
-          <SMLogo size={180} style={{ marginBottom: 0, zIndex: 10 }} />
-          <Image
-            source={require('../../assets/logo_text.png')}
-            style={styles.logoText}
-            resizeMode="contain"
-          />
-          <Text style={styles.subtitle}>
-            {t.welcome.subtitle}
-          </Text>
-        </Animated.View>
+      <Animated.ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          {/* Header with Logo and Title */}
+          <Animated.View
+            style={[
+              styles.header,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { translateY: slideAnim },
+                  { scale: scaleAnim }
+                ],
+              },
+            ]}
+          >
+            <SMLogo size={180} style={{ marginBottom: 0, zIndex: 10 }} />
+            <Image
+              source={require('../../assets/logo_text.png')}
+              style={styles.logoText}
+              resizeMode="contain"
+            />
+            <Text style={styles.subtitle}>
+              {t.welcome.subtitle}
+            </Text>
+          </Animated.View>
 
-        {/* Authentication Section */}
-        <Animated.View
-          style={[
-            styles.authSection,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          <View style={styles.buttonContainer}>
-            {/* Google Button */}
-            <TouchableOpacity
-              style={styles.googleButton}
-              onPress={handleGoogleAuth}
-              activeOpacity={0.7}
-            >
-              <GoogleIcon size={24} />
-              <Text style={styles.googleButtonText}>{t.welcome.continueWithGoogle}</Text>
-            </TouchableOpacity>
+          {/* Authentication Section */}
+          <Animated.View
+            style={[
+              styles.authSection,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.buttonContainer}>
+              {/* Google Button */}
+              <TouchableOpacity
+                style={styles.googleButton}
+                onPress={handleGoogleAuth}
+                activeOpacity={0.7}
+              >
+                <GoogleIcon size={24} />
+                <Text style={styles.googleButtonText}>{t.welcome.continueWithGoogle}</Text>
+              </TouchableOpacity>
 
-            {/* Apple Button */}
-            <TouchableOpacity
-              style={styles.appleButton}
-              onPress={handleAppleAuth}
-              activeOpacity={0.7}
-            >
-              <AppleIcon size={24} />
-              <Text style={styles.appleButtonText}>{t.welcome.continueWithApple}</Text>
-            </TouchableOpacity>
+              {/* Apple Button */}
+              <TouchableOpacity
+                style={styles.appleButton}
+                onPress={handleAppleAuth}
+                activeOpacity={0.7}
+              >
+                <AppleIcon size={24} />
+                <Text style={styles.appleButtonText}>{t.welcome.continueWithApple}</Text>
+              </TouchableOpacity>
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
+              {/* Divider */}
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Email Button */}
+              <TouchableOpacity
+                style={styles.emailButton}
+                onPress={handleEmailAuth}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.emailButtonText}>{t.welcome.signUpWithEmail}</Text>
+              </TouchableOpacity>
+
             </View>
 
-            {/* Email Button */}
+            {/* Terms and Privacy */}
+            <Text style={styles.termsText}>
+              {t.welcome.termsText}{' '}
+              <Text style={styles.linkText}>{t.welcome.termsOfService}</Text> and{' '}
+              <Text style={styles.linkText}>{t.welcome.privacyPolicy}</Text>
+            </Text>
+
+            {/* Language Selection */}
             <TouchableOpacity
-              style={styles.emailButton}
-              onPress={handleEmailAuth}
+              style={styles.languageButton}
+              onPress={() => setShowLanguageModal(true)}
               activeOpacity={0.7}
             >
-              <Text style={styles.emailButtonText}>{t.welcome.signUpWithEmail}</Text>
+              <Text style={styles.languageButtonText}>🌐 {getCurrentLanguageName()}</Text>
             </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Animated.ScrollView>
 
-          </View>
-
-          {/* Terms and Privacy */}
-          <Text style={styles.termsText}>
-            {t.welcome.termsText}{' '}
-            <Text style={styles.linkText}>{t.welcome.termsOfService}</Text> and{' '}
-            <Text style={styles.linkText}>{t.welcome.privacyPolicy}</Text>
-          </Text>
-
-          {/* Language Selection */}
-          <TouchableOpacity
-            style={styles.languageButton}
-            onPress={() => setShowLanguageModal(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.languageButtonText}>🌐 {getCurrentLanguageName()}</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
 
       {/* Language Selection Modal */}
       <Modal
@@ -451,7 +458,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   languageOptionSelected: {
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#FFD700',
   },
   languageOptionText: {
     fontSize: 16,
@@ -480,5 +487,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333333',
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
 });
+
 

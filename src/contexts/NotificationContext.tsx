@@ -74,7 +74,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setError(null);
 
       const initialized = await fcmService.initialize();
+      // Initialize local notification service as well
+      await notificationService.initialize();
+
       if (initialized) {
+
         setIsFCMInitialized(true);
         setFcmToken(fcmService.getToken());
 

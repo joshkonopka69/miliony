@@ -19,22 +19,40 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.sportmap.app",
+      associatedDomains: ["applinks:ujfeqshqhlplmolfrlvc.supabase.co"],
       config: {
         googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ""
       }
     },
+    scheme: "sportmap",
+
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
       package: "com.sportmap.app",
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "https",
+              host: "ujfeqshqhlplmolfrlvc.supabase.co",
+              pathPrefix: "/auth/v1/callback"
+            }
+          ],
+          category: ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       config: {
         googleMaps: {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ""
         }
       }
     },
+
     web: {
       favicon: "./assets/favicon.png",
       bundler: "metro"

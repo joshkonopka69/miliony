@@ -109,7 +109,7 @@ export default function PlaceRecommendations({
     >
       {place.photos && place.photos.length > 0 && (
         <Image
-          source={{ uri: place.photos[0] }}
+          source={{ uri: place.photos[0].url || `https://via.placeholder.com/400x300/cccccc/666666?text=Photo` }}
           style={styles.placeImage}
           resizeMode="cover"
         />
@@ -141,7 +141,7 @@ export default function PlaceRecommendations({
         <Text style={styles.categoryIcon}>{category.icon}</Text>
         <Text style={styles.categoryTitle}>{category.title}</Text>
       </View>
-      
+
       {category.loading ? (
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading...</Text>

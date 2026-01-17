@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
   SafeAreaView,
   RefreshControl,
   StatusBar,
@@ -67,10 +67,10 @@ const formatEventDateTime = (dateString: string): string => {
   const isToday = date.toDateString() === now.toDateString();
   const isTomorrow = date.toDateString() === tomorrow.toDateString();
 
-  const timeStr = date.toLocaleTimeString('en-US', { 
-    hour: 'numeric', 
+  const timeStr = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
     minute: '2-digit',
-    hour12: true 
+    hour12: true
   });
 
   if (isToday) {
@@ -78,9 +78,9 @@ const formatEventDateTime = (dateString: string): string => {
   } else if (isTomorrow) {
     return `Tomorrow, ${timeStr}`;
   } else {
-    const dateStr = date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
+    const dateStr = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
     });
     return `${dateStr}, ${timeStr}`;
   }
@@ -89,11 +89,11 @@ const formatEventDateTime = (dateString: string): string => {
 export default function ImprovedProfileScreen() {
   const navigation = useAppNavigation();
   const { user } = useAuth();
-  
+
   const [activeTab, setActiveTab] = useState<'Created' | 'Joined'>('Created');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [createdEvents, setCreatedEvents] = useState<MyEvent[]>([]);
   const [joinedEvents, setJoinedEvents] = useState<MyEvent[]>([]);
@@ -155,6 +155,9 @@ export default function ImprovedProfileScreen() {
       if (profileError) throw profileError;
       setProfile(profileData);
 
+      const cutoff = new Date();
+      cutoff.setHours(cutoff.getHours() - 24);
+
       // Fetch created events
       const { data: created, error: createdError } = await supabase
         .from('events')
@@ -163,8 +166,8 @@ export default function ImprovedProfileScreen() {
           event_participants(id, user_id, status)
         `)
         .eq('creator_id', user.id)
-        .eq('status', 'active')
-        .gte('scheduled_datetime', new Date().toISOString())
+        .in('status', ['live', 'active', 'upcoming'])
+        .gte('scheduled_datetime', cutoff.toISOString())
         .order('scheduled_datetime', { ascending: true });
 
       if (createdError) throw createdError;
@@ -189,13 +192,14 @@ export default function ImprovedProfileScreen() {
         .from('event_participants')
         .select(`
           event_id,
-          events (
+          events!inner (
             *,
             event_participants(id, user_id, status)
           )
         `)
         .eq('user_id', user.id)
-        .eq('status', 'joined');
+        .eq('status', 'joined')
+        .gte('events.scheduled_datetime', cutoff.toISOString());
 
       if (joinedError) throw joinedError;
 
@@ -281,7 +285,7 @@ export default function ImprovedProfileScreen() {
           <Text style={styles.emptyIcon}>🔔</Text>
           <Text style={styles.emptyTitle}>No events yet</Text>
           <Text style={styles.emptySubtitle}>
-            {activeTab === 'Created' 
+            {activeTab === 'Created'
               ? 'Create your first event to get started!'
               : 'Join events to see them here'
             }
@@ -308,7 +312,7 @@ export default function ImprovedProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -338,7 +342,7 @@ export default function ImprovedProfileScreen() {
                 </Text>
               )}
             </View>
-            
+
             {/* Camera Button */}
             <TouchableOpacity style={styles.cameraButton}>
               <Ionicons name="camera" size={20} color="#000000" />
@@ -363,7 +367,7 @@ export default function ImprovedProfileScreen() {
               Created
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.tab, activeTab === 'Joined' && styles.tabActive]}
             onPress={() => setActiveTab('Joined')}

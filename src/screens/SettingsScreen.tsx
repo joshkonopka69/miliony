@@ -144,7 +144,11 @@ export default function SettingsScreen() {
                   </Text>
                   <Text style={styles.chevronIcon}>›</Text>
                 </View>,
-                false
+                true
+              )}
+              {renderSettingItem(
+                t.notifications.title,
+                () => navigation.navigate(ROUTES.NOTIFICATION_SETTINGS)
               )}
             </View>
           </View>

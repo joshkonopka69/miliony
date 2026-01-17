@@ -45,17 +45,17 @@ export class AppleAuthService {
         success: true,
         user: {
           id: credential.user,
-          email: credential.email,
-          displayName: credential.fullName ? 
-            `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
+          email: credential.email || undefined,
+          displayName: credential.fullName ?
+            `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() :
             'Apple User',
-          identityToken: credential.identityToken,
-          authorizationCode: credential.authorizationCode,
+          identityToken: credential.identityToken || undefined,
+          authorizationCode: credential.authorizationCode || undefined,
         }
       };
     } catch (error: any) {
       console.error('Apple sign-in error:', error);
-      
+
       if (error.code === 'ERR_CANCELED') {
         return { success: false, error: 'User cancelled the login flow' };
       } else {
@@ -69,7 +69,7 @@ export class AppleAuthService {
       return await AppleAuthentication.getCredentialStateAsync(userID);
     } catch (error) {
       console.error('Error getting Apple credential state:', error);
-      return AppleAuthentication.AppleAuthenticationCredentialState.UNKNOWN;
+      return AppleAuthentication.AppleAuthenticationCredentialState.NOT_FOUND;
     }
   }
 }

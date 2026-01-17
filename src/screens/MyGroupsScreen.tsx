@@ -256,7 +256,7 @@ export default function MyGroupsScreen() {
         <View style={styles.groupMeta}>
           <View style={styles.memberCount}>
             <Ionicons name="people" size={14} color="#6B7280" />
-            <Text style={styles.memberCountText}>{group.member_count} members</Text>
+            <Text style={styles.memberCountText}>{group.member_count} {t.myGroups.members}</Text>
           </View>
 
           <View style={styles.privacyBadge}>
@@ -265,7 +265,10 @@ export default function MyGroupsScreen() {
               size={12}
               color="#6B7280"
             />
-            <Text style={styles.privacyText}>{group.privacy}</Text>
+            <Text style={styles.privacyText}>
+              {group.privacy === 'public' ? t.myGroups.public :
+                group.privacy === 'private' ? t.myGroups.private : t.myGroups.inviteOnly}
+            </Text>
           </View>
         </View>
       </View>
@@ -288,8 +291,8 @@ export default function MyGroupsScreen() {
     if (loading) {
       return (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#FDB924" />
-          <Text style={styles.loadingText}>Loading your groups...</Text>
+          <ActivityIndicator size="large" color="#FFD700" />
+          <Text style={styles.loadingText}>{t.myGroups.loadingGroups}</Text>
         </View>
       );
     }
@@ -299,9 +302,9 @@ export default function MyGroupsScreen() {
         <View style={styles.centerContainer}>
           <View style={styles.emptyState}>
             <Ionicons name="people-circle-outline" size={80} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>No Groups Yet</Text>
+            <Text style={styles.emptyTitle}>{t.myGroups.noGroupsTitle}</Text>
             <Text style={styles.emptyMessage}>
-              Create or join groups to connect with other sports enthusiasts
+              {t.myGroups.noGroupsMessage}
             </Text>
             <TouchableOpacity
               style={styles.createGroupButton}
@@ -309,7 +312,7 @@ export default function MyGroupsScreen() {
               activeOpacity={0.8}
             >
               <Ionicons name="add-circle" size={20} color="#000000" />
-              <Text style={styles.createGroupButtonText}>Create Your First Group</Text>
+              <Text style={styles.createGroupButtonText}>{t.myGroups.createFirstGroup}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -321,16 +324,16 @@ export default function MyGroupsScreen() {
         <View style={styles.centerContainer}>
           <View style={styles.emptyState}>
             <Ionicons name="search-outline" size={60} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>No Groups Found</Text>
+            <Text style={styles.emptyTitle}>{t.myGroups.noGroupsFound}</Text>
             <Text style={styles.emptyMessage}>
-              No {selectedFilter} groups in your list
+              {t.myGroups.noGroupsFoundMessage.replace('{filter}', selectedFilter === 'admin' ? t.myGroups.admin : t.myGroups.member)}
             </Text>
             <TouchableOpacity
               style={styles.clearFilterButton}
               onPress={() => setSelectedFilter('all')}
               activeOpacity={0.8}
             >
-              <Text style={styles.clearFilterButtonText}>Clear Filter</Text>
+              <Text style={styles.clearFilterButtonText}>{t.myGroups.clearFilter}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -345,7 +348,7 @@ export default function MyGroupsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#FDB924"
+            tintColor="#FFD700"
           />
         }
       >
@@ -357,7 +360,7 @@ export default function MyGroupsScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.filterTabText, selectedFilter === 'all' && styles.filterTabTextActive]}>
-              All ({groups.length})
+              {t.myGroups.all} ({groups.length})
             </Text>
           </TouchableOpacity>
 
@@ -367,7 +370,7 @@ export default function MyGroupsScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.filterTabText, selectedFilter === 'admin' && styles.filterTabTextActive]}>
-              Admin ({adminGroups.length})
+              {t.myGroups.admin} ({adminGroups.length})
             </Text>
           </TouchableOpacity>
 
@@ -377,7 +380,7 @@ export default function MyGroupsScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.filterTabText, selectedFilter === 'member' && styles.filterTabTextActive]}>
-              Member ({memberGroups.length})
+              {t.myGroups.member} ({memberGroups.length})
             </Text>
           </TouchableOpacity>
         </View>
@@ -386,7 +389,7 @@ export default function MyGroupsScreen() {
         {adminGroups.length > 0 && selectedFilter === 'all' && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Groups You Manage</Text>
+              <Text style={styles.sectionTitle}>{t.myGroups.adminGroupsTitle}</Text>
               <Text style={styles.sectionCount}>{adminGroups.length}</Text>
             </View>
             {adminGroups.map(renderGroupCard)}
@@ -397,7 +400,7 @@ export default function MyGroupsScreen() {
         {memberGroups.length > 0 && selectedFilter === 'all' && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Groups You're In</Text>
+              <Text style={styles.sectionTitle}>{t.myGroups.memberGroupsTitle}</Text>
               <Text style={styles.sectionCount}>{memberGroups.length}</Text>
             </View>
             {memberGroups.map(renderGroupCard)}
@@ -544,7 +547,7 @@ const styles = StyleSheet.create({
   createGroupButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
@@ -565,12 +568,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#FDB924',
+    borderColor: '#FFD700',
   },
   clearFilterButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FDB924',
+    color: '#FFD700',
   },
   // Filter Tabs
   filterContainer: {
@@ -591,7 +594,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterTabActive: {
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
   },
   filterTabText: {
     fontSize: 14,
@@ -664,7 +667,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   adminBadge: {
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -726,7 +729,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

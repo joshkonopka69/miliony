@@ -6,7 +6,7 @@ import { useTranslation } from '../contexts/TranslationContext';
 // Custom Map Icon Component - Using your map-pin.png image
 const MapIcon = ({ size = 24 }: { size?: number }) => (
   <View style={[styles.iconContainer, { width: size, height: size }]}>
-    <Image 
+    <Image
       source={require('../../assets/map-pin.png')}
       style={{
         width: size * 1.0,
@@ -20,7 +20,7 @@ const MapIcon = ({ size = 24 }: { size?: number }) => (
 // Custom Games Icon Component - Using your sports.png image (30% bigger)
 const GamesIcon = ({ size = 24 }: { size?: number }) => (
   <View style={[styles.iconContainer, { width: size, height: size }]}>
-    <Image 
+    <Image
       source={require('../../assets/sports.png')}
       style={{
         width: size * 1.3,
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     gap: 4, // gap-1 equivalent
   },
   activeNavItem: {
-    backgroundColor: '#f9bc06', // bg-[var(--primary-color)]
+    backgroundColor: '#FFD700', // Matches app-wide Gold/Yellow color
     borderRadius: 12,
   },
   iconContainer: {

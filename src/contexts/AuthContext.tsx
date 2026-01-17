@@ -40,7 +40,11 @@ interface AuthContextType extends AuthState {
   sendEmailVerification: () => Promise<{ success: boolean; error?: AuthError }>;
   loginWithGoogle: () => Promise<{ success: boolean; error?: AuthError }>;
   loginWithApple: () => Promise<{ success: boolean; error?: AuthError }>;
+  sendPasswordReset: (email: string) => Promise<{ success: boolean; error?: AuthError }>;
+  resetPassword: (newPassword: string) => Promise<{ success: boolean; error?: AuthError }>;
 }
+
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -240,16 +244,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const loginWithGoogle = async (): Promise<{ success: boolean; error?: AuthError }> => {
-    // TODO: Implement actual Google Login via BackendService
-    console.warn('loginWithGoogle not fully implemented');
-    return { success: false, error: { message: 'Google Login not implemented yet.' } };
+    try {
+      const result = await BackendService.Auth.signInWithGoogle();
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Google sign-in failed.' } };
+      }
+      return { success: true };
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      return { success: false, error: { message: error.message } };
+    }
   };
 
   const loginWithApple = async (): Promise<{ success: boolean; error?: AuthError }> => {
-    // TODO: Implement actual Apple Login via BackendService
-    console.warn('loginWithApple not fully implemented');
-    return { success: false, error: { message: 'Apple Login not implemented yet.' } };
+    try {
+      const result = await BackendService.Auth.signInWithApple();
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Apple sign-in failed.' } };
+      }
+      return { success: true };
+    } catch (error: any) {
+      console.error('Apple login error:', error);
+      return { success: false, error: { message: error.message } };
+    }
   };
+
+
+  const sendPasswordReset = async (email: string): Promise<{ success: boolean; error?: AuthError }> => {
+    try {
+      const result = await BackendService.Auth.sendPasswordReset(email);
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to send reset email.' } };
+      }
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
+  };
+
+  const resetPassword = async (newPassword: string): Promise<{ success: boolean; error?: AuthError }> => {
+    try {
+      const result = await BackendService.Auth.resetPassword(newPassword);
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to reset password.' } };
+      }
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
+  };
+
 
   const contextValue: AuthContextType = {
     ...authState,
@@ -262,7 +306,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     sendEmailVerification,
     loginWithGoogle,
     loginWithApple,
+    sendPasswordReset,
+    resetPassword,
   };
+
 
   return (
     <AuthContext.Provider value={contextValue}>

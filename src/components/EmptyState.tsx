@@ -10,6 +10,7 @@ interface EmptyStateProps {
   message: string;
   actionLabel?: string;
   onAction?: () => void;
+  variant?: 'primary' | 'secondary' | 'accent' | 'ghost' | 'danger';
 }
 
 export default function EmptyState({
@@ -18,20 +19,21 @@ export default function EmptyState({
   message,
   actionLabel,
   onAction,
+  variant = 'accent',
 }: EmptyStateProps) {
   return (
     <View style={styles.container}>
-      <Ionicons 
-        name={icon} 
-        size={64} 
-        color={theme.colors.textDisabled} 
+      <Ionicons
+        name={icon}
+        size={64}
+        color={theme.colors.textDisabled}
       />
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       {actionLabel && onAction && (
         <ProfessionalButton
           title={actionLabel}
-          variant="primary"
+          variant={variant}
           onPress={onAction}
           style={styles.button}
         />

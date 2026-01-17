@@ -61,7 +61,7 @@ export interface User {
 
 // Authentication Service
 export class AuthService {
-  
+
   // Sign up new user
   static async signUp(email: string, password: string, userData: Partial<User>): Promise<{ success: boolean; user?: any; error?: string }> {
     try {
@@ -123,7 +123,7 @@ export class AuthService {
   static async signOut(): Promise<{ success: boolean; error?: string }> {
     try {
       const { error } = await supabase.auth.signOut();
-      
+
       if (error) {
         console.error('Sign out error:', error);
         return { success: false, error: error.message };
@@ -154,8 +154,157 @@ export class AuthService {
     }
   }
 
+  static async sendPasswordReset(email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'sportmap://reset-password',
+      });
+
+      if (error) {
+        console.error('Password reset email error:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  static async resetPassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+      if (error) {
+        console.error('Reset password error:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Sign in with Google OAuth
+  static async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'sportmap://auth/callback',
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) {
+        console.error('Google sign-in error:', error);
+        return { success: false, error: error.message };
+      }
+
+      // The URL to redirect the user to for Google authentication
+      if (data?.url) {
+        // Open the OAuth URL in a browser
+        const WebBrowser = await import('expo-web-browser');
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          'sportmap://auth/callback'
+        );
+
+
+        if (result.type === 'success' && result.url) {
+          // Extract the access token and refresh token from the URL
+          const url = new URL(result.url);
+          const hashParams = new URLSearchParams(url.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+
+          if (accessToken && refreshToken) {
+            // Set the session with the tokens
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (sessionError) {
+              return { success: false, error: sessionError.message };
+            }
+
+            return { success: true };
+          }
+        }
+
+        return { success: false, error: 'Authentication was cancelled or failed.' };
+      }
+
+      return { success: false, error: 'Failed to get authentication URL.' };
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Sign in with Apple
+  static async signInWithApple(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const AppleAuthentication = await import('expo-apple-authentication');
+
+      // Check if Apple Authentication is available
+      const isAvailable = await AppleAuthentication.isAvailableAsync();
+      if (!isAvailable) {
+        return { success: false, error: 'Apple Sign-In is not available on this device.' };
+      }
+
+      // Request Apple credentials
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        return { success: false, error: 'No identity token received from Apple.' };
+      }
+
+      // Sign in to Supabase with the Apple ID token
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+
+      if (error) {
+        console.error('Apple Supabase sign-in error:', error);
+        return { success: false, error: error.message };
+      }
+
+      // If we got full name from Apple, update the user profile
+      if (credential.fullName?.givenName || credential.fullName?.familyName) {
+        const displayName = [credential.fullName?.givenName, credential.fullName?.familyName]
+          .filter(Boolean)
+          .join(' ');
+
+        if (displayName && data.user) {
+          await supabase.auth.updateUser({
+            data: { display_name: displayName },
+          });
+        }
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      // Handle specific Apple Authentication errors
+      if (error.code === 'ERR_REQUEST_CANCELED') {
+        return { success: false, error: 'Sign in was cancelled.' };
+      }
+      console.error('Apple sign-in error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // Get current user
   static async getCurrentUser(): Promise<any> {
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       return user;
@@ -184,7 +333,7 @@ export class AuthService {
 
 // Event Management Service
 export class EventService {
-  
+
   // Create event
   static async createEvent(
     creatorId: string,
@@ -422,7 +571,9 @@ export class EventService {
         return [];
       }
 
-      return data.map(item => item.events).filter(Boolean);
+      return (data?.map(item => item.events) || []).filter(Boolean) as unknown as Event[];
+
+
     } catch (error) {
       console.error('Error in getJoinedEvents:', error);
       return [];
@@ -437,18 +588,18 @@ export class EventService {
     const R = 6371; // Earth's radius in kilometers
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
 }
 
 // Chat Service for Events
 export class ChatService {
-  
+
   // Send message to event
   static async sendMessage(
     eventId: string,
@@ -563,7 +714,7 @@ export class ChatService {
 
 // User Service
 export class UserService {
-  
+
   // Get user profile
   static async getUserProfile(userId: string): Promise<User | null> {
     try {

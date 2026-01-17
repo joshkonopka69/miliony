@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, StatusBar, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Alert, StatusBar, Animated, Dimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
@@ -12,9 +12,11 @@ const { width } = Dimensions.get('window');
 export default function AuthScreen() {
   const navigation = useNavigation<NavigationProp<any>>();
   const { t } = useTranslation();
-  const { sendPasswordReset } = useAuth();
+  const { user } = useAuth(); // Removed non-existent sendPasswordReset for now
   const [showPasswordReset, setShowPasswordReset] = useState(false);
-  
+
+
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -61,21 +63,27 @@ export default function AuthScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
-      <LoginForm
-        onSuccess={handleAuthSuccess}
-        onError={handleAuthError}
-        onForgotPassword={handleForgotPassword}
-        onRegister={handleRegister}
-        style={styles.authForm}
-      />
-      
-      <SocialLoginButtons
-        onSuccess={handleAuthSuccess}
-        onError={handleAuthError}
-        style={styles.socialButtons}
-      />
-      
+
+      <Animated.ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <LoginForm
+          onSuccess={handleAuthSuccess}
+          onError={handleAuthError}
+          onForgotPassword={handleForgotPassword}
+          onRegister={handleRegister}
+          style={styles.authForm}
+        />
+
+        <SocialLoginButtons
+          onSuccess={handleAuthSuccess}
+          onError={handleAuthError}
+          style={styles.socialButtons}
+        />
+      </Animated.ScrollView>
+
       <PasswordResetModal
         visible={showPasswordReset}
         onClose={() => setShowPasswordReset(false)}
@@ -83,6 +91,7 @@ export default function AuthScreen() {
         onError={handlePasswordResetError}
       />
     </SafeAreaView>
+
   );
 }
 
@@ -92,10 +101,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   authForm: {
-    flex: 1,
+    // Moved padding to scrollView contentContainer
   },
   socialButtons: {
     paddingHorizontal: 24,
-    paddingBottom: 20,
+    paddingBottom: 40,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
 });
+

@@ -65,8 +65,8 @@ export default function MyEventsScreen() {
         chatEnabled: event.chat_enabled ?? true,
         createdBy: {
           id: event.creator?.id || event.created_by,
-          name: event.creator?.display_name || 'Organizatow',
-          avatarUrl: event.creator?.avatar_url,
+          name: event.creator?.display_name || (event as any).creator_name || 'Organizer',
+          avatar_url: event.creator?.avatar_url || (event as any).creator_avatar,
         },
         description: event.description || '',
       }));
@@ -98,28 +98,34 @@ export default function MyEventsScreen() {
 
   const handleLeaveEvent = (event: MyEvent) => {
     Alert.alert(
-      t.eventDetails.leaveGame,
-      `Are you sure you want to leave "${event.name}"?`,
+      t.myEvents.leaveEventTitle || 'Leave Event',
+      (t.myEvents.leaveEventMessage || 'Do you want to leave "{name}"?').replace('{name}', event.name),
       [
-        { text: t.common.cancel, style: 'cancel' },
         {
-          text: t.eventDetails.leaveGame,
+          text: t.common.cancel || 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: t.myEvents.leaveEventConfirm || 'Leave',
           style: 'destructive',
           onPress: async () => {
             try {
               const user = await supabaseService.getCurrentUserProfile();
-              if (!user) throw new Error('User not logged in');
+              if (!user || !user.id) {
+                Alert.alert(t.common.error, 'You must be logged in to leave an event.');
+                return;
+              }
 
               const success = await supabaseService.leaveEvent(event.id, user.id);
               if (success) {
                 setEvents(prev => prev.filter(e => e.id !== event.id));
-                Alert.alert(t.common.success, 'You have left the event');
+                Alert.alert(t.common.success, t.myEvents.leaveEventSuccess);
               } else {
-                Alert.alert('Error', 'Failed to leave event');
+                Alert.alert(t.common.error, 'Failed to leave event');
               }
             } catch (error) {
               console.error('Error leaving event:', error);
-              Alert.alert('Error', 'An unexpected error occurred');
+              Alert.alert(t.common.error, 'An unexpected error occurred');
             }
           },
         },
@@ -191,7 +197,7 @@ export default function MyEventsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#FDB924"
+            tintColor="#FFD700"
           />
         }
       >

@@ -46,14 +46,15 @@ export type RootStackParamList = {
   // Notification Routes
   Notifications: undefined;
   NotificationSettings: undefined;
-  FriendRequests: undefined;
 
   // Search Routes
   EventSearchResults: { searchQuery: string; events: any[] };
 
   // Badge Routes
   AllBadges: undefined;
+  ResetPassword: undefined;
 };
+
 
 // Screen Props Types
 export type RootStackScreenProps<T extends keyof RootStackParamList> =
@@ -138,13 +139,16 @@ export const ROUTES = {
   // Notification Routes
   NOTIFICATIONS: 'Notifications' as const,
   NOTIFICATION_SETTINGS: 'NotificationSettings' as const,
-  FRIEND_REQUESTS: 'FriendRequests' as const,
 
   // Search Routes
   EVENT_SEARCH_RESULTS: 'EventSearchResults' as const,
 
   // Badge Routes
   ALL_BADGES: 'AllBadges' as const,
+
+  // Auth Extra
+  RESET_PASSWORD: 'ResetPassword' as const,
 } as const;
+
 
 export type RouteNames = typeof ROUTES[keyof typeof ROUTES];

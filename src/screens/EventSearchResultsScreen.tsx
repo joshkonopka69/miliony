@@ -1,11 +1,11 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  SafeAreaView, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
   FlatList,
   StatusBar,
   Image
@@ -93,11 +93,11 @@ export default function EventSearchResultsScreen() {
           <Text style={styles.joinButtonText}>Join</Text>
         </TouchableOpacity>
       </View>
-      
+
       {item.description && (
         <Text style={styles.eventDescription}>{item.description}</Text>
       )}
-      
+
       <View style={styles.eventFooter}>
         <Text style={styles.eventTime}>🕒 {item.time}</Text>
         <Text style={styles.eventParticipants}>
@@ -126,7 +126,7 @@ export default function EventSearchResultsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -160,7 +160,7 @@ export default function EventSearchResultsScreen() {
       )}
 
       {/* Bottom Navigation */}
-      <BottomNavBar 
+      <BottomNavBar
         activeTab="Home"
         onProfilePress={() => navigation.navigate('Profile')}
       />
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     color: '#9ca3af', // text-gray-400
   },
   joinButton: {
-    backgroundColor: '#f9bc06',
+    backgroundColor: '#FFD700',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   backToMapButton: {
-    backgroundColor: '#f9bc06',
+    backgroundColor: '#FFD700',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

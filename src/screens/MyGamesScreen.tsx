@@ -165,7 +165,8 @@ export default function MyGamesScreen() {
         chatEnabled: true,
         createdBy: {
           id: event.creator?.id || event.created_by,
-          name: event.creator?.display_name || 'Unknown',
+          name: event.creator?.display_name || (event as any).creator_name || 'Organizer',
+          avatar_url: event.creator?.avatar_url || (event as any).creator_avatar,
         },
         description: event.description,
         requiresApproval: !!event.requires_approval,
@@ -211,6 +212,8 @@ export default function MyGamesScreen() {
       [
         { text: t.common.cancel, style: 'cancel' },
         {
+          text: t.myEvents.leaveEventConfirm || 'Leave',
+          style: 'destructive',
           onPress: async () => {
             try {
               const userId = getUserId();
@@ -333,7 +336,7 @@ export default function MyGamesScreen() {
       <ScrollView
         style={styles.scrollView}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#FDB924" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#FFD700" />
         }
       >
         {groupedEvents.map((groupData) => (
@@ -369,24 +372,7 @@ export default function MyGamesScreen() {
       <SafeAreaView edges={['top']} style={styles.topBarSafeArea}>
         <View style={styles.topBar}>
           <HeaderLogo />
-
-          <View style={styles.topBarActions}>
-            <TouchableOpacity
-              style={styles.topBarButton}
-              onPress={handleFilterPress}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="options-outline" size={24} color="#000000" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.topBarButton}
-              onPress={handleMorePress}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="ellipsis-horizontal" size={24} color="#000000" />
-            </TouchableOpacity>
-          </View>
+          <View style={styles.placeholder} />
         </View>
       </SafeAreaView>
 
@@ -447,26 +433,9 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -85 }], // Massive left shift matching MapScreen
     zIndex: 1,
   },
-  topBarActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingRight: 4,
-  },
-  topBarButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E5E5E5',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+  placeholder: {
+    width: 40,
+    height: 40,
   },
   // Content Styles
   scrollView: {

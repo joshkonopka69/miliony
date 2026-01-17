@@ -59,21 +59,34 @@ class FriendService {
 
   async sendFriendRequest(senderId: string, receiverId: string, message?: string): Promise<boolean> {
     try {
-      // Check if friendship already exists
+      console.log(`[FriendService] sendFriendRequest: ${senderId} -> ${receiverId}`);
+
+      // Check if already ACCEPTED friends (ignore pending/declined)
       const existingFriendship = await this.getFriendship(senderId, receiverId);
-      if (existingFriendship) {
-        console.error('Friendship already exists');
+      if (existingFriendship && existingFriendship.status === 'accepted') {
+        console.error('[FriendService] Already friends');
         return false;
       }
+
+      // Delete any old declined/cancelled friend_requests so we can insert a new one
+      // (UNIQUE constraint on sender_id, receiver_id)
+      console.log('[FriendService] Deleting old declined/cancelled requests...');
+      await supabase
+        .from('friend_requests')
+        .delete()
+        .eq('sender_id', senderId)
+        .eq('receiver_id', receiverId)
+        .in('status', ['declined', 'cancelled']);
 
       // Check if user is blocked
       const isBlocked = await this.isUserBlocked(senderId, receiverId);
       if (isBlocked) {
-        console.error('Cannot send friend request to blocked user');
+        console.error('[FriendService] Cannot send friend request to blocked user');
         return false;
       }
 
-      const { error } = await supabase
+      console.log('[FriendService] Inserting into friend_requests table...');
+      const { data, error } = await supabase
         .from('friend_requests')
         .insert({
           sender_id: senderId,
@@ -82,34 +95,91 @@ class FriendService {
           status: 'pending',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
-        console.error('Error sending friend request:', error);
+        console.error('[FriendService] INSERT ERROR:', error.code, error.message, error.details);
         return false;
       }
 
+      console.log('[FriendService] INSERT SUCCESS, request ID:', data?.id);
+
       const { data: senderProfile } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('display_name')
         .eq('id', senderId)
         .single();
 
-      await notificationService.sendNotificationWithStorage(receiverId, {
-        title: 'New Friend Request',
-        body: `${senderProfile?.display_name || 'Someone'} wants to connect with you.`,
-        type: 'friend_request',
-        data: {
-          senderId,
-          senderName: senderProfile?.display_name || 'Someone',
-          message,
-        },
-      });
+      await notificationService.sendFriendRequestNotification(
+        receiverId,
+        senderProfile?.display_name || 'Someone',
+        senderId
+      );
 
       return true;
     } catch (error) {
-      console.error('Error sending friend request:', error);
+      console.error('[FriendService] sendFriendRequest EXCEPTION:', error);
       return false;
+    }
+  }
+
+  /**
+   * Get the ID of a pending friend request sent from senderId to receiverId.
+   * Useful for cancelling a pending request.
+   */
+  async getPendingRequestIdToUser(senderId: string, receiverId: string): Promise<string | null> {
+    try {
+      console.log(`[FriendService] getPendingRequestIdToUser: sender=${senderId}, receiver=${receiverId}`);
+
+      const { data, error } = await supabase
+        .from('friend_requests')
+        .select('id')
+        .eq('sender_id', senderId)
+        .eq('receiver_id', receiverId)
+        .eq('status', 'pending')
+        .maybeSingle();
+
+      if (error) {
+        console.error('[FriendService] getPendingRequestIdToUser ERROR:', error.code, error.message);
+        return null;
+      }
+
+      console.log(`[FriendService] getPendingRequestIdToUser result:`, data?.id || 'null');
+      return data?.id || null;
+    } catch (error) {
+      console.error('[FriendService] getPendingRequestIdToUser EXCEPTION:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get the ID of a pending friend request received BY receiverId FROM senderId.
+   * Useful for accepting/declining a pending request.
+   */
+  async getReceivedRequestIdFromUser(receiverId: string, senderId: string): Promise<string | null> {
+    try {
+      console.log(`[FriendService] getReceivedRequestIdFromUser: receiver=${receiverId}, sender=${senderId}`);
+
+      const { data, error } = await supabase
+        .from('friend_requests')
+        .select('id')
+        .eq('sender_id', senderId)
+        .eq('receiver_id', receiverId)
+        .eq('status', 'pending')
+        .maybeSingle();
+
+      if (error) {
+        console.error('[FriendService] getReceivedRequestIdFromUser ERROR:', error.code, error.message);
+        return null;
+      }
+
+      console.log(`[FriendService] getReceivedRequestIdFromUser result:`, data?.id || 'null');
+      return data?.id || null;
+    } catch (error) {
+      console.error('[FriendService] getReceivedRequestIdFromUser EXCEPTION:', error);
+      return null;
     }
   }
 
@@ -144,7 +214,7 @@ class FriendService {
 
       // Create friendship record
       const { error: friendshipError } = await supabase
-        .from('friendships')
+        .from('user_friendships')
         .insert({
           user_id: request.sender_id,
           friend_id: request.receiver_id,
@@ -161,7 +231,7 @@ class FriendService {
 
       // Create reverse friendship record
       const { error: reverseFriendshipError } = await supabase
-        .from('friendships')
+        .from('user_friendships')
         .insert({
           user_id: request.receiver_id,
           friend_id: request.sender_id,
@@ -171,9 +241,23 @@ class FriendService {
           accepted_at: new Date().toISOString(),
         });
 
-      if (reverseFriendshipError) {
-        console.error('Error creating reverse friendship:', reverseFriendshipError);
-        return false;
+      // Notify the original sender
+      try {
+        const { data: acceptor } = await supabase
+          .from('public_profiles')
+          .select('display_name')
+          .eq('id', request.receiver_id)
+          .single();
+
+        if (acceptor) {
+          await notificationService.sendFriendRequestAcceptedNotification(
+            request.sender_id,
+            acceptor.display_name,
+            request.receiver_id
+          );
+        }
+      } catch (notifyError) {
+        console.error('Error sending friend request accepted notification:', notifyError);
       }
 
       return true;
@@ -230,13 +314,13 @@ class FriendService {
     try {
       // Delete both friendship records
       const { error: deleteError1 } = await supabase
-        .from('friendships')
+        .from('user_friendships')
         .delete()
         .eq('user_id', userId)
         .eq('friend_id', friendId);
 
       const { error: deleteError2 } = await supabase
-        .from('friendships')
+        .from('user_friendships')
         .delete()
         .eq('user_id', friendId)
         .eq('friend_id', userId);
@@ -292,12 +376,10 @@ class FriendService {
 
   async getFriends(userId: string, limit: number = 50, offset: number = 0): Promise<UserProfile[]> {
     try {
-      const { data, error } = await supabase
-        .from('friendships')
-        .select(`
-          friend_id,
-          users!friendships_friend_id_fkey(*)
-        `)
+      // 1. Get friend IDs from friendships table
+      const { data: friendships, error } = await supabase
+        .from('user_friendships')
+        .select('friend_id, accepted_at')
         .eq('user_id', userId)
         .eq('status', 'accepted')
         .order('accepted_at', { ascending: false })
@@ -309,7 +391,24 @@ class FriendService {
         return [];
       }
 
-      return (data?.map(item => (item as any).users) || []) as UserProfile[];
+      if (!friendships || friendships.length === 0) {
+        return [];
+      }
+
+      const friendIds = friendships.map(f => f.friend_id);
+
+      // 2. Fetch public profiles for these friends
+      const { data: profiles, error: profilesError } = await supabase
+        .from('public_profiles') // Use VIEW
+        .select('*')
+        .in('id', friendIds);
+
+      if (profilesError) {
+        console.error('Error fetching friend profiles:', profilesError);
+        return [];
+      }
+
+      return (profiles || []) as UserProfile[];
     } catch (error) {
       console.error('Error fetching friends:', error);
       return [];
@@ -319,24 +418,53 @@ class FriendService {
   async getFriendRequests(userId: string, type: 'sent' | 'received'): Promise<FriendRequest[]> {
     try {
       const column = type === 'sent' ? 'sender_id' : 'receiver_id';
+      const otherColumn = type === 'sent' ? 'receiver_id' : 'sender_id';
 
-      const { data, error } = await supabase
+      console.log(`[FriendService] Fetching ${type} requests for user: ${userId}`);
+
+      // 1. Fetch requests
+      const { data: requests, error } = await supabase
         .from('friend_requests')
-        .select(`
-          *,
-          sender:users!friend_requests_sender_id_fkey(*),
-          receiver:users!friend_requests_receiver_id_fkey(*)
-        `)
+        .select('*')
         .eq(column, userId)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching friend requests:', error);
+        console.error(`[FriendService] Error fetching ${type} friend requests:`, error);
         return [];
       }
 
-      return data || [];
+      if (!requests || requests.length === 0) {
+        console.log(`[FriendService] Found 0 ${type} requests`);
+        return [];
+      }
+
+      // 2. Collect IDs to fetch profiles
+      const userIdsToFetch = requests.map(r => r[otherColumn]);
+
+      // 3. Fetch public profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('public_profiles')
+        .select('*')
+        .in('id', userIdsToFetch);
+
+      if (profilesError) {
+        console.error('Error fetching profiles for requests:', profilesError);
+        return requests as any; // Return requests without profiles if profile fetch fails
+      }
+
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]));
+
+      // 4. Attach profiles to requests
+      const enrichedRequests = requests.map(req => ({
+        ...req,
+        sender: type === 'received' ? profilesMap.get(req.sender_id) : undefined, // If I received, I need sender profile
+        receiver: type === 'sent' ? profilesMap.get(req.receiver_id) : undefined, // If I sent, I need receiver profile
+      }));
+
+      console.log(`[FriendService] Found ${enrichedRequests.length} ${type} requests`);
+      return enrichedRequests as FriendRequest[];
     } catch (error) {
       console.error('Error fetching friend requests:', error);
       return [];
@@ -346,14 +474,17 @@ class FriendService {
   async getFriendship(userId: string, friendId: string): Promise<Friendship | null> {
     try {
       const { data, error } = await supabase
-        .from('friendships')
+        .from('user_friendships')
         .select('*')
         .eq('user_id', userId)
         .eq('friend_id', friendId)
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid PGRST116 when no rows found
 
       if (error) {
-        console.error('Error fetching friendship:', error);
+        // Only log if it's not a "no rows" error
+        if (error.code !== 'PGRST116') {
+          console.error('Error fetching friendship:', error);
+        }
         return null;
       }
 
@@ -392,19 +523,19 @@ class FriendService {
       if (!userProfile) return [];
 
       // Get mutual friends and common sports
+      // We cannot join on friendships easily with public_profiles view without setup
+      // So we will fetch candidates from public_profiles first
       const { data: suggestions, error } = await supabase
-        .from('users')
-        .select(`
-          *,
-          friendships!friendships_friend_id_fkey(
-            friend_id,
-            users!friendships_user_id_fkey(*)
-          )
-        `)
+        .from('public_profiles')
+        .select('*')
         .neq('id', userId)
         .not('id', 'in', `(${friendIds.join(',')})`)
-        .eq('is_public', true)
-        .limit(limit * 2); // Get more to filter
+        // .eq('is_public', true) // View handles this
+        .limit(limit * 2);
+
+      // Note: fetching mutual friends count efficiently without join is hard
+      // For now we might skip deep mutual friend counting in this simple version
+      // or do it per user if list is small.
 
       if (error) {
         console.error('Error fetching friend suggestions:', error);
@@ -453,7 +584,7 @@ class FriendService {
       const friendIds = friends.map(f => f.id);
 
       let query = supabase
-        .from('users')
+        .from('public_profiles')
         .select('*')
         .in('id', friendIds);
 
@@ -621,23 +752,9 @@ class FriendService {
   }
 
   private async isUserBlocked(userId: string, targetUserId: string): Promise<boolean> {
-    try {
-      const { data, error } = await supabase
-        .from('user_blocks')
-        .select('id')
-        .or(`user_id.eq.${userId}.and.blocked_user_id.eq.${targetUserId},user_id.eq.${targetUserId}.and.blocked_user_id.eq.${userId}`)
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-        console.error('Error checking if user is blocked:', error);
-        return false;
-      }
-
-      return !!data;
-    } catch (error) {
-      console.error('Error checking if user is blocked:', error);
-      return false;
-    }
+    // user_blocks table doesn't exist yet - always return false
+    // TODO: Create user_blocks table if blocking functionality is needed
+    return false;
   }
 
   // Friend Recommendations
@@ -685,6 +802,59 @@ class FriendService {
       console.error('Error creating friend group:', error);
       return null;
     }
+  }
+
+  /**
+   * OPTIMIZED: Get friend request status for multiple users in a single query
+   * This replaces 2 separate API calls per user with 1 batch call
+   */
+  async getBatchFriendRequestStatus(
+    currentUserId: string,
+    userIds: string[]
+  ): Promise<Map<string, { sentRequestId: string | null; receivedRequestId: string | null }>> {
+    const result = new Map<string, { sentRequestId: string | null; receivedRequestId: string | null }>();
+
+    // Initialize all users with null values
+    userIds.forEach(userId => {
+      result.set(userId, { sentRequestId: null, receivedRequestId: null });
+    });
+
+    if (userIds.length === 0) return result;
+
+    try {
+      // Get all pending requests involving current user and any of the target users
+      const { data, error } = await supabase
+        .from('friend_requests')
+        .select('id, sender_id, receiver_id')
+        .eq('status', 'pending')
+        .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`);
+
+      if (error) {
+        console.error('Error fetching batch friend requests:', error);
+        return result;
+      }
+
+      if (data) {
+        for (const request of data) {
+          // I sent to them
+          if (request.sender_id === currentUserId && userIds.includes(request.receiver_id)) {
+            const existing = result.get(request.receiver_id) || { sentRequestId: null, receivedRequestId: null };
+            existing.sentRequestId = request.id;
+            result.set(request.receiver_id, existing);
+          }
+          // They sent to me
+          if (request.receiver_id === currentUserId && userIds.includes(request.sender_id)) {
+            const existing = result.get(request.sender_id) || { sentRequestId: null, receivedRequestId: null };
+            existing.receivedRequestId = request.id;
+            result.set(request.sender_id, existing);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in getBatchFriendRequestStatus:', error);
+    }
+
+    return result;
   }
 }
 

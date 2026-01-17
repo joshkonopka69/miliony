@@ -389,7 +389,6 @@ class ReportingService {
         false_positive_rate: 0, // Would need historical data
         user_satisfaction: 0, // Would need user feedback
         top_reporters: reporterCounts,
-        resolution_efficiency: 0, // Would need historical data
       };
     } catch (error) {
       console.error('Error fetching report analytics:', error);
@@ -609,7 +608,7 @@ class ReportingService {
   // Helper methods
   private calculateCategoryCounts(reports: any[]): { category: string; count: number }[] {
     const counts: { [key: string]: number } = {};
-    
+
     reports.forEach(report => {
       const category = report.template_id;
       counts[category] = (counts[category] || 0) + 1;
@@ -622,7 +621,7 @@ class ReportingService {
 
   private calculateStatusCounts(reports: any[]): { status: string; count: number }[] {
     const counts: { [key: string]: number } = {};
-    
+
     reports.forEach(report => {
       const status = report.status;
       counts[status] = (counts[status] || 0) + 1;
@@ -635,7 +634,7 @@ class ReportingService {
 
   private calculateReporterCounts(reporters: any[]): { user_id: string; count: number }[] {
     const counts: { [key: string]: number } = {};
-    
+
     reporters.forEach(reporter => {
       const userId = reporter.reporter_id;
       counts[userId] = (counts[userId] || 0) + 1;

@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,36 +11,19 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
-  Image,
-  Switch,
   Modal,
-  FlatList
+  FlatList,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../../navigation';
 import { useGroupManager } from '../../hooks/useGroups';
 import { CreateGroupData } from '../../services/groupService';
 import { SMLogo } from '../../components';
+import { useTranslation } from '../../contexts/TranslationContext';
 
 
-const SPORTS = [
-  'Basketball', 'Football', 'Soccer', 'Tennis', 'Volleyball', 'Baseball',
-  'Hockey', 'Swimming', 'Running', 'Cycling', 'Golf', 'Boxing',
-  'Martial Arts', 'Yoga', 'Pilates', 'Weightlifting', 'CrossFit',
-  'Rock Climbing', 'Surfing', 'Skiing', 'Snowboarding', 'Other'
-];
-
-const PRIVACY_OPTIONS = [
-  { value: 'public', label: 'Public', description: 'Anyone can find and join' },
-  { value: 'private', label: 'Private', description: 'Only invited members can join' },
-  { value: 'invite_only', label: 'Invite Only', description: 'Members must be approved' },
-];
-
-const SKILL_LEVELS = [
-  { value: 'any', label: 'Any Level' },
-  { value: 'beginner', label: 'Beginner' },
-  { value: 'intermediate', label: 'Intermediate' },
-  { value: 'advanced', label: 'Advanced' },
-];
 
 const GENDER_OPTIONS = [
   { value: 'any', label: 'Any Gender' },
@@ -48,9 +31,19 @@ const GENDER_OPTIONS = [
   { value: 'female', label: 'Female' },
 ];
 
+const SPORTS_KEYS = [
+  'basketball', 'football', 'soccer', 'tennis', 'volleyball', 'baseball',
+  'hockey', 'swimming', 'running', 'cycling', 'golf', 'boxing',
+  'martial_arts', 'yoga', 'pilates', 'weightlifting', 'crossfit',
+  'rock_climbing', 'surfing', 'skiing', 'snowboarding', 'other'
+];
+
+
 export default function CreateGroupScreen() {
   const navigation = useAppNavigation();
+  const { t } = useTranslation();
   const { createGroupWithValidation, isLoading, error, clearError } = useGroupManager();
+
 
   const [formData, setFormData] = useState<CreateGroupData>({
     name: '',
@@ -68,6 +61,23 @@ export default function CreateGroupScreen() {
     },
   });
 
+  const PRIVACY_OPTIONS = useMemo(() => [
+    { value: 'public', label: t.myGroups.public, description: t.myGroups.noGroupsFoundMessage.replace('{filter}', t.myGroups.public) }, // Using description from translation maybe?
+    { value: 'private', label: t.myGroups.private, description: '' },
+    { value: 'invite_only', label: t.myGroups.inviteOnly, description: '' },
+  ], [t]);
+
+  const SKILL_LEVEL_OPTIONS = useMemo(() => [
+    { value: 'any', label: t.createGroup.anyLevel },
+    { value: 'beginner', label: t.myEvents.beginner },
+    { value: 'intermediate', label: t.myEvents.intermediate },
+    { value: 'advanced', label: t.myEvents.advanced },
+    { value: 'expert', label: t.myEvents.expert },
+  ], [t]);
+
+
+
+
   const [location, setLocation] = useState({
     name: '',
     latitude: 0,
@@ -78,9 +88,8 @@ export default function CreateGroupScreen() {
   const [showSportPicker, setShowSportPicker] = useState(false);
   const [showPrivacyPicker, setShowPrivacyPicker] = useState(false);
   const [showSkillPicker, setShowSkillPicker] = useState(false);
-  const [showGenderPicker, setShowGenderPicker] = useState(false);
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [showTagInput, setShowTagInput] = useState(false);
+
   const [newTag, setNewTag] = useState('');
   const [showRulesInput, setShowRulesInput] = useState(false);
   const [newRule, setNewRule] = useState('');
@@ -160,23 +169,21 @@ export default function CreateGroupScreen() {
     }));
   };
 
-  const handleLocationSelect = (selectedLocation: any) => {
-    setLocation(selectedLocation);
-    setShowLocationPicker(false);
-  };
-
   const handleSubmit = async () => {
+
     try {
       // Validate required fields
       if (!formData.name.trim()) {
-        Alert.alert('Error', 'Group name is required');
+        Alert.alert(t.createGroup.error, t.createGroup.fillFields);
         return;
       }
 
       if (!formData.sport) {
-        Alert.alert('Error', 'Please select a sport');
+        Alert.alert(t.createGroup.error, t.createGroup.selectSport);
         return;
       }
+
+
 
       // Prepare group data
       const groupData: CreateGroupData = {
@@ -187,336 +194,388 @@ export default function CreateGroupScreen() {
       const group = await createGroupWithValidation(groupData);
       if (group) {
         Alert.alert(
-          'Success',
-          'Group created successfully!',
+          t.createGroup.success,
+          t.createGroup.groupCreated,
           [
             {
-              text: 'OK',
+              text: t.common.ok,
               onPress: () => navigation.navigate('GroupDetails', { groupId: group.id }),
             },
           ]
         );
       }
+
+
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create group');
+      Alert.alert(t.createGroup.error, error.message || t.createGroup.fillFields);
     }
+
+
   };
 
   const getSportLabel = (sport: string) => {
-    return sport || 'Select Sport';
+    if (!sport) return t.createGroup.selectSport;
+    const sportKey = sport.toLowerCase().replace(/ /g, '_');
+    return (t.sports as any)[sportKey] || sport;
   };
 
+
+
   const getPrivacyLabel = (privacy: string) => {
-    const option = PRIVACY_OPTIONS.find(opt => opt.value === privacy);
-    return option ? option.label : 'Select Privacy';
+    if (privacy === 'public') return t.myGroups.public;
+    if (privacy === 'private') return t.myGroups.private;
+    if (privacy === 'invite_only') return t.myGroups.inviteOnly;
+    return t.createGroup.selectPrivacy;
   };
 
   const getSkillLabel = (skill: string) => {
-    const option = SKILL_LEVELS.find(opt => opt.value === skill);
-    return option ? option.label : 'Any Level';
+    if (skill === 'beginner') return t.myEvents.beginner;
+    if (skill === 'intermediate') return t.myEvents.intermediate;
+    if (skill === 'advanced') return t.myEvents.advanced;
+    if (skill === 'expert') return t.myEvents.expert;
+    return t.createGroup.anyLevel;
   };
 
   const getGenderLabel = (gender: string) => {
-    const option = GENDER_OPTIONS.find(opt => opt.value === gender);
-    return option ? option.label : 'Any Gender';
+    if (gender === 'male') return t.createGroup.male;
+    if (gender === 'female') return t.createGroup.female;
+    return t.createGroup.anyGender;
   };
 
+
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Group</Text>
-        <SMLogo />
-      </View>
-
-      {/* Error Display */}
-      {error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={clearError}>
-            <Text style={styles.errorDismiss}>×</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <Animated.View
-          style={[
-            styles.content,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          {/* Basic Information */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Basic Information</Text>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Group Name *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.name}
-                onChangeText={(value) => handleInputChange('name', value)}
-                placeholder="Enter group name"
-                placeholderTextColor="#8e8e93"
-                maxLength={50}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Description</Text>
-              <TextInput
-                style={[styles.textInput, styles.textArea]}
-                value={formData.description || ''}
-                onChangeText={(value) => handleInputChange('description', value)}
-                placeholder="Describe your group"
-                placeholderTextColor="#8e8e93"
-                multiline
-                numberOfLines={4}
-                maxLength={500}
-              />
-              <Text style={styles.characterCount}>
-                {(formData.description || '').length}/500
-              </Text>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Sport *</Text>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => setShowSportPicker(true)}
-              >
-                <Text style={styles.pickerButtonText}>
-                  {getSportLabel(formData.sport)}
-                </Text>
-                <Text style={styles.pickerIcon}>▼</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Privacy</Text>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => setShowPrivacyPicker(true)}
-              >
-                <Text style={styles.pickerButtonText}>
-                  {getPrivacyLabel(formData.privacy)}
-                </Text>
-                <Text style={styles.pickerIcon}>▼</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Member Limit (Optional)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.member_limit?.toString() || ''}
-                onChangeText={(value) => handleInputChange('member_limit', value ? parseInt(value) : undefined)}
-                placeholder="No limit"
-                placeholderTextColor="#8e8e93"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          {/* Location */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Location (Optional)</Text>
-
-            <TouchableOpacity
-              style={styles.locationButton}
-              onPress={() => setShowLocationPicker(true)}
-            >
-              <Text style={styles.locationButtonText}>
-                {location.name || 'Select Location'}
-              </Text>
-              <Text style={styles.locationButtonIcon}>📍</Text>
-            </TouchableOpacity>
-
-            {location.name && (
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationInfoText}>
-                  Radius: {location.radius} km
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Tags */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tags</Text>
-
-            <View style={styles.tagsContainer}>
-              {(formData.tags || []).map((tag, index) => (
-                <View key={index} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                  <TouchableOpacity
-                    style={styles.tagRemove}
-                    onPress={() => handleRemoveTag(tag)}
-                  >
-                    <Text style={styles.tagRemoveText}>×</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-
-            {!showTagInput ? (
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => setShowTagInput(true)}
-              >
-                <Text style={styles.addButtonText}>+ Add Tag</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.tagInputContainer}>
-                <TextInput
-                  style={styles.tagInput}
-                  value={newTag}
-                  onChangeText={setNewTag}
-                  placeholder="Enter tag"
-                  placeholderTextColor="#8e8e93"
-                  onSubmitEditing={handleAddTag}
-                />
-                <TouchableOpacity
-                  style={styles.tagAddButton}
-                  onPress={handleAddTag}
-                >
-                  <Text style={styles.tagAddButtonText}>Add</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* Rules */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Group Rules</Text>
-
-            <View style={styles.rulesContainer}>
-              {(formData.rules || []).map((rule, index) => (
-                <View key={index} style={styles.rule}>
-                  <Text style={styles.ruleText}>{rule}</Text>
-                  <TouchableOpacity
-                    style={styles.ruleRemove}
-                    onPress={() => handleRemoveRule(rule)}
-                  >
-                    <Text style={styles.ruleRemoveText}>×</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-
-            {!showRulesInput ? (
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => setShowRulesInput(true)}
-              >
-                <Text style={styles.addButtonText}>+ Add Rule</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.ruleInputContainer}>
-                <TextInput
-                  style={styles.ruleInput}
-                  value={newRule}
-                  onChangeText={setNewRule}
-                  placeholder="Enter rule"
-                  placeholderTextColor="#8e8e93"
-                  onSubmitEditing={handleAddRule}
-                />
-                <TouchableOpacity
-                  style={styles.ruleAddButton}
-                  onPress={handleAddRule}
-                >
-                  <Text style={styles.ruleAddButtonText}>Add</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* Requirements */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Member Requirements</Text>
-
-            <View style={styles.requirementsContainer}>
-              <View style={styles.requirementRow}>
-                <Text style={styles.requirementLabel}>Age Range</Text>
-                <View style={styles.ageInputs}>
-                  <TextInput
-                    style={styles.ageInput}
-                    value={formData.requirements?.age_min?.toString() || ''}
-                    onChangeText={(value) => handleRequirementsChange('age_min', value ? parseInt(value) : undefined)}
-                    placeholder="Min"
-                    placeholderTextColor="#8e8e93"
-                    keyboardType="numeric"
-                  />
-                  <Text style={styles.ageSeparator}>-</Text>
-                  <TextInput
-                    style={styles.ageInput}
-                    value={formData.requirements?.age_max?.toString() || ''}
-                    onChangeText={(value) => handleRequirementsChange('age_max', value ? parseInt(value) : undefined)}
-                    placeholder="Max"
-                    placeholderTextColor="#8e8e93"
-                    keyboardType="numeric"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.requirementRow}>
-                <Text style={styles.requirementLabel}>Skill Level</Text>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => setShowSkillPicker(true)}
-                >
-                  <Text style={styles.pickerButtonText}>
-                    {getSkillLabel(formData.requirements?.skill_level || '')}
-                  </Text>
-                  <Text style={styles.pickerIcon}>▼</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.requirementRow}>
-                <Text style={styles.requirementLabel}>Gender Preference</Text>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => setShowGenderPicker(true)}
-                >
-                  <Text style={styles.pickerButtonText}>
-                    {getGenderLabel(formData.requirements?.gender_preference || '')}
-                  </Text>
-                  <Text style={styles.pickerIcon}>▼</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-          {/* Submit Button */}
+      {/* Top Bar */}
+      <SafeAreaView style={styles.topBarSafeArea}>
+        <View style={styles.topBar}>
           <TouchableOpacity
-            style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+            style={styles.backButton}
+            onPress={handleBack}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#000000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t.createGroup.title}</Text>
+          <SMLogo size={40} />
+        </View>
+
+      </SafeAreaView>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+
+          {/* Error Display */}
+          {error && (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={20} color="#991B1B" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity onPress={clearError}>
+                <Ionicons name="close" size={20} color="#991B1B" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <Animated.View
+            style={[
+              styles.content,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            {/* Basic Information Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="information-circle-outline" size={20} color="#1F2937" />
+                <Text style={styles.sectionTitle}>{t.createGroup.basicInformation}</Text>
+              </View>
+
+
+              <View style={styles.sectionContent}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>{t.createGroup.groupName} *</Text>
+
+                  <TextInput
+                    style={styles.textInput}
+                    value={formData.name}
+                    onChangeText={(value) => handleInputChange('name', value)}
+                    placeholder={t.createGroup.groupNamePlaceholder}
+
+                    placeholderTextColor="#9CA3AF"
+                    maxLength={50}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>{t.createGroup.sportCategory} *</Text>
+
+                  <TouchableOpacity
+                    style={styles.pickerButton}
+                    onPress={() => setShowSportPicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.pickerButtonText, !formData.sport && styles.placeholderText]}>
+                      {getSportLabel(formData.sport)}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>{t.createGroup.description}</Text>
+
+                  <TextInput
+                    style={[styles.textInput, styles.textArea]}
+                    value={formData.description || ''}
+                    onChangeText={(value) => handleInputChange('description', value)}
+                    placeholder={t.createGroup.descriptionPlaceholder}
+
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    numberOfLines={4}
+                    maxLength={500}
+                  />
+                  <Text style={styles.characterCount}>
+                    {(formData.description || '').length}/500
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Privacy & Settings Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="settings-outline" size={20} color="#1F2937" />
+                <Text style={styles.sectionTitle}>{t.createGroup.privacySettings}</Text>
+              </View>
+
+
+              <View style={styles.sectionContent}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>{t.createGroup.privacyLevel}</Text>
+
+                  <TouchableOpacity
+                    style={styles.pickerButton}
+                    onPress={() => setShowPrivacyPicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.pickerButtonText}>
+                      {getPrivacyLabel(formData.privacy)}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>{t.createGroup.memberLimit}</Text>
+
+                  <TextInput
+                    style={styles.textInput}
+                    value={formData.member_limit?.toString() || ''}
+                    onChangeText={(value) => handleInputChange('member_limit', value ? parseInt(value) : undefined)}
+                    placeholder={t.createGroup.memberLimitPlaceholder}
+
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Member Requirements Section */}
+            <View style={styles.section}>
+
+              <View style={styles.sectionHeader}>
+                <Ionicons name="people-outline" size={20} color="#1F2937" />
+                <Text style={styles.sectionTitle}>{t.createGroup.memberRequirements}</Text>
+              </View>
+
+
+              <View style={styles.sectionContent}>
+                <View style={styles.requirementRow}>
+                  <Text style={styles.requirementLabel}>{t.createGroup.ageRange}</Text>
+
+                  <View style={styles.ageInputs}>
+                    <TextInput
+                      style={styles.ageInput}
+                      value={formData.requirements?.age_min?.toString() || ''}
+                      onChangeText={(value) => handleRequirementsChange('age_min', value ? parseInt(value) : undefined)}
+                      placeholder={t.createGroup.minAge}
+
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numeric"
+                    />
+                    <Text style={styles.ageSeparator}>-</Text>
+                    <TextInput
+                      style={styles.ageInput}
+                      value={formData.requirements?.age_max?.toString() || ''}
+                      onChangeText={(value) => handleRequirementsChange('age_max', value ? parseInt(value) : undefined)}
+                      placeholder={t.createGroup.maxAge}
+
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.requirementRow}>
+                  <Text style={styles.requirementLabel}>{t.createGroup.skillLevel}</Text>
+
+                  <TouchableOpacity
+                    style={styles.smallPickerButton}
+                    onPress={() => setShowSkillPicker(true)}
+                  >
+                    <Text style={styles.smallPickerText}>
+                      {getSkillLabel(formData.requirements?.skill_level || '')}
+                    </Text>
+                    <Ionicons name="chevron-down" size={16} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+            </View>
+
+            {/* Rules & Tags (Combined) */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="list-outline" size={20} color="#1F2937" />
+                <Text style={styles.sectionTitle}>{t.createGroup.details}</Text>
+              </View>
+
+
+              <View style={styles.sectionContent}>
+                {/* Tags */}
+                <Text style={styles.subSectionTitle}>{t.createGroup.tags}</Text>
+
+                <View style={styles.tagsContainer}>
+                  {(formData.tags || []).map((tag, index) => (
+                    <View key={index} style={styles.tag}>
+                      <Text style={styles.tagText}>{tag}</Text>
+                      <TouchableOpacity
+                        style={styles.tagRemove}
+                        onPress={() => handleRemoveTag(tag)}
+                      >
+                        <Ionicons name="close" size={12} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <TouchableOpacity
+                    style={styles.addTagButton}
+                    onPress={() => setShowTagInput(true)}
+                  >
+                    <Ionicons name="add" size={16} color="#FFD700" />
+                    <Text style={styles.addTagText}>{t.createGroup.addTag}</Text>
+                  </TouchableOpacity>
+
+                </View>
+
+                {/* Show Input for Tag */}
+                {showTagInput && (
+                  <View style={styles.inlineInputContainer}>
+                    <TextInput
+                      style={styles.inlineInput}
+                      value={newTag}
+                      onChangeText={setNewTag}
+                      placeholder={t.createGroup.tagNamePlaceholder}
+                      autoFocus
+
+                      onSubmitEditing={handleAddTag}
+                    />
+                    <TouchableOpacity onPress={handleAddTag} style={styles.inlineAddBtn}>
+                      <Text style={styles.inlineAddBtnText}>{t.common.ok}</Text>
+                    </TouchableOpacity>
+
+                  </View>
+                )}
+
+                <View style={{ height: 16 }} />
+
+                {/* Rules */}
+                <Text style={styles.subSectionTitle}>{t.createGroup.groupRules}</Text>
+
+                {formData.rules?.map((rule, index) => (
+                  <View key={index} style={styles.ruleRow}>
+                    <Ionicons name="ellipse" size={6} color="#FFD700" style={{ marginTop: 7 }} />
+                    <Text style={styles.ruleText}>{rule}</Text>
+                    <TouchableOpacity onPress={() => handleRemoveRule(rule)}>
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                {!showRulesInput ? (
+                  <TouchableOpacity
+                    style={styles.addRuleButton}
+                    onPress={() => setShowRulesInput(true)}
+                  >
+                    <Ionicons name="add-circle-outline" size={20} color="#FFD700" />
+                    <Text style={styles.addRuleText}>{t.createGroup.addRule}</Text>
+                  </TouchableOpacity>
+
+                ) : (
+                  <View style={styles.inlineInputContainer}>
+                    <TextInput
+                      style={styles.inlineInput}
+                      value={newRule}
+                      onChangeText={setNewRule}
+                      placeholder={t.createGroup.rulePlaceholder}
+                      autoFocus
+
+                      onSubmitEditing={handleAddRule}
+                    />
+                    <TouchableOpacity onPress={handleAddRule} style={styles.inlineAddBtn}>
+                      <Text style={styles.inlineAddBtnText}>{t.common.add}</Text>
+                    </TouchableOpacity>
+
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View style={{ height: 100 }} />
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Action Bar */}
+      <SafeAreaView style={styles.actionSafeArea}>
+        <View style={styles.actionContainer}>
+          <TouchableOpacity
+            style={[styles.createButton, (!formData.name || !formData.sport || isLoading) && styles.createButtonDisabled]}
             onPress={handleSubmit}
-            disabled={isLoading}
+            disabled={!formData.name || !formData.sport || isLoading}
+            activeOpacity={0.8}
           >
             {isLoading ? (
-              <ActivityIndicator color="#000000" size="small" />
+              <ActivityIndicator color="#000000" />
             ) : (
-              <Text style={styles.submitButtonText}>Create Group</Text>
+              <>
+                <Ionicons name="checkmark-circle-outline" size={20} color="#000000" style={{ marginRight: 8 }} />
+                <Text style={styles.createButtonText}>{t.createGroup.create}</Text>
+              </>
             )}
           </TouchableOpacity>
-        </Animated.View>
-      </ScrollView>
+
+        </View>
+      </SafeAreaView>
 
       {/* Sport Picker Modal */}
       <Modal visible={showSportPicker} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.pickerModal}>
-            <Text style={styles.pickerModalTitle}>Select Sport</Text>
+            <Text style={styles.pickerModalTitle}>{t.createGroup.selectSport}</Text>
             <FlatList
-              data={SPORTS}
+              data={SPORTS_KEYS}
+
               keyExtractor={(item) => item}
               renderItem={({ item }) => (
                 <TouchableOpacity
@@ -526,16 +585,19 @@ export default function CreateGroupScreen() {
                     setShowSportPicker(false);
                   }}
                 >
-                  <Text style={styles.pickerItemText}>{item}</Text>
+                  <Text style={styles.pickerItemText}>{getSportLabel(item)}</Text>
+                  {formData.sport === item && <Ionicons name="checkmark" size={20} color="#FFD700" />}
                 </TouchableOpacity>
+
               )}
             />
             <TouchableOpacity
               style={styles.pickerCancelButton}
               onPress={() => setShowSportPicker(false)}
             >
-              <Text style={styles.pickerCancelButtonText}>Cancel</Text>
+              <Text style={styles.pickerCancelButtonText}>{t.createGroup.cancel}</Text>
             </TouchableOpacity>
+
           </View>
         </View>
       </Modal>
@@ -544,8 +606,9 @@ export default function CreateGroupScreen() {
       <Modal visible={showPrivacyPicker} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.pickerModal}>
-            <Text style={styles.pickerModalTitle}>Select Privacy</Text>
-            {PRIVACY_OPTIONS.map((option) => (
+            <Text style={styles.pickerModalTitle}>{t.createGroup.selectPrivacy}</Text>
+            {PRIVACY_OPTIONS.map((option: any) => (
+
               <TouchableOpacity
                 key={option.value}
                 style={styles.pickerItem}
@@ -554,26 +617,30 @@ export default function CreateGroupScreen() {
                   setShowPrivacyPicker(false);
                 }}
               >
-                <Text style={styles.pickerItemText}>{option.label}</Text>
-                <Text style={styles.pickerItemDescription}>{option.description}</Text>
+                <View>
+                  <Text style={styles.pickerItemText}>{option.label}</Text>
+                  <Text style={styles.pickerItemDescription}>{option.description}</Text>
+                </View>
+                {formData.privacy === option.value && <Ionicons name="checkmark" size={20} color="#FFD700" />}
               </TouchableOpacity>
             ))}
             <TouchableOpacity
               style={styles.pickerCancelButton}
               onPress={() => setShowPrivacyPicker(false)}
             >
-              <Text style={styles.pickerCancelButtonText}>Cancel</Text>
+              <Text style={styles.pickerCancelButtonText}>{t.createGroup.cancel}</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Skill Picker Modal */}
+      {/* Skill & Gender Pickers reused logic or similar Modals can be added here */}
       <Modal visible={showSkillPicker} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.pickerModal}>
-            <Text style={styles.pickerModalTitle}>Select Skill Level</Text>
-            {SKILL_LEVELS.map((option) => (
+            <Text style={styles.pickerModalTitle}>{t.createGroup.selectSkillLevel}</Text>
+            {SKILL_LEVEL_OPTIONS.map((option: any) => (
+
               <TouchableOpacity
                 key={option.value}
                 style={styles.pickerItem}
@@ -583,363 +650,195 @@ export default function CreateGroupScreen() {
                 }}
               >
                 <Text style={styles.pickerItemText}>{option.label}</Text>
+                {formData.requirements?.skill_level === option.value && <Ionicons name="checkmark" size={20} color="#FFD700" />}
               </TouchableOpacity>
             ))}
-            <TouchableOpacity
-              style={styles.pickerCancelButton}
-              onPress={() => setShowSkillPicker(false)}
-            >
-              <Text style={styles.pickerCancelButtonText}>Cancel</Text>
+            <TouchableOpacity style={styles.pickerCancelButton} onPress={() => setShowSkillPicker(false)}>
+              <Text style={styles.pickerCancelButtonText}>{t.createGroup.cancel}</Text>
             </TouchableOpacity>
+
           </View>
         </View>
       </Modal>
 
-      {/* Gender Picker Modal */}
-      <Modal visible={showGenderPicker} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.pickerModal}>
-            <Text style={styles.pickerModalTitle}>Select Gender Preference</Text>
-            {GENDER_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={styles.pickerItem}
-                onPress={() => {
-                  handleRequirementsChange('gender_preference', option.value);
-                  setShowGenderPicker(false);
-                }}
-              >
-                <Text style={styles.pickerItemText}>{option.label}</Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity
-              style={styles.pickerCancelButton}
-              onPress={() => setShowGenderPicker(false)}
-            >
-              <Text style={styles.pickerCancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+    </View>
+
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#F9FAFB',
   },
-  header: {
+  // Top Bar Styles
+  topBarSafeArea: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 5,
+    zIndex: 10,
+  },
+  topBar: {
+    height: 70,
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#ffffff',
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#F0F0F0',
   },
+
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f8f9fa',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  backIcon: {
-    fontSize: 18,
-    color: '#333333',
-    fontWeight: '600',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FFD700',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoText: {
-    fontWeight: '800',
     color: '#000000',
-    letterSpacing: 1,
   },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffebee',
-    padding: 12,
-    marginHorizontal: 20,
-    marginVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ffcdd2',
-  },
-  errorText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#c62828',
-  },
-  errorDismiss: {
-    fontSize: 18,
-    color: '#c62828',
-    fontWeight: 'bold',
-  },
+  // Content
   scrollView: {
     flex: 1,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 24,
   },
+  // Sections
   section: {
-    marginBottom: 24,
+    backgroundColor: '#FFFFFF',
+    marginTop: 8,
+    padding: 20,
   },
+
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 16,
+    fontWeight: '700',
+    color: '#1F2937',
   },
+  sectionContent: {
+    gap: 12,
+  },
+
+  subSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  // Inputs
   inputGroup: {
-    marginBottom: 16,
+    gap: 8,
   },
   inputLabel: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#333333',
+    fontWeight: '700',
+    color: '#374151',
     marginBottom: 8,
   },
   textInput: {
-    height: 48,
+    height: 52,
     borderWidth: 1.5,
-    borderColor: '#e1e5e9',
-    borderRadius: 12,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#f8f9fa',
+    color: '#1F2937',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   textArea: {
-    height: 100,
+    height: 120,
     textAlignVertical: 'top',
+    paddingTop: 12,
   },
   characterCount: {
     fontSize: 12,
-    color: '#666666',
+    color: '#9CA3AF',
     textAlign: 'right',
     marginTop: 4,
   },
+
+  placeholderText: {
+    color: '#9CA3AF',
+  },
   pickerButton: {
-    height: 48,
-    borderWidth: 1.5,
-    borderColor: '#e1e5e9',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#f8f9fa',
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   pickerButtonText: {
     fontSize: 16,
-    color: '#1a1a1a',
+    color: '#1F2937',
+    fontWeight: '500',
   },
-  pickerIcon: {
-    fontSize: 12,
-    color: '#666666',
-  },
+
   locationButton: {
-    height: 48,
-    borderWidth: 1.5,
-    borderColor: '#e1e5e9',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#f8f9fa',
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFBEB',
+    gap: 12,
   },
   locationButtonText: {
+    flex: 1,
     fontSize: 16,
-    color: '#1a1a1a',
-  },
-  locationButtonIcon: {
-    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
   },
   locationInfo: {
-    marginTop: 8,
+    paddingHorizontal: 4,
   },
   locationInfoText: {
-    fontSize: 14,
-    color: '#666666',
+    fontSize: 13,
+    color: '#6B7280',
   },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-  },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  tagText: {
-    fontSize: 14,
-    color: '#000000',
-    fontWeight: '500',
-  },
-  tagRemove: {
-    marginLeft: 6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tagRemoveText: {
-    fontSize: 12,
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
-  addButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e1e5e9',
-    alignSelf: 'flex-start',
-  },
-  addButtonText: {
-    fontSize: 14,
-    color: '#333333',
-    fontWeight: '500',
-  },
-  tagInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  tagInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1.5,
-    borderColor: '#e1e5e9',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    color: '#1a1a1a',
-    backgroundColor: '#f8f9fa',
-  },
-  tagAddButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#FFD700',
-    borderRadius: 8,
-  },
-  tagAddButtonText: {
-    fontSize: 14,
-    color: '#000000',
-    fontWeight: '600',
-  },
-  rulesContainer: {
-    marginBottom: 12,
-  },
-  rule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e1e5e9',
-  },
-  ruleText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#333333',
-  },
-  ruleRemove: {
-    marginLeft: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#ffebee',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  ruleRemoveText: {
-    fontSize: 12,
-    color: '#c62828',
-    fontWeight: 'bold',
-  },
-  ruleInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  ruleInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1.5,
-    borderColor: '#e1e5e9',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    color: '#1a1a1a',
-    backgroundColor: '#f8f9fa',
-  },
-  ruleAddButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#FFD700',
-    borderRadius: 8,
-  },
-  ruleAddButtonText: {
-    fontSize: 14,
-    color: '#000000',
-    fontWeight: '600',
-  },
-  requirementsContainer: {
-    gap: 16,
-  },
+  // Requirements
   requirementRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 40,
   },
   requirementLabel: {
-    fontSize: 14,
-    color: '#333333',
-    flex: 1,
+    fontSize: 15,
+    color: '#4B5563',
+    fontWeight: '500',
   },
   ageInputs: {
     flexDirection: 'row',
@@ -949,79 +848,217 @@ const styles = StyleSheet.create({
   ageInput: {
     width: 60,
     height: 40,
-    borderWidth: 1.5,
-    borderColor: '#e1e5e9',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     borderRadius: 8,
-    paddingHorizontal: 8,
-    fontSize: 14,
-    color: '#1a1a1a',
-    backgroundColor: '#f8f9fa',
     textAlign: 'center',
+    fontSize: 15,
+    color: '#1F2937',
+    backgroundColor: '#F9FAFB',
   },
   ageSeparator: {
-    fontSize: 16,
-    color: '#666666',
+    color: '#9CA3AF',
+    fontSize: 18,
   },
-  submitButton: {
-    paddingVertical: 16,
-    backgroundColor: '#FFD700',
-    borderRadius: 12,
+  smallPickerButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
+  smallPickerText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
   },
-  submitButtonText: {
-    fontSize: 16,
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 4,
+  },
+  // Tags & Rules
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1F2937',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  tagText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  tagRemove: {
+    opacity: 0.8,
+  },
+  addTagButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    gap: 4,
+    borderStyle: 'dashed',
+  },
+  addTagText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#000000',
+    color: '#B45309',
   },
-  modalOverlay: {
+  ruleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  ruleText: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+  },
+  addRuleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+    paddingVertical: 8,
+  },
+  addRuleText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#B45309',
+  },
+  inlineInputContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  inlineInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 14,
+  },
+  inlineAddBtn: {
+    backgroundColor: '#1F2937',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  inlineAddBtnText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+
+  // Footer / Action Bar
+  actionSafeArea: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  actionContainer: {
+    padding: 16,
+  },
+  createButton: {
+    backgroundColor: '#FFD700',
+    paddingVertical: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  pickerModal: {
-    backgroundColor: '#ffffff',
+  createButtonDisabled: {
+    backgroundColor: '#E5E7EB',
+  },
+  createButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000000',
+  },
+
+  // Error
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    margin: 16,
+    padding: 12,
     borderRadius: 12,
-    width: '80%',
-    maxWidth: 300,
-    maxHeight: '60%',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: 12,
+  },
+  errorText: {
+    flex: 1,
+    color: '#991B1B',
+    fontSize: 14,
+  },
+  // Modals
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  pickerModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    maxHeight: '80%',
+    padding: 24,
   },
   pickerModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
     textAlign: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   pickerItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#F3F4F6',
   },
   pickerItemText: {
     fontSize: 16,
-    color: '#333333',
+    color: '#1F2937',
+    fontWeight: '500',
   },
   pickerItemDescription: {
     fontSize: 12,
-    color: '#666666',
+    color: '#6B7280',
     marginTop: 2,
   },
   pickerCancelButton: {
-    paddingVertical: 16,
+    marginTop: 16,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
   },
   pickerCancelButtonText: {
     fontSize: 16,
-    color: '#666666',
+    fontWeight: '600',
+    color: '#4B5563',
   },
 });

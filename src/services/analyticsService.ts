@@ -221,7 +221,7 @@ class AnalyticsService {
 
       // Get user friends
       const { data: friends } = await supabase
-        .from('friendships')
+        .from('user_friendships')
         .select('id')
         .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
         .eq('status', 'accepted');
@@ -386,7 +386,7 @@ class AnalyticsService {
       // Get active users (users who have been active in the last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
       const { data: activeUsers } = await supabase
         .from('users')
         .select('id')
@@ -440,7 +440,7 @@ class AnalyticsService {
     try {
       // Get total friendships
       const { data: friendships } = await supabase
-        .from('friendships')
+        .from('user_friendships')
         .select('id')
         .eq('status', 'accepted');
 
@@ -629,7 +629,7 @@ class AnalyticsService {
       checkIns: 0.15,
     };
 
-    const score = 
+    const score =
       metrics.eventsCreated * weights.eventsCreated +
       metrics.eventsAttended * weights.eventsAttended +
       metrics.friends * weights.friends +
@@ -646,11 +646,11 @@ class AnalyticsService {
     attendees: number;
   }): number {
     const weights = { views: 0.3, rsvps: 0.4, attendees: 0.3 };
-    const score = 
+    const score =
       metrics.views * weights.views +
       metrics.rsvps * weights.rsvps +
       metrics.attendees * weights.attendees;
-    
+
     return Math.min(100, Math.max(0, score));
   }
 
@@ -660,11 +660,11 @@ class AnalyticsService {
     shares: number;
   }): number {
     const weights = { views: 0.4, rsvps: 0.4, shares: 0.2 };
-    const score = 
+    const score =
       metrics.views * weights.views +
       metrics.rsvps * weights.rsvps +
       metrics.shares * weights.shares;
-    
+
     return Math.min(100, Math.max(0, score));
   }
 
@@ -675,7 +675,7 @@ class AnalyticsService {
   }): number {
     const attendanceRate = metrics.rsvps ? (metrics.attendees / metrics.rsvps) * 100 : 0;
     const feedbackScore = metrics.feedback || 0;
-    
+
     return (attendanceRate + feedbackScore) / 2;
   }
 
@@ -850,29 +850,29 @@ class AnalyticsService {
 
   private generateInsights(appAnalytics: AppAnalytics, socialAnalytics: SocialAnalytics, locationAnalytics: LocationAnalytics): string[] {
     const insights: string[] = [];
-    
+
     if (appAnalytics.active_users > 0) {
       insights.push(`Active user rate: ${((appAnalytics.active_users / appAnalytics.total_users) * 100).toFixed(1)}%`);
     }
-    
+
     if (socialAnalytics.total_groups > 0) {
       insights.push(`Average group size: ${(socialAnalytics.total_group_members / socialAnalytics.total_groups).toFixed(1)} members`);
     }
-    
+
     return insights;
   }
 
   private generateRecommendations(appAnalytics: AppAnalytics, socialAnalytics: SocialAnalytics, locationAnalytics: LocationAnalytics): string[] {
     const recommendations: string[] = [];
-    
+
     if (appAnalytics.user_retention.day_7 < 50) {
       recommendations.push('Consider implementing user onboarding improvements to increase 7-day retention');
     }
-    
+
     if (socialAnalytics.total_groups < appAnalytics.total_users * 0.1) {
       recommendations.push('Encourage more group creation to increase social engagement');
     }
-    
+
     return recommendations;
   }
 }

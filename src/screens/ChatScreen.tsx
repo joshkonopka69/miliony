@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
-  TextInput, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
@@ -83,10 +83,10 @@ export default function ChatScreen() {
         isOwn: true,
         avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAVJbXPTvs7vZfVZxjUI49GIO8KVbeVEFFTD1ImnQy_B-g--Hmx1u2ggYIblPQgalPSUjbBYCtD8uB0lrNu77ng3HRgiTIdXvS6_p8zdrWmq0jpjgA2nrYtSrwW8fWdjolm5VNsxsNG42OwjX7gbeJkjADDwKKE6IOHXq-CD8rlrLklZHNhDVFNu_WvDcQgXjoaNZ4Akl_Xo9ItHQ4e039evg0iU2ZKGOTOoO8hfc0pNh2Lx60ScUabJ0gTeFRf8PAz9SEc2yj_JAE',
       };
-      
+
       setMessages(prev => [...prev, message]);
       setNewMessage('');
-      
+
       // Scroll to bottom after sending
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
@@ -133,7 +133,7 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.chatContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
@@ -160,7 +160,7 @@ export default function ChatScreen() {
             multiline
             maxLength={500}
           />
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.sendButton,
               newMessage.trim() ? styles.sendButtonActive : styles.sendButtonInactive
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   ownBubble: {
-    backgroundColor: '#fbbf24', // amber-400
+    backgroundColor: '#FFD700', // Gold (Standardized)
     borderTopLeftRadius: 0,
   },
   otherBubble: {
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   sendButtonActive: {
-    backgroundColor: '#fbbf24', // amber-400
+    backgroundColor: '#FFD700', // Gold (Standardized)
   },
   sendButtonInactive: {
     backgroundColor: '#e7e5e4', // stone-200

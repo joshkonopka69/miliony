@@ -22,7 +22,7 @@ import * as Location from 'expo-location';
 import { useAppNavigation } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
 import { BottomNavBar } from '../components';
-import { LocationDetailsModal } from '../components/LocationDetailsModal';
+import PlaceInfoModal from '../components/PlaceInfoModal';
 import { CreateEventModal } from '../components/CreateEventModal';
 import type { EventFormData } from '../components/CreateEventModal';
 import { useTranslation } from '../contexts/TranslationContext';
@@ -243,6 +243,9 @@ export default function EnhancedMapScreen() {
       setLoading(true);
       setError(null);
 
+      const cutoff = new Date();
+      cutoff.setHours(cutoff.getHours() - 24);
+
       const { data, error: queryError } = await supabase
         .from('events')
         .select(
@@ -256,7 +259,7 @@ export default function EnhancedMapScreen() {
         `
         )
         .eq('status', 'active')
-        .gte('scheduled_datetime', new Date().toISOString())
+        .gte('scheduled_datetime', cutoff.toISOString())
         .order('scheduled_datetime', { ascending: true })
         .limit(100);
 
@@ -370,6 +373,9 @@ export default function EnhancedMapScreen() {
     const latRange = 0.001;
     const lngRange = 0.001;
 
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - 24);
+
     const { data, error } = await supabase
       .from('events')
       .select(
@@ -383,10 +389,9 @@ export default function EnhancedMapScreen() {
       `
       )
       .eq('status', 'active')
-      .gte('scheduled_datetime', new Date().toISOString())
+      .gte('scheduled_datetime', cutoff.toISOString())
       .or(
-        `place_id.eq.${placeId},and(latitude.gte.${latitude - latRange},latitude.lte.${
-          latitude + latRange
+        `place_id.eq.${placeId},and(latitude.gte.${latitude - latRange},latitude.lte.${latitude + latRange
         },longitude.gte.${longitude - lngRange},longitude.lte.${longitude + lngRange})`
       )
       .order('scheduled_datetime', { ascending: true });
@@ -652,27 +657,27 @@ export default function EnhancedMapScreen() {
         </View>
       )}
 
-      {/* Location Details Modal */}
-      <LocationDetailsModal
+      {/* Place Details Modal */}
+      <PlaceInfoModal
         visible={isLocationModalVisible}
-        location={selectedLocation}
-        events={locationEvents}
-        isLoading={loading}
-        userLocation={userLocation}
+        placeDetails={selectedLocation as any}
         onClose={() => setIsLocationModalVisible(false)}
-        onCreateEvent={handleCreateEvent}
+        onCreateMeetup={handleCreateEvent}
         onEventPress={handleEventPress}
+        userLocation={userLocation}
+        loading={loading}
       />
 
       {/* Create Event Modal */}
       <CreateEventModal
         visible={isCreateEventModalVisible}
         location={selectedLocation}
-        formData={eventFormData}
-        onFormChange={setEventFormData}
-        onSubmit={submitCreateEvent}
         onClose={() => setIsCreateEventModalVisible(false)}
-        isLoading={loading}
+        onEventCreated={(event) => {
+          console.log('Event created:', event);
+          setIsCreateEventModalVisible(false);
+          // Trigger refresh if needed
+        }}
       />
 
       {/* Error Toast */}
@@ -855,7 +860,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -888,7 +893,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 150,
     left: 20,
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,

@@ -9,7 +9,10 @@ import {
   Image,
   Share,
   ActivityIndicator,
+  Modal,
+  Platform,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation, useAppRoute } from '../navigation/hooks';
@@ -23,7 +26,11 @@ import {
 import { useTranslation, Language } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabaseService, Event as SupabaseEvent } from '../services/supabase';
+import { enhancedEventService } from '../services/enhancedEventService';
 import { notificationService } from '../services/notificationService';
+import ProfilePreviewModal, { ProfilePreviewUser } from '../components/ProfilePreviewModal';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import placesApiService from '../services/placesApi';
 
 // Sport emoji mapping
 const SPORT_EMOJI_MAP: Record<string, string> = {
@@ -36,6 +43,22 @@ const SPORT_EMOJI_MAP: Record<string, string> = {
   swimming: '🏊‍♂️',
   gym: '💪',
   volleyball: '🏐',
+  judo: '🥋',
+  wrestling: '🤼‍♂️',
+  'muay thai': '🥊',
+  kickboxing: '🥊',
+  rollerblading: '🛼',
+  'ice skating': '⛸️',
+  skating: '🛹',
+  padel: '🎾',
+  squash: '🎾',
+  bouldering: '🧗‍♂️',
+  climbing: '🧗‍♂️',
+  'table tennis': '🏓',
+  yoga: '🧘',
+  pilates: '🧘',
+  crossfit: '🏋️‍♂️',
+  badminton: '🏸',
   default: '🏅',
 };
 
@@ -59,7 +82,7 @@ export default function EventDetailsScreen() {
 
   const [event, setEvent] = useState<MyEvent | null>(initialEvent || null);
   const { t, language } = useTranslation();
-  const { getUserId, user: authUser } = useAuth();
+  const { getUserId, user: currentUser } = useAuth();
   const userId = getUserId();
   const loginRequiredMessage = t.friends?.loginRequired || 'Please sign in to continue.';
   const locale = LOCALE_MAP[language] ?? 'en-US';
@@ -69,13 +92,20 @@ export default function EventDetailsScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [requestPending, setRequestPending] = useState(false);
   const [isLoadingEvent, setIsLoadingEvent] = useState(!initialEvent && !!eventIdFromParams);
+  const [participantsList, setParticipantsList] = useState<ProfilePreviewUser[]>([]);
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<ProfilePreviewUser | null>(null);
+  const [showReschedulePicker, setShowReschedulePicker] = useState(false);
+  const [newStartTime, setNewStartTime] = useState(initialEvent?.startTime || new Date());
+  const [locationPhoto, setLocationPhoto] = useState<string | null>(null);
+  const [loadingPhoto, setLoadingPhoto] = useState(false);
 
   const relativeStart = event
     ? getTimeUntilEvent(event.startTime, locale, t.eventDetails.eventStarted)
     : '';
 
   useEffect(() => {
-    if (!initialEvent && eventIdFromParams) {
+    if (eventIdFromParams) {
       loadEventById(eventIdFromParams);
     }
   }, [eventIdFromParams]);
@@ -106,19 +136,28 @@ export default function EventDetailsScreen() {
           role: 'joined', // Default, will check below
           chatEnabled: rawEvent.chat_enabled !== false,
           createdBy: {
-            id: rawEvent.created_by,
-            name: (rawEvent as any).creator_name || 'Organizer',
+            id: (rawEvent as any).creator?.id || (rawEvent as any).created_by_id || rawEvent.created_by,
+            name: (rawEvent as any).creator?.display_name || (rawEvent as any).creator_name || 'Organizer',
+            avatar_url: (rawEvent as any).creator?.avatar_url || (rawEvent as any).creator_avatar,
           },
           description: rawEvent.description,
+          requiresApproval: rawEvent.requires_approval,
+          placeId: rawEvent.place_id || (rawEvent as any).placeId || null,
         };
 
         // Check if current user is creator
-        if (userId === rawEvent.created_by) {
+        if (userId === (mappedEvent.createdBy.id)) {
           mappedEvent.role = 'created';
         } else {
           // Check if user is participant
           const isParticipant = await supabaseService.isParticipant(id, userId || '');
           mappedEvent.role = isParticipant ? 'joined' : 'invited'; // invited as fallback for "not joined"
+        }
+
+        // If current user is creator, use updated local profile data for faster/accurate avatar display
+        if (userId === mappedEvent.createdBy.id && currentUser) {
+          mappedEvent.createdBy.name = currentUser.display_name || mappedEvent.createdBy.name;
+          mappedEvent.createdBy.avatar_url = currentUser.avatar_url || mappedEvent.createdBy.avatar_url;
         }
 
         setEvent(mappedEvent);
@@ -131,6 +170,55 @@ export default function EventDetailsScreen() {
       setIsLoadingEvent(false);
     }
   };
+
+  // Fetch participants when event is loaded
+  useEffect(() => {
+    if (event?.id) {
+      const fetchParticipants = async () => {
+        try {
+          const participants = await supabaseService.getEventParticipants(event.id);
+          const mapped: ProfilePreviewUser[] = participants.map((p: any) => ({
+            id: p.user?.id || p.user_id,
+            display_name: p.user?.display_name || 'Unknown',
+            avatar_url: p.user?.avatar_url,
+            favorite_sports: p.user?.favorite_sports || [],
+          }));
+          setParticipantsList(mapped);
+        } catch (error) {
+          console.error('Error loading participants on mount:', error);
+        }
+      };
+      fetchParticipants();
+    }
+  }, [event?.id]);
+
+  // Fetch location photo when event is loaded
+  useEffect(() => {
+    const fetchLocationPhoto = async () => {
+      if (!event?.placeId) {
+        setLocationPhoto(null);
+        return;
+      }
+
+      try {
+        setLoadingPhoto(true);
+        const details = await placesApiService.getPlaceDetails(event.placeId);
+        if (details?.photos && details.photos.length > 0) {
+          const photoUrl = placesApiService.getPlacePhotoUrl(details.photos[0].photoReference, 800, 600);
+          setLocationPhoto(photoUrl);
+        } else {
+          setLocationPhoto(null);
+        }
+      } catch (error) {
+        console.error('Error fetching location photo for details:', error);
+        setLocationPhoto(null);
+      } finally {
+        setLoadingPhoto(false);
+      }
+    };
+
+    fetchLocationPhoto();
+  }, [event?.placeId]);
 
   const handleBack = () => {
     navigation.goBack();
@@ -155,12 +243,12 @@ export default function EventDetailsScreen() {
       setIsProcessing(true);
       await notificationService.sendNotificationWithStorage(event.createdBy.id, {
         title: t.eventDetails.requestAccess,
-        body: `${authUser?.display_name || 'Someone'} wants to join "${event.name}".`,
+        body: `${currentUser?.display_name || 'Someone'} wants to join "${event.name}".`,
         type: 'event_updated',
         data: {
           eventId: event.id,
           requesterId: userId,
-          requesterName: authUser?.display_name,
+          requesterName: currentUser?.display_name,
         },
       });
       setRequestPending(true);
@@ -208,15 +296,15 @@ export default function EventDetailsScreen() {
   };
 
   const performLeave = async () => {
-    if (!event) return;
+    if (!event || !eventIdFromParams) return;
     if (!userId) {
       Alert.alert(t.common.error, loginRequiredMessage);
       return;
     }
     try {
       setIsProcessing(true);
-      const left = await supabaseService.leaveEvent(event.id, userId);
-      if (left) {
+      const result = await enhancedEventService.leaveEvent(eventIdFromParams);
+      if (result.success) {
         setHasJoined(false);
         setParticipantsState(prev =>
           prev
@@ -224,8 +312,10 @@ export default function EventDetailsScreen() {
             : prev
         );
         Alert.alert(t.common.success, t.myEvents.leaveEventSuccess);
+        // Refresh event data to ensure consistency
+        loadEventById(eventIdFromParams);
       } else {
-        Alert.alert(t.common.error, t.eventDetails.errorMessage);
+        Alert.alert(t.common.error, result.error || t.eventDetails.errorMessage);
       }
     } catch (error) {
       console.error('Failed to leave event:', error);
@@ -256,15 +346,28 @@ export default function EventDetailsScreen() {
   };
 
   const handleLeaveEvent = () => {
+    const leaveTxt = t.myEvents.leaveEventConfirm || 'Leave';
+    const cancelTxt = t.common?.cancel || 'Cancel';
+
+    console.log('DEBUG: handleLeaveEvent alert shown');
+    console.log('DEBUG: Leave Label:', leaveTxt);
+    console.log('DEBUG: Cancel Label:', cancelTxt);
+
     Alert.alert(
-      t.eventDetails.leaveGame,
-      t.myEvents.leaveEventMessage.replace('{name}', event?.name ?? ''),
+      '[DEBUG] ' + (t.eventDetails.leaveGame || 'Leave Game'),
+      (t.myEvents.leaveEventMessage || 'Do you want to leave "{name}"?').replace('{name}', event?.name ?? ''),
       [
-        { text: t.common.cancel, style: 'cancel' },
         {
-          text: t.myEvents.leaveEventConfirm,
+          text: cancelTxt,
+          style: 'cancel',
+        },
+        {
+          text: leaveTxt,
           style: 'destructive',
-          onPress: performLeave,
+          onPress: () => {
+            console.log('DEBUG: Leave button pressed');
+            performLeave();
+          },
         },
       ]
     );
@@ -300,13 +403,166 @@ export default function EventDetailsScreen() {
     Alert.alert(t.eventDetails.viewLocationTitle, t.eventDetails.viewLocationMessage);
   };
 
-  const handleViewParticipants = () => {
+  const handleViewParticipants = async () => {
+    if (!event?.id) return;
+    try {
+      const participants = await supabaseService.getEventParticipants(event.id);
+      const mapped: ProfilePreviewUser[] = participants.map((p: any) => ({
+        id: p.user?.id || p.user_id,
+        display_name: p.user?.display_name || 'Unknown',
+        avatar_url: p.user?.avatar_url,
+        favorite_sports: p.user?.favorite_sports || [],
+      }));
+      setParticipantsList(mapped);
+      setShowParticipantsModal(true);
+    } catch (error) {
+      console.error('Error loading participants:', error);
+    }
+  };
+
+  const handleUserPress = (user: ProfilePreviewUser) => {
+    setShowParticipantsModal(false);
+    setSelectedUser(user);
+  };
+
+  const handleViewFullProfile = (userId: string) => {
+    setSelectedUser(null);
+    navigation.navigate(ROUTES.PROFILE, { userId });
+  };
+
+  const handleManageEvent = () => {
+    if (Platform.OS === 'android') {
+      // Android only supports 3 buttons. We split into two steps or use a different approach.
+      Alert.alert(
+        t.eventDetails.manageEvent,
+        t.eventDetails.manageOptions,
+        [
+          {
+            text: t.eventDetails.rescheduleEvent,
+            onPress: () => setShowReschedulePicker(true),
+          },
+          {
+            text: t.eventDetails.deleteEvent,
+            onPress: handleDeleteEvent,
+            style: 'destructive',
+          },
+          {
+            text: t.common?.cancel || 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    } else {
+      // iOS supports more buttons
+      Alert.alert(
+        t.eventDetails.manageEvent,
+        t.eventDetails.manageOptions,
+        [
+          {
+            text: t.eventDetails.rescheduleEvent,
+            onPress: () => setShowReschedulePicker(true),
+          },
+          {
+            text: t.eventDetails.cancelEvent,
+            onPress: handleCancelEvent,
+            style: 'destructive',
+          },
+          {
+            text: t.eventDetails.deleteEvent,
+            onPress: handleDeleteEvent,
+            style: 'destructive',
+          },
+          {
+            text: t.common?.cancel || 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    }
+  };
+
+  const handleReschedule = async (event: any, selectedDate?: Date) => {
+    setShowReschedulePicker(Platform.OS === 'ios');
+    if (selectedDate && eventIdFromParams) {
+      setNewStartTime(selectedDate);
+
+      Alert.alert(
+        t.eventDetails.rescheduleEvent,
+        t.eventDetails.confirmReschedule,
+        [
+          { text: t.common?.cancel || 'Cancel', style: 'cancel' },
+          {
+            text: t.common?.confirm || 'OK',
+            onPress: async () => {
+              setIsProcessing(true);
+              const result = await enhancedEventService.updateEvent(eventIdFromParams, {
+                start_time: selectedDate.toISOString()
+              });
+              setIsProcessing(false);
+
+              if (result.success) {
+                Alert.alert(t.common?.success || 'Success', 'Event rescheduled successfully');
+                loadEventById(eventIdFromParams);
+              } else {
+                Alert.alert(t.common?.error || 'Error', result.error || 'Failed to reschedule event');
+              }
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  const handleCancelEvent = () => {
     Alert.alert(
-      t.eventDetails.participantsInfoTitle,
-      t.eventDetails.participantsInfoMessage.replace(
-        '{count}',
-        String(participantsInfo?.current ?? 0)
-      )
+      t.eventDetails.cancelEvent,
+      t.eventDetails.confirmCancel,
+      [
+        { text: t.common?.cancel || 'Cancel', style: 'cancel' },
+        {
+          text: t.common?.confirm || 'OK',
+          onPress: async () => {
+            if (eventIdFromParams) {
+              setIsProcessing(true);
+              const result = await enhancedEventService.cancelEvent(eventIdFromParams);
+              setIsProcessing(false);
+              if (result.success) {
+                Alert.alert(t.common?.success || 'Success', 'Event cancelled');
+                navigation.goBack();
+              } else {
+                Alert.alert(t.common?.error || 'Error', result.error || 'Failed to cancel event');
+              }
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteEvent = () => {
+    Alert.alert(
+      t.eventDetails.deleteEvent,
+      t.eventDetails.confirmDelete,
+      [
+        { text: t.common?.cancel || 'Cancel', style: 'cancel' },
+        {
+          text: t.eventDetails.deleteEvent,
+          style: 'destructive',
+          onPress: async () => {
+            if (eventIdFromParams) {
+              setIsProcessing(true);
+              const result = await enhancedEventService.deleteEvent(eventIdFromParams);
+              setIsProcessing(false);
+              if (result.success) {
+                Alert.alert(t.common?.success || 'Success', 'Event deleted permanently');
+                navigation.goBack();
+              } else {
+                Alert.alert(t.common?.error || 'Error', result.error || 'Failed to delete event');
+              }
+            }
+          }
+        }
+      ]
     );
   };
 
@@ -314,7 +570,7 @@ export default function EventDetailsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <ActivityIndicator size="large" color="#FDB924" />
+          <ActivityIndicator size="large" color="#FFD700" />
           <Text style={[styles.errorTitle, { marginTop: 16 }]}>{t.common.loading}</Text>
         </View>
       </SafeAreaView>
@@ -343,7 +599,7 @@ export default function EventDetailsScreen() {
   const isPrivateEvent = !!event.requiresApproval;
   const isEventFull =
     participantsInfo ? (participantsInfo.max > 0 && participantsInfo.current >= participantsInfo.max) : false;
-  const sportColor = SPORT_COLORS[event.activity] || '#FDB924';
+  const sportColor = SPORT_COLORS[event.activity] || '#FFD700';
 
   return (
     <View style={styles.container}>
@@ -369,11 +625,33 @@ export default function EventDetailsScreen() {
       </SafeAreaView>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Event Header Card */}
-        <View style={styles.headerCard}>
-          <View style={[styles.sportIconLarge, { backgroundColor: sportColor + '20' }]}>
-            <Text style={styles.sportEmojiLarge}>{getSportEmoji(event.activity)}</Text>
+        {/* Banner Section (Like EventCard) */}
+        <View style={styles.bannerContainer}>
+          {locationPhoto ? (
+            <Image
+              source={{ uri: locationPhoto }}
+              style={styles.bannerImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.bannerPlaceholder, { backgroundColor: sportColor + '10' }]}>
+              <Ionicons
+                name={getSportEmoji(event.activity) === '🏀' ? 'basketball' : 'fitness'}
+                size={64}
+                color={sportColor}
+                style={{ opacity: 0.3 }}
+              />
+            </View>
+          )}
+
+          {/* Sport Icon Overlay */}
+          <View style={[styles.sportIconBadge, { backgroundColor: sportColor }]}>
+            <Text style={styles.sportEmojiOverlay}>{getSportEmoji(event.activity)}</Text>
           </View>
+        </View>
+
+        {/* Event Content Info */}
+        <View style={styles.headerCard}>
           <Text style={styles.eventName}>{event.name}</Text>
           <Text style={styles.eventActivity}>{event.activity}</Text>
 
@@ -386,7 +664,7 @@ export default function EventDetailsScreen() {
           {/* Creator Badge */}
           {isCreator && (
             <View style={styles.creatorBadge}>
-              <Ionicons name="star" size={14} color="#FDB924" />
+              <Ionicons name="star" size={14} color="#FFD700" />
               <Text style={styles.creatorBadgeText}>{t.eventDetails.creatorBadge}</Text>
             </View>
           )}
@@ -395,7 +673,7 @@ export default function EventDetailsScreen() {
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
-            <Ionicons name="people" size={24} color="#FDB924" />
+            <Ionicons name="people" size={24} color="#FFD700" />
             <Text style={styles.statValue}>
               {participantsInfo?.current ?? 0}/{participantsInfo?.max ?? 0}
             </Text>
@@ -403,13 +681,13 @@ export default function EventDetailsScreen() {
           </View>
 
           <View style={styles.statBox}>
-            <Ionicons name="location" size={24} color="#FDB924" />
+            <Ionicons name="location" size={24} color="#FFD700" />
             <Text style={styles.statValue}>{event.location.distance?.toFixed(1) || '—'} km</Text>
             <Text style={styles.statLabel}>{t.eventDetails.distanceLabel}</Text>
           </View>
 
           <View style={styles.statBox}>
-            <Ionicons name="trophy" size={24} color="#FDB924" />
+            <Ionicons name="trophy" size={24} color="#FFD700" />
             <Text style={styles.statValue}>{t.eventDetails.skillLevelAll}</Text>
             <Text style={styles.statLabel}>{t.eventDetails.skillLevel}</Text>
           </View>
@@ -456,7 +734,7 @@ export default function EventDetailsScreen() {
               onPress={handleViewLocation}
               activeOpacity={0.7}
             >
-              <Ionicons name="map" size={16} color="#FDB924" />
+              <Ionicons name="map" size={16} color="#FFD700" />
               <Text style={styles.viewMapText}>{t.eventDetails.viewOnMap}</Text>
             </TouchableOpacity>
           </View>
@@ -469,6 +747,35 @@ export default function EventDetailsScreen() {
             <Text style={styles.sectionTitle}>{t.eventDetails.participantsSection}</Text>
           </View>
           <View style={styles.sectionContent}>
+            {/* Participant Thumbnails Row */}
+            {participantsList.length > 0 && (
+              <View style={styles.participantsThumbnails}>
+                {participantsList.slice(0, 5).map((p, idx) => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[styles.thumbnailWrapper, { marginLeft: idx === 0 ? 0 : -12, zIndex: 10 - idx }]}
+                    onPress={() => setSelectedUser(p)}
+                    activeOpacity={0.8}
+                  >
+                    {p.avatar_url ? (
+                      <Image source={{ uri: p.avatar_url }} style={styles.thumbnailImage} />
+                    ) : (
+                      <View style={styles.thumbnailPlaceholder}>
+                        <Text style={styles.thumbnailInitials}>
+                          {p.display_name.slice(0, 1).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+                {participantsList.length > 5 && (
+                  <View style={[styles.thumbnailMore, { marginLeft: -12, zIndex: 0 }]}>
+                    <Text style={styles.thumbnailMoreText}>+{participantsList.length - 5}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             <View style={styles.participantsInfo}>
               <View style={styles.participantsStat}>
                 <Text style={styles.participantsNumber}>
@@ -518,17 +825,30 @@ export default function EventDetailsScreen() {
             <Text style={styles.sectionTitle}>{t.eventDetails.organizer}</Text>
           </View>
           <View style={styles.sectionContent}>
-            <View style={styles.organizerCard}>
+            <TouchableOpacity
+              style={styles.organizerCard}
+              onPress={() => setSelectedUser({
+                id: event.createdBy.id,
+                display_name: event.createdBy.name,
+                avatar_url: event.createdBy.avatar_url,
+                favorite_sports: [] // We don't have this but it's okay for preview
+              })}
+              activeOpacity={0.8}
+            >
               <View style={styles.organizerAvatar}>
-                <Text style={styles.organizerInitials}>
-                  {event.createdBy.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </Text>
+                {event.createdBy.avatar_url ? (
+                  <Image source={{ uri: event.createdBy.avatar_url }} style={styles.organizerAvatarImage} />
+                ) : (
+                  <Text style={styles.organizerInitials}>
+                    {event.createdBy.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  </Text>
+                )}
               </View>
               <View style={styles.organizerInfo}>
                 <Text style={styles.organizerName}>{event.createdBy.name}</Text>
                 <Text style={styles.organizerRole}>{t.eventDetails.organizerRole}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -553,7 +873,7 @@ export default function EventDetailsScreen() {
           {isCreator ? (
             <TouchableOpacity
               style={styles.manageButton}
-              onPress={() => Alert.alert(t.eventDetails.manageEvent, t.eventDetails.manageEvent)}
+              onPress={handleManageEvent}
               activeOpacity={0.7}
             >
               <Ionicons name="settings-outline" size={20} color="#000000" />
@@ -597,6 +917,75 @@ export default function EventDetailsScreen() {
           )}
         </View>
       </SafeAreaView>
+
+      {/* Participants List Modal */}
+      <Modal
+        visible={showParticipantsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowParticipantsModal(false)}
+      >
+        <View style={styles.participantsModalOverlay}>
+          <View style={styles.participantsModalContent}>
+            <View style={styles.participantsModalHeader}>
+              <Text style={styles.participantsModalTitle}>
+                {t.eventDetails.participantsSection}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowParticipantsModal(false)}
+                style={styles.participantsModalClose}
+              >
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.participantsListContainer}>
+              {participantsList.map((user) => (
+                <TouchableOpacity
+                  key={user.id}
+                  style={styles.participantItem}
+                  onPress={() => handleUserPress(user)}
+                  activeOpacity={0.7}
+                >
+                  {user.avatar_url ? (
+                    <Image source={{ uri: user.avatar_url }} style={styles.participantAvatar} />
+                  ) : (
+                    <View style={styles.participantAvatarPlaceholder}>
+                      <Text style={styles.participantInitials}>
+                        {user.display_name.slice(0, 2).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.participantName}>{user.display_name}</Text>
+                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+              ))}
+              {participantsList.length === 0 && (
+                <Text style={styles.noParticipantsText}>
+                  {(t.eventDetails as any).noParticipants || 'No participants yet'}
+                </Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Profile Preview Modal */}
+      <ProfilePreviewModal
+        visible={!!selectedUser}
+        user={selectedUser}
+        onClose={() => setSelectedUser(null)}
+        onViewFullProfile={handleViewFullProfile}
+      />
+
+      {showReschedulePicker && (
+        <DateTimePicker
+          value={new Date(newStartTime)}
+          mode="time"
+          is24Hour={true}
+          display="default"
+          onChange={handleReschedule}
+        />
+      )}
     </View>
   );
 }
@@ -652,31 +1041,61 @@ const styles = StyleSheet.create({
   headerCard: {
     backgroundColor: '#FFFFFF',
     padding: 24,
+    paddingTop: 32,
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  sportIconLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  bannerContainer: {
+    height: 220, // Taller for details screen
+    width: '100%',
+    backgroundColor: '#F3F4F6',
+    position: 'relative',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerPlaceholder: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  sportEmojiLarge: {
-    fontSize: 40,
+  sportIconBadge: {
+    position: 'absolute',
+    bottom: -20,
+    right: 24,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    zIndex: 10,
+  },
+  sportEmojiOverlay: {
+    fontSize: 20,
   },
   eventName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#111827',
     textAlign: 'center',
     marginBottom: 4,
   },
   eventActivity: {
     fontSize: 16,
+    fontWeight: '600',
     color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
     marginBottom: 12,
   },
   timeUntilBadge: {
@@ -697,7 +1116,7 @@ const styles = StyleSheet.create({
   creatorBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -793,7 +1212,7 @@ const styles = StyleSheet.create({
   viewMapText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FDB924',
+    color: '#FFD700',
   },
   // Participants
   participantsInfo: {
@@ -851,14 +1270,66 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  organizerAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   organizerInitials: {
     fontSize: 18,
     fontWeight: '700',
     color: '#000000',
+  },
+  // New Thumbnail Styles
+  participantsThumbnails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  thumbnailWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbnailPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#FFD700',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  thumbnailInitials: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  thumbnailMore: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  thumbnailMoreText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
   },
   organizerInfo: {
     flex: 1,
@@ -903,7 +1374,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     paddingVertical: 14,
     borderRadius: 12,
     gap: 6,
@@ -936,7 +1407,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     paddingVertical: 14,
     borderRadius: 12,
     gap: 6,
@@ -967,7 +1438,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   errorButton: {
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -979,5 +1450,78 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 20,
+  },
+  // Participants Modal Styles
+  participantsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  participantsModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '70%',
+    paddingBottom: 30,
+  },
+  participantsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  participantsModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  participantsModalClose: {
+    padding: 4,
+  },
+  participantsListContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  participantItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  participantAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F3F4F6',
+  },
+  participantAvatarPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFD700',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  participantInitials: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  participantName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1F2937',
+    marginLeft: 12,
+  },
+  noParticipantsText: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    paddingVertical: 24,
   },
 });

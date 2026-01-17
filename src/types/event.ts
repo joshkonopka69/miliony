@@ -1,31 +1,46 @@
 // Event Types for My Events Screen
 
-export type SportActivity = 
-  | 'Football' 
-  | 'Basketball' 
-  | 'Tennis' 
-  | 'Volleyball' 
-  | 'Running'
-  | 'Cycling'
-  | 'Swimming'
-  | 'Gym';
+export type SportActivity =
+  | 'football'
+  | 'basketball'
+  | 'tennis'
+  | 'volleyball'
+  | 'running'
+  | 'cycling'
+  | 'swimming'
+  | 'gym'
+  | 'judo'
+  | 'wrestling'
+  | 'muay thai'
+  | 'kickboxing'
+  | 'rollerblading'
+  | 'ice skating'
+  | 'skating'
+  | 'padel'
+  | 'squash'
+  | 'bouldering'
+  | 'table tennis'
+  | 'yoga'
+  | 'pilates'
+  | 'crossfit'
+  | 'badminton';
 
-export type EventStatus = 
-  | 'upcoming' 
-  | 'live' 
-  | 'completed' 
+export type EventStatus =
+  | 'upcoming'
+  | 'live'
+  | 'completed'
   | 'cancelled';
 
-export type UserRole = 
-  | 'joined' 
-  | 'created' 
+export type UserRole =
+  | 'joined'
+  | 'created'
   | 'invited';
 
-export type EventGroup = 
-  | 'TODAY' 
-  | 'TOMORROW' 
-  | 'THIS_WEEK' 
-  | 'NEXT_WEEK' 
+export type EventGroup =
+  | 'TODAY'
+  | 'TOMORROW'
+  | 'THIS_WEEK'
+  | 'NEXT_WEEK'
   | 'LATER';
 
 export interface EventLocation {
@@ -50,7 +65,9 @@ export interface EventCreator {
   id: string;
   name: string;
   avatar?: string;
+  avatar_url?: string;
 }
+
 
 export interface MyEvent {
   id: string;
@@ -76,14 +93,29 @@ export interface GroupedEvents {
 
 // Sport colors for visual consistency
 export const SPORT_COLORS: Record<SportActivity, string> = {
-  Football: '#FDB924',    // Yellow
-  Basketball: '#F97316', // Orange
-  Tennis: '#10B981',     // Green
-  Volleyball: '#3B82F6', // Blue
-  Running: '#EF4444',    // Red
-  Cycling: '#8B5CF6',    // Purple
-  Swimming: '#06B6D4',   // Cyan
-  Gym: '#6B7280',        // Gray
+  football: '#FFD700',    // Gold (Standardized)
+  basketball: '#F97316', // Orange
+  tennis: '#10B981',     // Green
+  volleyball: '#3B82F6', // Blue
+  running: '#EF4444',    // Red
+  cycling: '#8B5CF6',    // Purple
+  swimming: '#06B6D4',   // Cyan
+  gym: '#6B7280',        // Gray
+  judo: '#1F2937',       // Dark Gray/Black
+  wrestling: '#991B1B',  // Dark Red
+  'muay thai': '#B91C1C', // Red
+  kickboxing: '#DC2626',  // Bright Red
+  rollerblading: '#F59E0B', // Amber
+  'ice skating': '#BAE6FD', // Light Blue
+  skating: '#FBBF24',     // Yellow
+  padel: '#4ADE80',       // Light Green
+  squash: '#166534',      // Forest Green
+  bouldering: '#78350F',  // Brown
+  'table tennis': '#F87171', // Coral
+  yoga: '#A78BFA',        // Light Purple
+  pilates: '#F472B6',     // Pink
+  crossfit: '#4B5563',    // Slate
+  badminton: '#FCD34D',   // Amber/Yellow
 };
 
 // Status colors

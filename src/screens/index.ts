@@ -4,13 +4,12 @@ export { default as RegisterScreen } from './RegisterScreen';
 
 export { default as MapScreen } from './MapScreen';
 export { default as ChatScreen } from './ChatScreen';
-export { default as EventsScreen } from './MyEventsScreen'; // Using MyGroupsScreen design pattern
 export { default as EventDetailsScreen } from './EventDetailsScreen';
 export { default as SettingsScreen } from './SettingsScreen';
 export { default as ProfileScreen } from './ProfileScreen';
 export { default as EditProfileScreen } from './EditProfileScreen';
 export { default as AddFriendScreen } from './AddFriendScreen';
-export { default as CreateGroupScreen } from './CreateGroupScreen';
+export { default as CreateGroupScreen } from './groups/CreateGroupScreen';
 export { default as MyGroupsScreen } from './MyGroupsScreen';
 export { default as MyGamesScreen } from './MyGamesScreen';
 export { default as LanguageScreen } from './LanguageScreen';
@@ -44,7 +43,9 @@ export { default as GroupMembersScreen } from './groups/GroupMembersScreen';
 // Notification exports
 export { default as NotificationsScreen } from './NotificationsScreen';
 export { default as NotificationSettingsScreen } from './NotificationSettingsScreen';
-export { default as FriendRequestsScreen } from './FriendRequestsScreen';
 // Badge exports
+
 export { default as AllBadgesScreen } from './AllBadgesScreen';
 
+// Auth extra exports
+export { default as ResetPasswordScreen } from './ResetPasswordScreen';

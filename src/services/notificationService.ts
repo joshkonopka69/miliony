@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from '../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { translations, Language } from '../contexts/TranslationContext';
 
 export type NotificationType =
   | 'new_event_nearby'
@@ -11,6 +12,7 @@ export type NotificationType =
   | 'friend_activity'
   | 'event_invite'
   | 'event_invitation'
+  | 'event_created'
   | 'event_cancelled'
   | 'event_updated'
   | 'event_update'
@@ -23,6 +25,7 @@ export type NotificationType =
   | 'weather_alert'
   | 'achievement_unlocked'
   | 'group_invite'
+  | 'group_invite_accepted'
   | 'general';
 
 export type NotificationCategory =
@@ -112,11 +115,13 @@ const NOTIFICATION_CATEGORY_MAP: Partial<Record<NotificationType, NotificationCa
   event_starting_soon: 'events',
   event_participant_joined: 'events',
   event_participant_left: 'events',
+  event_created: 'events',
   event_reminder: 'reminders',
   friend_activity: 'friends',
   friend_request: 'friends',
   friend_request_accepted: 'friends',
   group_invite: 'friends',
+  group_invite_accepted: 'friends',
   chat_message: 'messages',
   system_announcement: 'system',
   weather_alert: 'system',
@@ -268,17 +273,6 @@ class NotificationService {
     }
 
     try {
-      // Configure notification behavior
-      Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-          shouldShowAlert: true,
-          shouldPlaySound: true,
-          shouldSetBadge: true,
-          shouldShowBanner: true,
-          shouldShowList: true,
-        } as any),
-      });
-
       // Request permissions
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -295,7 +289,9 @@ class NotificationService {
 
       // Get push token
       if (Device.isDevice) {
-        this.expoPushToken = (await Notifications.getExpoPushTokenAsync()).data;
+        this.expoPushToken = (await Notifications.getExpoPushTokenAsync({
+          projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'sportmap-cc906'
+        })).data;
         console.log('Expo push token:', this.expoPushToken);
 
         // Save token to database
@@ -408,11 +404,11 @@ class NotificationService {
 
       if (!participants) return;
 
-      // Send to each participant (except excluded user)
+      // Send to each participant (except excluded user) using storage and preference checking
       const promises = participants
         .filter(p => p.user_id !== excludeUserId)
         .map(participant =>
-          this.sendPushNotification(participant.user_id, notification)
+          this.sendNotificationWithStorage(participant.user_id, notification)
         );
 
       await Promise.all(promises);
@@ -674,11 +670,11 @@ class NotificationService {
 
       const thresholds = [
         {
-          hours: 12,
+          hours: 24,
           minHours: 1,
-          reminder: '12h',
-          title: 'Upcoming Event',
-          buildBody: (name: string) => `${name} starts in 12 hours.`,
+          reminder: '24h',
+          title: 'Event Tomorrow',
+          buildBody: (name: string) => `${name} starts in 24 hours.`,
         },
         {
           hours: 1,
@@ -689,13 +685,13 @@ class NotificationService {
         },
       ];
 
+
       let created = false;
 
       for (const participant of (upcomingEvents as any[])) {
         const event = participant.events;
         if (!event) continue;
 
-        // Handle the case where events might be returned as an array
         const eventData = Array.isArray(event) ? event[0] : event;
         if (!eventData) continue;
 
@@ -704,11 +700,21 @@ class NotificationService {
         if (diffHours <= 0) continue;
 
         for (const threshold of thresholds) {
-          if (diffHours <= threshold.hours && diffHours > threshold.minHours) {
-            const key = `${eventData.id}-${threshold.reminder}`;
-            if (sentKeys.has(key)) continue;
+          // Check if we are in the window for this reminder
+          // e.g., for 24h reminder: between 24.5h and 12h before start
+          const isWithinWindow = diffHours <= (threshold.hours + 0.5) && diffHours > (threshold.hours === 24 ? 12 : 0);
 
-            await this.sendNotificationWithStorage(userId, {
+          if (isWithinWindow) {
+            const eventIdStr = String(eventData.id);
+            const key = `${eventIdStr}-${threshold.reminder}`;
+
+            if (sentKeys.has(key)) {
+              console.log(`[Reminders] Skipping duplicate for ${eventIdStr}: ${key}`);
+              continue;
+            }
+
+            console.log(`[Reminders] Creating ${threshold.reminder} reminder for ${eventData.name} (${eventIdStr})`);
+            await this.saveNotificationToDatabase(userId, {
               title: threshold.title,
               body: threshold.buildBody(eventData.name),
               type: 'event_reminder',
@@ -718,6 +724,8 @@ class NotificationService {
                 eventName: eventData.name,
                 scheduledAt: eventData.scheduled_datetime,
               },
+              read: false,
+              created_at: new Date().toISOString(),
             });
 
             sentKeys.add(key);
@@ -736,40 +744,43 @@ class NotificationService {
   // ===== NEW NOTIFICATIONS TABLE METHODS =====
 
   // Save notification to database
+  // Save notification to database using secure RPC
   async saveNotificationToDatabase(
     userId: string,
     notification: NotificationData
   ): Promise<NotificationData | null> {
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: userId,
-          title: notification.title,
-          body: notification.body,
-          type: notification.type,
-          data: notification.data || {},
-          read: false,
-          image_url: notification.image_url || null,
-          action_url: notification.action_url || null,
-          scheduled_at: notification.scheduled_at || null,
-        })
-        .select('*')
-        .single();
+      // Use RPC function which has SECURITY DEFINER privileges
+      const { data: notificationId, error } = await supabase.rpc('send_notification', {
+        recipient_id: userId,
+        title: notification.title,
+        body: notification.body,
+        type: notification.type,
+        payload: notification.data || {}
+      });
 
       if (error) {
-        if (this.isRLSPolicyError(error)) {
-          console.warn('Skipping notification DB save due to RLS policy. Please ensure notifications table policies permit inserts.');
-          return null;
-        }
-        console.error('Error saving notification to database:', error);
-        throw error;
+        console.error('[NotificationService] saveNotificationToDatabase RPC ERROR:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        });
+        return null;
       }
 
-      console.log('✅ Notification saved to database for user:', userId);
-      return this.mapNotificationRow(data);
+      console.log('✅ Notification saved via RPC for user:', userId);
+
+      // Return a constructed object since RPC only returns ID
+      return {
+        ...notification,
+        id: notificationId,
+        user_id: userId,
+        created_at: new Date().toISOString(),
+        read: false
+      };
     } catch (error) {
-      console.error('Error saving notification to database:', error);
+      console.error('Error saving notification via RPC:', error);
       return null;
     }
   }
@@ -814,6 +825,27 @@ class NotificationService {
     } catch (error) {
       console.error('Error fetching unread notifications count:', error);
       return 0;
+    }
+  }
+
+  // Delete notification
+  async dismissNotification(notificationId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId);
+
+      if (error) {
+        console.error('Error dismissing notification:', error);
+        return false;
+      }
+
+      console.log('✅ Notification dismissed:', notificationId);
+      return true;
+    } catch (error) {
+      console.error('Error dismissing notification:', error);
+      return false;
     }
   }
 
@@ -1064,6 +1096,178 @@ class NotificationService {
       console.error('Error sending notification with storage:', error);
     }
   }
+
+  // Social Notification Helpers
+
+  async sendFriendRequestNotification(receiverId: string, senderName: string, senderId: string): Promise<void> {
+    console.log(`[NotificationService] sendFriendRequestNotification: to=${receiverId}, from=${senderId}, senderName=${senderName}`);
+
+    const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+    const t = translations[lang].notifications;
+
+    try {
+      await this.sendNotificationWithStorage(receiverId, {
+        title: t.friendRequestTitle,
+        body: t.friendRequestBody.replace('{name}', senderName),
+        type: 'friend_request',
+        data: { senderId, senderName }
+      });
+      console.log('[NotificationService] Friend request notification sent successfully');
+    } catch (error) {
+      console.error('[NotificationService] Failed to send friend request notification:', error);
+    }
+  }
+
+  async sendGroupInviteNotification(receiverId: string, inviterName: string, groupName: string, groupId: string): Promise<void> {
+    const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+    const t = translations[lang].notifications;
+
+    await this.sendNotificationWithStorage(receiverId, {
+      title: t.groupInviteTitle,
+      body: t.groupInviteBody
+        .replace('{name}', inviterName)
+        .replace('{group}', groupName),
+      type: 'group_invite',
+      data: { groupId, groupName, inviterName }
+    });
+  }
+
+  async sendEventInviteNotification(receiverId: string, inviterName: string, eventName: string, eventId: string): Promise<void> {
+    const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+    const t = translations[lang].notifications;
+
+    await this.sendNotificationWithStorage(receiverId, {
+      title: t.eventInviteTitle,
+      body: t.eventInviteBody
+        .replace('{name}', inviterName)
+        .replace('{event}', eventName),
+      type: 'event_invitation',
+      data: { eventId, eventName, inviterName }
+    });
+  }
+
+  async sendEventCancelledBroadcast(eventId: string, eventName: string): Promise<void> {
+    const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+    const t = translations[lang].notifications;
+
+    await this.sendEventNotification(eventId, {
+      title: t.eventCancelledTitle,
+      body: t.eventCancelledBody.replace('{event}', eventName),
+      type: 'event_cancelled',
+      data: { eventId, eventName }
+    });
+  }
+
+  async sendParticipantJoinedBroadcast(eventId: string, eventName: string, newlyJoinedUserId: string): Promise<void> {
+    const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+    const t = translations[lang].notifications;
+
+    await this.sendEventNotification(
+      eventId,
+      {
+        title: t.participantJoinedTitle,
+        body: t.participantJoinedBody.replace('{event}', eventName),
+        type: 'event_participant_joined',
+        data: { eventId, eventName }
+      },
+      newlyJoinedUserId // Don't notify the person who just joined
+    );
+  }
+
+  async sendEventCancelledNotification(receiverId: string, eventName: string, eventId: string): Promise<void> {
+    const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+    const t = translations[lang].notifications;
+
+    await this.sendNotificationWithStorage(receiverId, {
+      title: t.eventCancelledTitle,
+      body: t.eventCancelledBody.replace('{event}', eventName),
+      type: 'event_cancelled',
+      data: { eventId, eventName }
+    });
+  }
+
+  async sendFriendRequestAcceptedNotification(receiverId: string, acceptorName: string, acceptorId: string): Promise<void> {
+    const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+    const t = translations[lang].notifications;
+
+    await this.sendNotificationWithStorage(receiverId, {
+      title: t.friendRequestAcceptedTitle || 'Friend Request Accepted',
+      body: (t.friendRequestAcceptedBody || '{name} accepted your friend request.').replace('{name}', acceptorName),
+      type: 'friend_request_accepted',
+      data: { acceptorName, acceptorId }
+    });
+  }
+
+  async sendGroupInviteAcceptedNotification(receiverId: string, acceptorName: string, groupName: string, groupId: string): Promise<void> {
+    const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+    const t = translations[lang].notifications;
+
+    await this.sendNotificationWithStorage(receiverId, {
+      title: t.groupInviteAcceptedTitle || 'Group Invite Accepted',
+      body: (t.groupInviteAcceptedBody || '{name} joined {group}.')
+        .replace('{name}', acceptorName)
+        .replace('{group}', groupName),
+      type: 'group_invite_accepted',
+      data: { groupId, groupName, acceptorName }
+    });
+  }
+
+  async sendAchievementNotification(userId: string, achievementName: string): Promise<void> {
+    const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+    const t = translations[lang].notifications;
+
+    await this.sendNotificationWithStorage(userId, {
+      title: t.achievementUnlockedTitle || 'Achievement Unlocked!',
+      body: (t.achievementUnlockedBody || 'You earned the {name} badge!').replace('{name}', achievementName),
+      type: 'achievement_unlocked',
+      data: { achievementName }
+    });
+  }
+
+  async sendEventCreatedBroadcast(creatorId: string, creatorName: string, eventName: string, eventId: string): Promise<void> {
+    try {
+      // Get creator's friends
+      const { data: friends } = await supabase
+        .from('user_friendships')
+        .select('friend_id, user_id')
+        .or(`user_id.eq.${creatorId},friend_id.eq.${creatorId}`)
+        .eq('status', 'accepted');
+
+      if (!friends) return;
+
+      const friendIds = friends.map(f => f.user_id === creatorId ? f.friend_id : f.user_id);
+      if (friendIds.length === 0) return;
+
+      const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+      const t = translations[lang].notifications;
+
+      await this.sendBulkNotification(friendIds, 'event_created', {
+        title: t.eventCreatedTitle || 'New Event from Friend',
+        body: (t.eventCreatedBody || '{name} created a new event: {event}')
+          .replace('{name}', creatorName)
+          .replace('{event}', eventName),
+        eventId,
+        eventName,
+        creatorName,
+        creatorId
+      });
+    } catch (error) {
+      console.error('Error sending event created broadcast:', error);
+    }
+  }
+
+  async sendParticipantJoinedNotification(receiverId: string, eventName: string, eventId: string): Promise<void> {
+    const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+    const t = translations[lang].notifications;
+
+    await this.sendNotificationWithStorage(receiverId, {
+      title: t.participantJoinedTitle,
+      body: t.participantJoinedBody.replace('{event}', eventName),
+      type: 'event_participant_joined',
+      data: { eventId, eventName }
+    });
+  }
 }
+
 
 export const notificationService = new NotificationService();

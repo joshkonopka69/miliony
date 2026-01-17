@@ -19,9 +19,7 @@ export interface GoogleAuthResult {
 
 export class GoogleAuthService {
   private static readonly GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'YOUR_WEB_CLIENT_ID';
-  private static readonly GOOGLE_REDIRECT_URI = AuthSession.makeRedirectUri({
-    useProxy: true,
-  });
+  private static readonly GOOGLE_REDIRECT_URI = AuthSession.makeRedirectUri();
 
   static async configure() {
     try {
@@ -40,7 +38,6 @@ export class GoogleAuthService {
         redirectUri: this.GOOGLE_REDIRECT_URI,
         responseType: AuthSession.ResponseType.Code,
         extraParams: {},
-        additionalParameters: {},
         prompt: AuthSession.Prompt.SelectAccount,
       });
 
@@ -52,7 +49,7 @@ export class GoogleAuthService {
         const tokenResponse = await AuthSession.exchangeCodeAsync(
           {
             clientId: this.GOOGLE_CLIENT_ID,
-            code: result.params.code,
+            code: (result as any).params.code || '',
             redirectUri: this.GOOGLE_REDIRECT_URI,
             extraParams: {
               code_verifier: request.codeChallenge,

@@ -196,12 +196,19 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setFriendsState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
+      console.log('📬 Loading friends data for user:', authUser.id);
       const [friends, sentRequests, receivedRequests, suggestions] = await Promise.all([
         friendService.getFriends(authUser.id),
         friendService.getFriendRequests(authUser.id, 'sent'),
         friendService.getFriendRequests(authUser.id, 'received'),
         friendService.getFriendSuggestions(authUser.id),
       ]);
+
+      console.log(`✅ Loaded: ${friends.length} friends, ${sentRequests.length} sent, ${receivedRequests.length} received requests`);
+
+      if (receivedRequests.length > 0) {
+        console.log('Received requests IDs:', receivedRequests.map(r => r.id));
+      }
 
       setFriendsState(prev => ({
         ...prev,

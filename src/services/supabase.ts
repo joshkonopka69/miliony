@@ -32,7 +32,9 @@ export interface Event {
   place_id?: string;
   created_by: string;
   status: 'live' | 'past' | 'cancelled';
+  requires_approval?: boolean;
   created_at: string;
+
   updated_at: string;
 }
 
@@ -180,6 +182,9 @@ class SupabaseService {
 
       // Match by place_id if available
       if (placeId) {
+        const cutoff = new Date();
+        cutoff.setHours(cutoff.getHours() - 24);
+
         const { data, error } = await supabase
           .from('events')
           .select(`
@@ -189,7 +194,7 @@ class SupabaseService {
           `)
           .in('status', ['live', 'active', 'upcoming'])
           .eq('place_id', placeId)
-          .gte('scheduled_datetime', new Date().toISOString())
+          .gte('scheduled_datetime', cutoff.toISOString())
           .order('scheduled_datetime', { ascending: true });
 
         if (error) throw error;
@@ -204,6 +209,8 @@ class SupabaseService {
 
       // Fallback: Match by proximity (within ~100m = 0.001 degrees)
       const proximityThreshold = 0.001;
+      const cutoff = new Date();
+      cutoff.setHours(cutoff.getHours() - 24);
 
       const { data, error } = await supabase
         .from('events')
@@ -213,7 +220,7 @@ class SupabaseService {
           event_participants(user_id)
         `)
         .in('status', ['live', 'active', 'upcoming'])
-        .gte('scheduled_datetime', new Date().toISOString())
+        .gte('scheduled_datetime', cutoff.toISOString())
         .gte('latitude', latitude - proximityThreshold)
         .lte('latitude', latitude + proximityThreshold)
         .gte('longitude', longitude - proximityThreshold)
@@ -323,12 +330,16 @@ class SupabaseService {
   }
 
   async getEvents(filters?: EventFilters): Promise<Event[]> {
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - 24);
+
     let query = supabase
       .from('events')
       .select(`
         *,
-        created_by:users!events_created_by_fkey(display_name, avatar_url)
+        creator:users!events_created_by_fkey(display_name, avatar_url)
       `)
+      .gte('scheduled_datetime', cutoff.toISOString())
       .order('created_at', { ascending: false });
 
     if (filters?.status) {
@@ -370,8 +381,9 @@ class SupabaseService {
       .from('events')
       .select(`
         *,
-        created_by:users!events_created_by_fkey(display_name, avatar_url)
+        creator:users!events_created_by_fkey(id, display_name, avatar_url)
       `)
+
       .eq('id', eventId)
       .single();
 
@@ -483,34 +495,22 @@ class SupabaseService {
 
   async leaveEvent(eventId: string, userId: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('event_participants')
-        .delete()
-        .eq('event_id', eventId)
-        .eq('user_id', userId);
+      console.log(`🔌 Calling leave_event RPC for event ${eventId}, user ${userId}`);
+
+      const { data, error } = await supabase.rpc('leave_event', {
+        event_uuid: eventId,
+        user_uuid: userId
+      });
 
       if (error) {
-        console.error('Error leaving event:', error);
+        console.error('❌ Error leaving event via RPC:', error);
         return false;
       }
 
-      // Update participants_count in the events table
-      const { data: participantCountData } = await supabase
-        .from('event_participants')
-        .select('user_id')
-        .eq('event_id', eventId);
-
-      const newCount = participantCountData?.length || 0;
-      await supabase
-        .from('events')
-        .update({ participants_count: newCount })
-        .eq('id', eventId);
-
-      console.log(`✅ Updated participants_count to ${newCount} for event ${eventId} (user left)`);
-
-      return true;
+      console.log(`✅ RPC leave_event returned: ${data}`);
+      return !!data;
     } catch (error) {
-      console.error('Unexpected error leaving event:', error);
+      console.error('❌ Unexpected error leaving event:', error);
       return false;
     }
   }
@@ -522,18 +522,23 @@ class SupabaseService {
     try {
       console.log('Fetching events for user:', userId);
 
+      // Get cutoff for visibility (events started within last 24h or in future)
+      const cutoff = new Date();
+      cutoff.setHours(cutoff.getHours() - 24);
+
       // Since creators are automatically added as participants, 
       // we only need to query event_participants to get BOTH created and joined events
       const { data, error } = await supabase
         .from('event_participants')
         .select(`
           joined_at,
-          event:events (
+          event:events!inner (
             *,
             created_by:users!events_created_by_fkey(id, display_name, avatar_url)
           )
         `)
         .eq('user_id', userId)
+        .gte('event.scheduled_datetime', cutoff.toISOString())
         .order('joined_at', { ascending: false });
 
       if (error) throw error;
@@ -567,7 +572,7 @@ class SupabaseService {
       .from('event_participants')
       .select(`
           *,
-          user:users!event_participants_user_id_fkey(display_name, avatar_url)
+          user:users!event_participants_user_id_fkey(id, display_name, avatar_url, favorite_sports)
         `)
       .eq('event_id', eventId);
 

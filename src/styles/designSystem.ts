@@ -138,7 +138,7 @@ export const darkTheme: Theme = {
     primary: '#60a5fa',
     secondary: '#9ca3af',
     success: '#34d399',
-    warning: '#fbbf24',
+    warning: '#FFD700',
     danger: '#f87171',
     info: '#22d3ee',
     background: '#111827',

@@ -63,15 +63,40 @@ export default function GoogleMapsView({
   const [mapHtml, setMapHtml] = useState<string>('');
   const webViewRef = useRef<WebView>(null);
 
+  // Track if map is initialized to avoid redundant reloads
+  const mapInitialized = useRef(false);
+
   useEffect(() => {
     getCurrentLocation();
   }, []);
 
+  // Update markers when places or events change without reloading the whole map
   useEffect(() => {
-    if (location) {
-      generateMapHtml();
+    if (mapInitialized.current && webViewRef.current) {
+      console.log('🗺️ GoogleMapsView: Updating markers dynamically');
+      const venuesJson = JSON.stringify(places).replace(/`/g, '\\`').replace(/\$/g, '\\$');
+      const eventsJson = JSON.stringify(events).replace(/`/g, '\\`').replace(/\$/g, '\\$');
+
+      const script = `
+        if (typeof updateVenueMarkers === 'function') {
+          updateVenueMarkers(${venuesJson});
+        }
+        if (typeof updateEventMarkers === 'function') {
+          updateEventMarkers(${eventsJson});
+        }
+        true;
+      `;
+      webViewRef.current.injectJavaScript(script);
     }
-  }, [location, searchQuery, events, places]);
+  }, [places, events]);
+
+  // Only reload the entire HTML if the center changes significantly or for initial load
+  useEffect(() => {
+    if (location && !mapInitialized.current) {
+      generateMapHtml();
+      mapInitialized.current = true;
+    }
+  }, [location]);
 
   const getCurrentLocation = async () => {
     try {
@@ -153,6 +178,13 @@ export default function GoogleMapsView({
         <div class="loading" id="loading">Loading map...</div>
         <div id="map"></div>
         <script>
+          // Immediate log to confirm script execution
+          console.log('🗺️ WebView: Script loading...');
+          window.ReactNativeWebView?.postMessage(JSON.stringify({
+            type: 'log',
+            message: '🗺️ WebView: Script execution started'
+          }));
+
           let map;
           let service;
           let infowindow;
@@ -172,14 +204,37 @@ export default function GoogleMapsView({
                 zoom: 15,
                 center: center,
                 mapTypeId: google.maps.MapTypeId.ROADMAP,
+                mapId: 'c88fb0e8effe04d0c29944aa',
+                clickableIcons: false,
+                disableDefaultUI: true,
                 styles: [
-                  {
-                    featureType: "poi",
-                    elementType: "labels",
-                    stylers: [{ visibility: "off" }]
-                  }
+                  { "featureType": "all", "elementType": "labels.text", "stylers": [{ "color": "#fffe00" }] },
+                  { "featureType": "all", "elementType": "labels.text.fill", "stylers": [{ "saturation": 36 }, { "color": "#000000" }, { "lightness": 40 }] },
+                  { "featureType": "all", "elementType": "labels.text.stroke", "stylers": [{ "visibility": "on" }, { "color": "#0b0b0b" }, { "lightness": 16 }] },
+                  { "featureType": "all", "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
+                  { "featureType": "administrative", "elementType": "all", "stylers": [{ "color": "#fffe00" }] },
+                  { "featureType": "administrative", "elementType": "geometry.fill", "stylers": [{ "color": "#000000" }, { "lightness": 20 }] },
+                  { "featureType": "administrative", "elementType": "geometry.stroke", "stylers": [{ "color": "#000000" }, { "lightness": 17 }, { "weight": 1.2 }] },
+                  { "featureType": "administrative", "elementType": "labels.text.stroke", "stylers": [{ "color": "#000000" }] },
+                  { "featureType": "landscape", "elementType": "all", "stylers": [{ "color": "#444435" }] },
+                  { "featureType": "landscape", "elementType": "geometry", "stylers": [{ "color": "#000000" }, { "lightness": 20 }] },
+                  { "featureType": "landscape", "elementType": "labels.text.stroke", "stylers": [{ "color": "#000000" }] },
+                  { "featureType": "landscape.man_made", "elementType": "geometry", "stylers": [{ "color": "#181414" }] },
+                  { "featureType": "landscape.natural", "elementType": "all", "stylers": [{ "color": "#242421" }] },
+                  { "featureType": "landscape.natural", "elementType": "labels.text.stroke", "stylers": [{ "color": "#000000" }] },
+                  { "featureType": "poi", "elementType": "all", "stylers": [{ "visibility": "off" }] },
+                  { "featureType": "road", "elementType": "all", "stylers": [{ "color": "#6a6a53" }] },
+                  { "featureType": "road", "elementType": "geometry", "stylers": [{ "visibility": "on" }, { "color": "#5c4b4b" }] },
+                  { "featureType": "road", "elementType": "labels.text", "stylers": [{ "color": "#f5f2f2" }] },
+                  { "featureType": "road.local", "elementType": "geometry", "stylers": [{ "color": "#847f7f" }, { "lightness": 16 }] },
+                  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#badff6" }, { "lightness": 17 }] }
                 ]
               });
+              
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'log',
+                message: '🗺️ WebView: Map instance created. Map ID: ' + map.mapId + '. Marker library check: ' + (google.maps.marker ? '✅ Loaded' : '❌ NOT Loaded')
+              }));
               
               // Send log to React Native
               window.ReactNativeWebView?.postMessage(JSON.stringify({
@@ -213,59 +268,116 @@ export default function GoogleMapsView({
             });
             
             // Create venue markers from passed places data
-            ${places.length > 0 ? 'createVenueMarkers();' : ''}
+            try {
+              if (typeof createVenueMarkers === 'function') {
+                createVenueMarkers();
+              }
+            } catch (e) {
+              console.error('Error creating venue markers:', e);
+            }
             
             // Add event markers
-            ${events.length > 0 ? 'createEventMarkers();' : ''}
+            try {
+              if (typeof createEventMarkers === 'function') {
+                createEventMarkers();
+              }
+            } catch (e) {
+              console.error('Error creating event markers:', e);
+            }
             
-            // Add LONG-PRESS listener for map (2 seconds)
+            // Add LONG-PRESS listener for map (5 seconds of calm holding)
             let longPressTimer = null;
             let longPressPosition = null;
+            let longPressStartCoords = null;
+            const LONG_PRESS_DURATION = 5000; // 5 seconds
+            const MOVEMENT_TOLERANCE = 10; // pixels - allow small finger drift
+            
+            // Helper to calculate pixel distance
+            function getPixelDistance(latLng1, latLng2) {
+              if (!latLng1 || !latLng2) return Infinity;
+              const projection = map.getProjection();
+              if (!projection) return Infinity;
+              const p1 = projection.fromLatLngToPoint(latLng1);
+              const p2 = projection.fromLatLngToPoint(latLng2);
+              const scale = Math.pow(2, map.getZoom());
+              return Math.sqrt(Math.pow((p1.x - p2.x) * scale, 2) + Math.pow((p1.y - p2.y) * scale, 2));
+            }
+            
+            function cancelLongPress() {
+              if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+              }
+              longPressPosition = null;
+              longPressStartCoords = null;
+            }
             
             map.addListener('mousedown', (event) => {
+              cancelLongPress(); // Cancel any existing timer
               longPressPosition = event.latLng;
+              longPressStartCoords = event.latLng;
+              
               longPressTimer = setTimeout(() => {
-                if (longPressPosition) {
-                  const lat = longPressPosition.lat();
-                  const lng = longPressPosition.lng();
-                  window.ReactNativeWebView?.postMessage(JSON.stringify({
-                    type: 'location_longpress',
-                    latitude: lat,
-                    longitude: lng
-                  }));
-                  // Visual feedback - show a pulse animation
-                  const pulseMarker = new google.maps.Marker({
-                    position: { lat, lng },
-                    map: map,
-                    icon: {
-                      path: google.maps.SymbolPath.CIRCLE,
-                      fillColor: '#6366f1',
-                      fillOpacity: 0.6,
-                      strokeColor: '#6366f1',
-                      strokeWeight: 2,
-                      scale: 15
-                    },
-                    animation: google.maps.Animation.BOUNCE
-                  });
-                  // Remove marker after 1 second
-                  setTimeout(() => pulseMarker.setMap(null), 1000);
+                if (longPressPosition && longPressStartCoords) {
+                  // Verify finger hasn't moved too much
+                  const distance = getPixelDistance(longPressPosition, longPressStartCoords);
+                  if (distance < MOVEMENT_TOLERANCE) {
+                    const lat = longPressPosition.lat();
+                    const lng = longPressPosition.lng();
+                    window.ReactNativeWebView?.postMessage(JSON.stringify({
+                      type: 'location_longpress',
+                      latitude: lat,
+                      longitude: lng
+                    }));
+                    // Visual feedback - show a pulse animation
+                    const pulseMarker = new google.maps.Marker({
+                      position: { lat, lng },
+                      map: map,
+                      icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: '#FFD700',
+                        fillOpacity: 0.8,
+                        strokeColor: '#FFD700',
+                        strokeWeight: 3,
+                        scale: 20
+                      },
+                      animation: google.maps.Animation.BOUNCE
+                    });
+                    // Remove marker after 1.5 seconds
+                    setTimeout(() => pulseMarker.setMap(null), 1500);
+                  }
                 }
-              }, 2000); // 2 seconds
+                cancelLongPress();
+              }, LONG_PRESS_DURATION);
             });
             
             map.addListener('mouseup', () => {
-              if (longPressTimer) {
-                clearTimeout(longPressTimer);
-                longPressTimer = null;
+              cancelLongPress();
+            });
+            
+            // Cancel on any mouse movement (drag)
+            map.addListener('mousemove', (event) => {
+              if (longPressTimer && longPressStartCoords) {
+                const distance = getPixelDistance(event.latLng, longPressStartCoords);
+                if (distance > MOVEMENT_TOLERANCE) {
+                  cancelLongPress();
+                }
               }
             });
             
-            map.addListener('mousemove', () => {
-              if (longPressTimer) {
-                clearTimeout(longPressTimer);
-                longPressTimer = null;
-                longPressPosition = null;
-              }
+            // Cancel on drag start
+            map.addListener('dragstart', () => {
+              cancelLongPress();
+            });
+            
+            // Cancel on zoom change (pinch gesture)
+            map.addListener('zoom_changed', () => {
+              cancelLongPress();
+            });
+            
+            // Cancel on map center change
+            map.addListener('center_changed', () => {
+              cancelLongPress();
             });
             
             // Send log to React Native
@@ -310,110 +422,207 @@ export default function GoogleMapsView({
             }
           };
           
-          // Create venue markers from places data
-          function createVenueMarkers() {
-            const venues = ${JSON.stringify(places)};
+          // Helper function for custom marker icons with gold circular border
+          // Returns HTML element for AdvancedMarkerElement
+          function getMarkerIcon(place) {
+            let photoUrl = null;
             
-            venues.forEach(function(venue) {
-              if (!venue.coordinates) return;
+            // Try to get photo URL from various formats
+            if (place.photos && place.photos.length > 0) {
+              const firstPhoto = place.photos[0];
+              if (firstPhoto.url) {
+                photoUrl = firstPhoto.url;
+              } else if (firstPhoto.photo_url) {
+                photoUrl = firstPhoto.photo_url;
+              } else if (firstPhoto.photoReference) {
+                photoUrl = 'https://maps.googleapis.com/maps/api/place/photo?maxwidth=100&photo_reference=' + firstPhoto.photoReference + '&key=${apiKey}';
+              }
+            } else if (place.photo_url) {
+              photoUrl = place.photo_url;
+            }
+
+            // Create HTML element for circular marker with gold border
+            const markerDiv = document.createElement('div');
+            markerDiv.style.cssText = 'width: 52px; height: 52px; border-radius: 50%; border: 4px solid #FFD700; background-color: white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;';
+            
+            if (photoUrl) {
+              const img = document.createElement('img');
+              img.src = photoUrl;
+              img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 50%;';
+              img.onerror = function() {
+                // If image fails to load, show SM text instead
+                markerDiv.innerHTML = '<span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; color: black;">SM</span>';
+                markerDiv.style.backgroundColor = '#FFD700';
+              };
+              markerDiv.appendChild(img);
+            } else {
+              // Fallback to SM Logo
+              markerDiv.style.backgroundColor = '#FFD700';
+              markerDiv.innerHTML = '<span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; color: black;">SM</span>';
+            }
+            
+            return markerDiv;
+          }
+
+          // Create venue markers from places data
+          function createVenueMarkers(venuesToCreate) {
+            try {
+              // Use provided venues or fall back to initial injected data
+              const venues = venuesToCreate || ${JSON.stringify(places).replace(/`/g, '\\`').replace(/\$/g, '\\$')};
               
-              const marker = new google.maps.Marker({
-                position: { lat: venue.coordinates.lat, lng: venue.coordinates.lng },
-                map: map,
-                title: venue.name,
-                icon: {
-                  url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(\`
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="16" cy="16" r="14" fill="#4CAF50" stroke="white" stroke-width="3"/>
-                      <text x="16" y="21" font-size="16" text-anchor="middle" fill="white">🏋️</text>
-                    </svg>
-                  \`),
-                  scaledSize: new google.maps.Size(32, 32),
-                  anchor: new google.maps.Point(16, 16)
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'log',
+                message: '🗺️ WebView: createVenueMarkers called with ' + venues.length + ' venues'
+              }));
+              
+              if (!venues) return;
+
+              // Clear existing markers
+              if (markers && markers.length > 0) {
+                markers.forEach(m => {
+                  if (m.setMap) m.setMap(null);
+                  else if (m.map) m.map = null;
+                });
+                markers = [];
+              }
+              
+              let createdCount = 0;
+              let advancedCount = 0;
+              let regularCount = 0;
+
+              venues.forEach(function(venue, index) {
+                if (!venue.coordinates) return;
+                
+                try {
+                  let marker;
+                  // Try to use AdvancedMarkerElement if library is available
+                  if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+                    const markerContent = getMarkerIcon(venue);
+                    marker = new google.maps.marker.AdvancedMarkerElement({
+                      position: { lat: venue.coordinates.lat, lng: venue.coordinates.lng },
+                      map: map,
+                      title: venue.name,
+                      content: markerContent
+                    });
+                    advancedCount++;
+                  } else {
+                    // Fallback to regular marker if library not loaded
+                    marker = new google.maps.Marker({
+                      position: { lat: venue.coordinates.lat, lng: venue.coordinates.lng },
+                      map: map,
+                      title: venue.name,
+                      icon: {
+                        url: venue.photo_url || 'https://maps.google.com/mapfiles/ms/icons/gold-pushpin.png',
+                        scaledSize: new google.maps.Size(40, 40)
+                      }
+                    });
+                    regularCount++;
+                  }
+                  
+                  if (marker) {
+                    marker.addListener('click', function() {
+                      window.ReactNativeWebView?.postMessage(JSON.stringify({
+                        type: 'place_click',
+                        place: venue
+                      }));
+                    });
+                    markers.push(marker);
+                    createdCount++;
+                  }
+                } catch (err) {
+                  console.error('Error creating individual marker:', err);
                 }
               });
               
-              marker.addListener('click', function() {
-                window.ReactNativeWebView?.postMessage(JSON.stringify({
-                  type: 'place_click',
-                  place: venue
-                }));
-              });
-              
-              markers.push(marker);
-            });
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'log',
+                message: '🗺️ WebView: Created ' + createdCount + ' markers (Advanced: ' + advancedCount + ', Regular: ' + regularCount + ')'
+              }));
+            } catch (e) {
+              console.error('Error in createVenueMarkers:', e);
+            }
           }
+
+          // Expose functions globally for injectJavaScript
+          window.updateVenueMarkers = createVenueMarkers;
+          window.updateEventMarkers = function(events) {
+            // Logic for event markers if needed...
+          };
           
           // Create event markers
           function createEventMarkers() {
-            const sportEvents = ${JSON.stringify(events)};
-            
-            sportEvents.forEach(function(sportEvent) {
-              const emoji = getEmojiForSport(sportEvent.activity);
-              const marker = new google.maps.Marker({
-                position: { lat: sportEvent.latitude, lng: sportEvent.longitude },
-                map: map,
-                title: sportEvent.name,
-                icon: {
-                  url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(\`
-                    <svg width="48" height="64" viewBox="0 0 48 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <g filter="url(#shadow)">
-                        <circle cx="24" cy="24" r="20" fill="#FDB924" stroke="white" stroke-width="4"/>
-                        <text x="24" y="32" font-size="24" text-anchor="middle" fill="black">\${emoji}</text>
-                      </g>
-                      <rect x="18" y="42" width="12" height="18" rx="6" fill="white" stroke="#FDB924" stroke-width="2"/>
-                      <text x="24" y="55" font-size="10" text-anchor="middle" font-weight="bold" fill="#000000">\${sportEvent.participants_count}/\${sportEvent.max_participants}</text>
-                      <defs>
-                        <filter id="shadow">
-                          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
-                        </filter>
-                      </defs>
-                    </svg>
-                  \`),
-                  scaledSize: new google.maps.Size(48, 64),
-                  anchor: new google.maps.Point(24, 64)
-                },
-                zIndex: 1000
-              });
+            try {
+              const sportEvents = ${JSON.stringify(events).replace(/`/g, '\\`').replace(/\$/g, '\\$')};
               
-              marker.addListener('click', function() {
-                window.ReactNativeWebView?.postMessage(JSON.stringify({
-                  type: 'event_click',
-                  event: sportEvent
-                }));
+              sportEvents.forEach(function(sportEvent) {
+                const emoji = getEmojiForSport(sportEvent.activity);
+                const marker = new google.maps.Marker({
+                  position: { lat: sportEvent.latitude, lng: sportEvent.longitude },
+                  map: map,
+                  title: sportEvent.name,
+                  icon: {
+                    url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(\`
+                      <svg width="48" height="64" viewBox="0 0 48 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#shadow)">
+                          <circle cx="24" cy="24" r="20" fill="#FFD700" stroke="white" stroke-width="4"/>
+                          <text x="24" y="32" font-size="24" text-anchor="middle" fill="black">\${emoji}</text>
+                        </g>
+                        <rect x="18" y="42" width="12" height="18" rx="6" fill="white" stroke="#FFD700" stroke-width="2"/>
+                        <text x="24" y="55" font-size="10" text-anchor="middle" font-weight="bold" fill="#000000">\${sportEvent.participants_count}/\${sportEvent.max_participants}</text>
+                        <defs>
+                          <filter id="shadow">
+                            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+                          </filter>
+                        </defs>
+                      </svg>
+                    \`),
+                    scaledSize: new google.maps.Size(48, 64),
+                    anchor: new google.maps.Point(24, 64)
+                  },
+                  zIndex: 1000
+                });
                 
-                infowindow.setContent(\`
-                  <div style="padding: 12px; max-width: 250px;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">\${sportEvent.name}</h3>
-                    <p style="margin: 0 0 6px 0; color: #666; font-size: 14px;">
-                      <span style="font-size: 20px; margin-right: 6px;">\${emoji}</span>
-                      \${sportEvent.activity}
-                    </p>
-                    <p style="margin: 0; color: #FDB924; font-weight: 600; font-size: 14px;">
-                      👥 \${sportEvent.participants_count}/\${sportEvent.max_participants} participants
-                    </p>
-                    <button style="
-                      width: 100%;
-                      margin-top: 10px;
-                      padding: 8px;
-                      background: #FDB924;
-                      color: black;
-                      border: none;
-                      border-radius: 8px;
-                      font-weight: 600;
-                      cursor: pointer;
-                      font-size: 14px;
-                    " onclick="window.ReactNativeWebView.postMessage(JSON.stringify({
-                      type: 'event_join',
-                      eventId: '\${sportEvent.id}'
-                    }))">
-                      Join Event
-                    </button>
-                  </div>
-                \`);
-                infowindow.open(map, marker);
+                marker.addListener('click', function() {
+                  window.ReactNativeWebView?.postMessage(JSON.stringify({
+                    type: 'event_click',
+                    event: sportEvent
+                  }));
+                  
+                  infowindow.setContent(\`
+                    <div style="padding: 12px; max-width: 250px;">
+                      <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">\${sportEvent.name}</h3>
+                      <p style="margin: 0 0 6px 0; color: #666; font-size: 14px;">
+                        <span style="font-size: 20px; margin-right: 6px;">\${emoji}</span>
+                        \${sportEvent.activity}
+                      </p>
+                      <p style="margin: 0; color: #FFD700; font-weight: 600; font-size: 14px;">
+                        👥 \${sportEvent.participants_count}/\${sportEvent.max_participants} participants
+                      </p>
+                      <button style="
+                        width: 100%;
+                        margin-top: 10px;
+                        padding: 8px;
+                        background: #FFD700;
+                        color: black;
+                        border: none;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        font-size: 14px;
+                      " onclick="window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'event_join',
+                        eventId: '\${sportEvent.id}'
+                      }))">
+                        Join Event
+                      </button>
+                    </div>
+                  \`);
+                  infowindow.open(map, marker);
+                });
               });
-            });
+            } catch (e) {
+              console.error('Error in createEventMarkers:', e);
+            }
           }
           
           // Helper function for emoji mapping in browser
@@ -430,7 +639,19 @@ export default function GoogleMapsView({
               'volleyball': '🏐',
               'climbing': '🧗‍♂️',
               'yoga': '🧘',
+              'pilates': '🧘',
+              'crossfit': '🏋️‍♂️',
+              'judo': '🥋',
+              'wrestling': '🤼‍♂️',
+              'muay thai': '🥊',
+              'kickboxing': '🥊',
+              'rollerblading': '🛼',
+              'ice skating': '⛸️',
+              'skating': '🛹',
+              'padel': '🎾',
+              'squash': '🎾',
               'badminton': '🏸',
+              'table tennis': '🏓',
               'baseball': '⚾',
               'golf': '⛳',
               'hockey': '🏒'
@@ -438,100 +659,14 @@ export default function GoogleMapsView({
             return map[sport.toLowerCase()] || '🏃';
           }
           
-          function searchPlaces(query) {
-            const request = {
-                  query: query,
-                  fields: ['name', 'geometry', 'formatted_address', 'place_id', 'rating', 'price_level', 'photos', 'types'],
-                  locationBias: map.getCenter(),
-                  radius: 5000
-                };
-                
-                service.textSearch(request, (results, status) => {
-                  if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                    clearMarkers();
-                    results.forEach(place => {
-                      if (place.geometry && place.geometry.location) {
-                        createMarker(place);
-                      }
-                    });
-                  }
-                });
-          }
+
           
-          function searchNearbyPlaces() {
-            const request = {
-              location: map.getCenter(),
-              radius: 1000,
-              type: ['gym', 'stadium', 'park', 'sports_complex']
-            };
-            
-            service.nearbySearch(request, (results, status) => {
-              if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                clearMarkers();
-                results.forEach(place => {
-                  createMarker(place);
-                });
-              }
-            });
-          }
+
           
-          function createMarker(place) {
-            const marker = new google.maps.Marker({
-              position: place.geometry.location,
-              map: map,
-              title: place.name,
-              icon: {
-                url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(\`
-                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 2C10.48 2 6 6.48 6 12c0 7.5 10 18 10 18s10-10.5 10-18c0-5.52-4.48-10-10-10z" fill="#EA4335"/>
-                    <circle cx="16" cy="12" r="4" fill="white"/>
-                  </svg>
-                \`),
-                scaledSize: new google.maps.Size(32, 32)
-              }
-            });
-            
-            markers.push(marker);
-            
-            marker.addListener('click', () => {
-              const placeDetails = {
-                name: place.name,
-                address: place.formatted_address || place.vicinity,
-                placeId: place.place_id,
-                rating: place.rating,
-                priceLevel: place.price_level,
-                photos: place.photos,
-                types: place.types,
-                location: {
-                  latitude: place.geometry.location.lat(),
-                  longitude: place.geometry.location.lng()
-                }
-              };
-              
-              window.ReactNativeWebView?.postMessage(JSON.stringify({
-                type: 'place_click',
-                place: placeDetails
-              }));
-              
-              // Show info window
-              infowindow.setContent(\`
-                <div style="padding: 10px; max-width: 200px;">
-                  <h3 style="margin: 0 0 5px 0; font-size: 16px;">\${place.name}</h3>
-                  <p style="margin: 0; color: #666; font-size: 14px;">\${place.formatted_address || place.vicinity}</p>
-                  \${place.rating ? \`<p style="margin: 5px 0 0 0; color: #FFA500; font-size: 14px;">⭐ \${place.rating}/5</p>\` : ''}
-                </div>
-              \`);
-              infowindow.open(map, marker);
-            });
-          }
-          
-          function clearMarkers() {
-            markers.forEach(marker => marker.setMap(null));
-            markers = [];
-          }
+
         </script>
         <script async defer 
-          src="https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap">
+          src="https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=beta&libraries=places,marker&callback=initMap">
         </script>
       </body>
       </html>

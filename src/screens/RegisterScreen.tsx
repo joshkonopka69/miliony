@@ -1,18 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  StatusBar, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  StatusBar,
   Alert,
   Animated,
-  Dimensions
+  Dimensions,
+  ScrollView
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation/hooks';
 import { useTranslation } from '../contexts/TranslationContext';
 import { RegisterForm, EmailVerificationModal } from '../components/auth';
+
 
 const { width } = Dimensions.get('window');
 
@@ -21,7 +25,7 @@ export default function RegisterScreen() {
   const { t } = useTranslation();
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [userEmail, setUserEmail] = useState('');
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -64,23 +68,30 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Account</Text>
+
+        <Text style={styles.headerTitle}>{t.auth.createAccount}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <RegisterForm
-        onSuccess={handleAuthSuccess}
-        onError={handleAuthError}
-        onLogin={() => navigation.goBack()}
-        style={styles.authForm}
-      />
-      
+      <Animated.ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <RegisterForm
+          onSuccess={handleAuthSuccess}
+          onError={handleAuthError}
+          onLogin={() => navigation.goBack()}
+          style={styles.authForm}
+        />
+      </Animated.ScrollView>
+
       <EmailVerificationModal
         visible={showEmailVerification}
         onClose={() => setShowEmailVerification(false)}
@@ -89,6 +100,7 @@ export default function RegisterScreen() {
         userEmail={userEmail}
       />
     </SafeAreaView>
+
   );
 }
 
@@ -129,6 +141,12 @@ const styles = StyleSheet.create({
     width: 40,
   },
   authForm: {
+    // Moved padding to scrollView contentContainer
+  },
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
 });

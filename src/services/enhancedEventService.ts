@@ -2,6 +2,8 @@ import { supabase } from '../config/supabase';
 import { authService } from './authService';
 import { realtimeEventService } from './realtimeEventService';
 import { notificationService } from './notificationService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { translations, Language } from '../contexts/TranslationContext';
 
 export interface Event {
   id: string;
@@ -103,6 +105,26 @@ class EnhancedEventService {
         { event: data }
       );
 
+      // Broadcast to friends
+      try {
+        const { data: creator } = await supabase
+          .from('users')
+          .select('display_name')
+          .eq('id', userId)
+          .single();
+
+        if (creator) {
+          await notificationService.sendEventCreatedBroadcast(
+            userId,
+            creator.display_name,
+            data.name,
+            data.id
+          );
+        }
+      } catch (broadcastError) {
+        console.error('Error broadcasting event creation:', broadcastError);
+      }
+
       return { success: true, event: data };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -119,7 +141,7 @@ class EnhancedEventService {
           creator:users!events_created_by_fkey(display_name, avatar_url),
           participants:event_participants(user_id)
         `)
-        .eq('status', 'live');
+        .in('status', ['live', 'active', 'upcoming']); // Standard statuses for visible events
 
       // Apply filters
       if (filters.activities && filters.activities.length > 0) {
@@ -147,15 +169,20 @@ class EnhancedEventService {
         const now = new Date();
         const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
         query = query
-          .gte('start_time', now.toISOString())
-          .lte('start_time', oneHourFromNow.toISOString());
+          .gte('scheduled_datetime', now.toISOString())
+          .lte('scheduled_datetime', oneHourFromNow.toISOString());
       } else if (filters.timeFilter === 'today') {
         const today = new Date();
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         query = query
-          .gte('start_time', today.toISOString())
-          .lt('start_time', tomorrow.toISOString());
+          .gte('scheduled_datetime', today.toISOString())
+          .lt('scheduled_datetime', tomorrow.toISOString());
+      } else {
+        // Default: Show events from now - 24h onwards to include recently started events
+        const cutoff = new Date();
+        cutoff.setHours(cutoff.getHours() - 24);
+        query = query.gte('scheduled_datetime', cutoff.toISOString());
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -171,6 +198,7 @@ class EnhancedEventService {
         participants: event.participants?.map((p: any) => p.user_id) || [],
         creator_name: event.creator?.display_name,
         creator_avatar: event.creator?.avatar_url,
+        scheduled_datetime: event.scheduled_datetime, // Ensure this exists for mapping
       }));
 
       // Filter out full events if needed
@@ -230,15 +258,11 @@ class EnhancedEventService {
         .single();
 
       if (event) {
-        await notificationService.sendEventNotification(
+        // Send notification to participants using the broadcast helper
+        await notificationService.sendParticipantJoinedBroadcast(
           eventId,
-          {
-            title: 'New Participant',
-            body: `Someone joined ${event.name}`,
-            type: 'participant_joined',
-            data: { eventId, userId },
-          },
-          userId // Exclude the person who joined
+          event.name,
+          userId
         );
       }
 
@@ -251,8 +275,11 @@ class EnhancedEventService {
   // Leave event with real-time updates
   async leaveEvent(eventId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const userId = authService.getUserId();
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
       if (!userId) {
+        console.error('Leave event failed: No authenticated user found');
         return { success: false, error: 'User not authenticated' };
       }
 
@@ -297,8 +324,8 @@ class EnhancedEventService {
   // Subscribe to user events
   subscribeToUserEvents(onUpdate: (update: any) => void): () => void {
     const userId = authService.getUserId();
-    if (!userId) return () => {};
-    
+    if (!userId) return () => { };
+
     return realtimeEventService.subscribeToUserEvents(userId, onUpdate);
   }
 
@@ -338,7 +365,9 @@ class EnhancedEventService {
     updates: Partial<CreateEventData>
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const userId = authService.getUserId();
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
       if (!userId) {
         return { success: false, error: 'User not authenticated' };
       }
@@ -370,6 +399,39 @@ class EnhancedEventService {
         { eventId, updates }
       );
 
+      // Notify participants
+      try {
+        const { data: event } = await supabase
+          .from('events')
+          .select('name')
+          .eq('id', eventId)
+          .single();
+
+        if (event) {
+          // We could use a new broadcast helper for updates
+          // For now, let's use sendEventCancelledBroadcast as a template or add a new one
+          const { data: participants } = await supabase
+            .from('event_participants')
+            .select('user_id')
+            .eq('event_id', eventId);
+
+          if (participants && participants.length > 0) {
+            const userIds = participants.map(p => p.user_id).filter(id => id !== userId);
+            if (userIds.length > 0) {
+              const lang = (await AsyncStorage.getItem('user_language')) as Language || 'en';
+              const t = translations[lang].notifications;
+              await notificationService.sendBulkNotification(userIds, 'event_updated', {
+                title: t.eventUpdate || 'Event Updated',
+                body: (t.eventUpdateBody || '{event} has been updated').replace('{event}', event.name),
+                eventId
+              });
+            }
+          }
+        }
+      } catch (notifyError) {
+        console.error('Error notifying participants of update:', notifyError);
+      }
+
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -379,7 +441,9 @@ class EnhancedEventService {
   // Cancel event
   async cancelEvent(eventId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const userId = authService.getUserId();
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
       if (!userId) {
         return { success: false, error: 'User not authenticated' };
       }
@@ -414,23 +478,111 @@ class EnhancedEventService {
         { eventId }
       );
 
-      // Send notification to participants
-      await notificationService.sendEventNotification(
-        eventId,
-        {
-          title: 'Event Cancelled',
-          body: `${event.name} has been cancelled`,
-          type: 'event_cancelled',
-          data: { eventId },
-        }
-      );
+      // Send notification to participants using the broadcast helper
+      await notificationService.sendEventCancelledBroadcast(eventId, event.name);
 
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   }
+
+  // Delete event (hard delete)
+  async deleteEvent(eventId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      if (!userId) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      // Check if user is the creator
+      const { data: event } = await supabase
+        .from('events')
+        .select('created_by, name')
+        .eq('id', eventId)
+        .single();
+
+      if (!event || event.created_by !== userId) {
+        return { success: false, error: 'Not authorized to delete this event' };
+      }
+
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      // Cancel reminder
+      await notificationService.cancelEventReminder(eventId);
+
+      // Send real-time notification
+      await realtimeEventService.sendEventNotification(
+        eventId,
+        'event_cancelled',
+        { eventId }
+      );
+
+      // Notify participants
+      await notificationService.sendEventCancelledBroadcast(eventId, event.name);
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Invite user to event
+  async inviteUserToEvent(
+    eventId: string,
+    invitedUserId: string,
+    inviterId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Get event and inviter details
+      const [{ data: event }, { data: inviter }] = await Promise.all([
+        supabase.from('events').select('name').eq('id', eventId).single(),
+        supabase.from('users').select('display_name').eq('id', inviterId).single()
+      ]);
+
+      if (!event) return { success: false, error: 'Event not found' };
+
+      // Store invitation in database
+      const { error: inviteError } = await supabase
+        .from('event_invitations')
+        .insert({
+          event_id: eventId,
+          user_id: invitedUserId,
+          invited_by: inviterId,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+
+      if (inviteError) {
+        console.error('Error creating event invitation:', inviteError);
+        return { success: false, error: inviteError.message };
+      }
+
+      // Send notification
+      await notificationService.sendEventInviteNotification(
+        invitedUserId,
+        inviter?.display_name || 'Someone',
+        event.name,
+        eventId
+      );
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error in inviteUserToEvent:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
+
 
 export const enhancedEventService = new EnhancedEventService();
 

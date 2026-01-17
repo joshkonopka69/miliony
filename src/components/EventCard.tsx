@@ -208,7 +208,7 @@ export default function EventCard({
           )}
 
           {/* Tertiary: Leave */}
-          {event.role === 'joined' && (
+          {(event.role === 'joined' || event.role === 'created') && (
             <TouchableOpacity
               style={[styles.actionButton, styles.tertiaryButton]}
               onPress={onLeavePress}
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     flex: 1,
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
   },
   primaryButtonText: {
     fontSize: 15,

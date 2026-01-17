@@ -23,7 +23,7 @@ export default function UserSearchScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
   const { searchUsers } = useUser();
-  const { sendFriendRequest, isFriend, hasPendingRequest } = useFriends();
+  const { sendFriendRequest, cancelFriendRequest, isFriend, hasPendingRequest, friendRequests } = useFriends();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -62,6 +62,7 @@ export default function UserSearchScreen() {
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
@@ -72,7 +73,7 @@ export default function UserSearchScreen() {
         sports: filters.sports.length > 0 ? filters.sports : undefined,
         age_range: filters.age_range,
         gender: filters.gender.length > 0 ? filters.gender : undefined,
-        online_only: filters.online_only,
+        is_online: filters.online_only,
         has_events: filters.has_events,
         limit: 20,
       });
@@ -91,6 +92,32 @@ export default function UserSearchScreen() {
       Alert.alert('Success', `Friend request sent to ${userName}!`);
     } else {
       Alert.alert('Error', 'Failed to send friend request. Please try again.');
+    }
+  };
+
+  const handleCancelRequest = async (userId: string) => {
+    try {
+      // Robustly find the request. We check both SENT (common for search) and RECEIVED
+      const request = friendRequests.sent.find(r => r.receiver_id === userId) ||
+        friendRequests.received.find(r => r.sender_id === userId);
+
+      if (!request) {
+        console.warn('handleCancelRequest: No pending request found for user:', userId);
+        console.log('Current SENT requests:', friendRequests.sent.map(r => r.receiver_id));
+        return;
+      }
+
+      console.log('Cancelling request:', request.id, 'to user:', userId);
+      const success = await cancelFriendRequest(request.id);
+
+      if (success) {
+        // The UserContext will handle the state update via polling or if we trigger it
+        console.log('Request cancelled successfully');
+      } else {
+        Alert.alert('Error', 'Failed to cancel the invitation. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error in handleCancelRequest:', error);
     }
   };
 
@@ -216,15 +243,18 @@ export default function UserSearchScreen() {
               </TouchableOpacity>
             )}
 
+            {hasPending && (
+              <TouchableOpacity
+                style={styles.cancelRequestButton}
+                onPress={() => handleCancelRequest(user.id)}
+              >
+                <Text style={styles.cancelRequestButtonText}>✕</Text>
+              </TouchableOpacity>
+            )}
+
             {isUserFriend && (
               <View style={styles.friendBadge}>
                 <Text style={styles.friendBadgeText}>✓</Text>
-              </View>
-            )}
-
-            {hasPending && (
-              <View style={styles.pendingBadge}>
-                <Text style={styles.pendingBadgeText}>⏳</Text>
               </View>
             )}
           </View>
@@ -779,6 +809,21 @@ const styles = StyleSheet.create({
   pendingBadgeText: {
     fontSize: 16,
     color: '#ef6c00',
+  },
+  cancelRequestButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ffebee',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#f44336',
+  },
+  cancelRequestButtonText: {
+    fontSize: 14,
+    color: '#d32f2f',
+    fontWeight: 'bold',
   },
   emptyContainer: {
     alignItems: 'center',

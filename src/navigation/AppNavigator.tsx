@@ -9,7 +9,6 @@ import {
   RegisterScreen,
   MapScreen,
   ChatScreen,
-  EventsScreen,
   EventDetailsScreen,
   SettingsScreen,
   ProfileScreen,
@@ -43,15 +42,19 @@ import {
   GroupMembersScreen,
   NotificationsScreen,
   NotificationSettingsScreen,
-  FriendRequestsScreen,
   // Badge screens
   AllBadgesScreen,
+  // Auth screens
+  ResetPasswordScreen,
 } from '../screens';
+
 
 // Import navigation utilities and types
 import { setNavigationRef } from './utils';
 import { RootStackParamList, ROUTES } from './types';
 import { ROUTE_CONFIG } from './constants';
+import linking from './linking';
+
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -75,9 +78,11 @@ export default function AppNavigator() {
   return (
     <NavigationContainer
       ref={navigationRef}
+      linking={linking}
       onStateChange={onNavigationStateChange}
       onReady={onReady}
     >
+
       <Stack.Navigator
         initialRouteName={ROUTES.WELCOME}
         screenOptions={{
@@ -115,8 +120,15 @@ export default function AppNavigator() {
           component={RegisterScreen}
           options={ROUTE_CONFIG[ROUTES.REGISTER]}
         />
+        <Stack.Screen
+          name={ROUTES.RESET_PASSWORD}
+          component={ResetPasswordScreen}
+          options={{ headerShown: false }}
+        />
 
         {/* Main App Screens */}
+
+
         <Stack.Screen
           name={ROUTES.MAP}
           component={MapScreen}
@@ -129,7 +141,7 @@ export default function AppNavigator() {
         />
         <Stack.Screen
           name={ROUTES.EVENTS}
-          component={EventsScreen}
+          component={MyGamesScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen
@@ -288,11 +300,6 @@ export default function AppNavigator() {
         <Stack.Screen
           name={ROUTES.NOTIFICATION_SETTINGS}
           component={NotificationSettingsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name={ROUTES.FRIEND_REQUESTS}
-          component={FriendRequestsScreen}
           options={{ headerShown: false }}
         />
 

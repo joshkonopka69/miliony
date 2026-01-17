@@ -118,11 +118,12 @@ class FCMService {
         .upsert({
           user_id: userId,
           fcm_token: this.fcmToken,
-          expo_push_token: this.fcmToken, // Align with notificationService lookup
-          device_type: Platform.OS,
+          expo_push_token: this.fcmToken, // Ensure this matches notificationService lookup
+          platform: Platform.OS, // Changed from device_type for consistency with notificationService
           device_id: Device.osInternalBuildId || 'unknown',
           updated_at: new Date().toISOString(),
         });
+
 
       if (error) {
         console.error('Error registering FCM token:', error);
@@ -316,32 +317,54 @@ class FCMService {
     try {
       const data = response.notification.request.content.data;
 
-      if (data?.action_url) {
-        // Navigate to specific screen based on action_url
-        console.log('Navigate to:', data.action_url);
-        // TODO: Implement navigation logic
+      if (data?.action_url && typeof data.action_url === 'string') {
+        const url = data.action_url;
+        console.log('Navigate to action_url:', url);
+
+        // Handle custom sportapp:// links or direct routes
+        if (url.startsWith('sportapp://')) {
+          const parsed = url.replace('sportapp://', '');
+          const [route, query] = parsed.split('?');
+          NavigationUtils.navigate(route as any);
+        } else {
+          NavigationUtils.navigate(url as any);
+        }
       }
 
       if (data?.type) {
         // Handle different notification types
         switch (data.type) {
           case 'friend_request':
-            // Navigate to friend requests screen
-            console.log('Navigate to friend requests');
             NavigationUtils.navigate(ROUTES.FRIEND_REQUESTS);
+            break;
+          case 'friend_request_accepted':
+            if (data.acceptorId) {
+              NavigationUtils.navigate(ROUTES.PROFILE, { userId: String(data.acceptorId) });
+            }
             break;
           case 'event_invitation':
           case 'event_reminder':
           case 'event_participant_joined':
-            // Navigate to event details
+          case 'event_created':
+          case 'event_updated':
             console.log('Navigate to event:', data.event_id || data.eventId);
             NavigationUtils.navigate(ROUTES.EVENT_DETAILS, {
               eventId: (data.event_id || data.eventId) as string,
               id: (data.event_id || data.eventId) as string
             });
             break;
+          case 'group_invite':
+          case 'group_invite_accepted':
+            if (data.groupId) {
+              NavigationUtils.navigate(ROUTES.GROUP_DETAILS as any, { groupId: data.groupId });
+            } else {
+              NavigationUtils.navigate(ROUTES.MY_GROUPS);
+            }
+            break;
+          case 'achievement_unlocked':
+            NavigationUtils.navigate(ROUTES.ALL_BADGES);
+            break;
           case 'chat_message':
-            // Navigate to chat
             console.log('Navigate to chat:', data.chat_id || data.chatId);
             NavigationUtils.navigate(ROUTES.GAME_CHAT, {
               game: { id: data.event_id || data.eventId || data.chat_id || data.chatId }

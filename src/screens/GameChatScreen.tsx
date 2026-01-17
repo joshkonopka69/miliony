@@ -14,6 +14,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { GameChatScreenProps } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { supabaseService, EventMessage } from '../services/supabase';
+import ProfilePreviewModal, { ProfilePreviewUser } from '../components/ProfilePreviewModal';
+import { ROUTES } from '../navigation/types';
+
 
 export default function GameChatScreen({ navigation, route }: GameChatScreenProps) {
   const { game } = route.params || {};
@@ -30,6 +33,8 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
   }>>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<ProfilePreviewUser | null>(null);
+
 
   // Load existing messages and subscribe to new ones
   useEffect(() => {
@@ -194,7 +199,15 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
             ]}
           >
             {!message.isMine && (
-              <View style={styles.avatarContainer}>
+              <TouchableOpacity
+                style={styles.avatarContainer}
+                onPress={() => setSelectedUser({
+                  id: message.senderId,
+                  display_name: message.senderName,
+                  avatar_url: message.senderAvatar,
+                })}
+                activeOpacity={0.7}
+              >
                 {message.senderAvatar ? (
                   <Image source={{ uri: message.senderAvatar }} style={styles.avatar} />
                 ) : (
@@ -204,8 +217,9 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
                     </Text>
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
             )}
+
 
             <View style={[
               styles.messageContent,
@@ -269,9 +283,9 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
             onChangeText={setNewMessage}
             placeholder="Type a message..."
             placeholderTextColor="#9CA3AF"
-            multiline
             maxLength={500}
           />
+
           <TouchableOpacity
             style={[
               styles.sendButton,
@@ -289,9 +303,21 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+
+      {/* Profile Preview Modal */}
+      <ProfilePreviewModal
+        visible={!!selectedUser}
+        user={selectedUser}
+        onClose={() => setSelectedUser(null)}
+        onViewFullProfile={(userId) => {
+          setSelectedUser(null);
+          navigation.navigate(ROUTES.PROFILE, { userId });
+        }}
+      />
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -331,15 +357,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   messagesContent: {
-    padding: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
     paddingBottom: 100,
   },
+
   messageBubble: {
-    maxWidth: '75%',
     padding: 12,
     borderRadius: 16,
-    marginVertical: 4,
+    marginVertical: 2,
   },
+
+
+
   myMessage: {
     backgroundColor: '#FFD700',
     alignSelf: 'flex-end',
@@ -356,10 +386,11 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   messageText: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#374151',
-    lineHeight: 20,
+    lineHeight: 24,
   },
+
   myMessageText: {
     color: '#000000',
   },
@@ -386,8 +417,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   messageContent: {
-    maxWidth: '75%',
+    flex: 1,
   },
+
+
+
   myMessageContent: {
     alignItems: 'flex-end',
   },
@@ -433,22 +467,26 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     alignItems: 'flex-end',
-    gap: 12,
+    gap: 8,
   },
+
   textInput: {
     flex: 1,
     backgroundColor: '#F9FAFB',
     borderWidth: 1.5,
     borderColor: '#E5E5E5',
     borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 15,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    fontSize: 16,
     color: '#000000',
-    maxHeight: 100,
+    minHeight: 48,
   },
+
+
   sendButton: {
     width: 48,
     height: 48,

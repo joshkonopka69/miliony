@@ -79,7 +79,7 @@ export default function VenueInfoSheet({
 
   const formatOpeningHours = (hours: string[]) => {
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const todayHours = hours.find(hour => 
+    const todayHours = hours.find(hour =>
       hour.toLowerCase().includes(today.toLowerCase())
     );
     return todayHours || 'Hours not available';
@@ -89,7 +89,7 @@ export default function VenueInfoSheet({
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.dragHandle} />
@@ -333,11 +333,11 @@ const styles = StyleSheet.create({
   },
   createEventButton: {
     height: 56,
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#FFD700',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#fbbf24',
+    shadowColor: '#FFD700',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -349,6 +349,6 @@ const styles = StyleSheet.create({
   createEventText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#000000',
   },
 });

@@ -125,7 +125,7 @@ export interface CreateUserProfileData {
 
 export interface UpdateUserProfileData {
   display_name?: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
   bio?: string;
   age?: number;
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
@@ -137,11 +137,12 @@ export interface UpdateUserProfileData {
   location_latitude?: number;
   location_longitude?: number;
   is_public?: boolean;
+  last_active?: string;
 }
 
 class UserService {
   // User Profile Operations
-  
+
   async createUserProfile(userData: CreateUserProfileData): Promise<UserProfile | null> {
     try {
       const { data, error } = await supabase
@@ -179,7 +180,7 @@ class UserService {
   async getUserProfile(userId: string): Promise<UserProfile | null> {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('*')
         .eq('id', userId)
         .single();
@@ -244,12 +245,13 @@ class UserService {
   async searchUsers(filters: UserSearchFilters): Promise<UserProfile[]> {
     try {
       let query = supabase
-        .from('users')
-        .select('*')
-        .eq('is_public', true);
+        .from('public_profiles')
+        .select('*');
+      // .eq('is_public', true); // public_profiles view already handles this filter
 
       if (filters.query) {
-        query = query.or(`display_name.ilike.%${filters.query}%,bio.ilike.%${filters.query}%`);
+        const searchTerm = filters.query.trim().toLowerCase();
+        query = query.or(`display_name.ilike.%${searchTerm}%,bio.ilike.%${searchTerm}%`);
       }
 
       if (filters.sports && filters.sports.length > 0) {
@@ -291,10 +293,12 @@ class UserService {
         query = query.gt('total_events_created', 0);
       }
 
+      const limit = filters.limit || 20;
+      const offset = filters.offset || 0;
+
       query = query
         .order('last_active', { ascending: false })
-        .limit(filters.limit || 20)
-        .range(filters.offset || 0, (filters.offset || 0) + (filters.limit || 20) - 1);
+        .range(offset, offset + limit - 1);
 
       const { data, error } = await query;
 
@@ -495,8 +499,8 @@ class UserService {
         badges_earned: user.badges?.length || 0,
         days_active: this.calculateDaysActive(user.created_at),
         favorite_sport: user.favorite_sports?.[0] || 'Unknown',
-        most_active_time: this.calculateMostActiveTime(userId),
-        longest_streak: this.calculateLongestStreak(userId),
+        most_active_time: await this.calculateMostActiveTime(userId),
+        longest_streak: await this.calculateLongestStreak(userId),
       };
 
       return stats;
@@ -788,7 +792,7 @@ class UserService {
         return [];
       }
 
-      return data?.map(item => item.users) || [];
+      return data?.map((item: any) => item.users) || [];
     } catch (error) {
       console.error('Error fetching blocked users:', error);
       return [];

@@ -43,6 +43,7 @@ export interface PlaceDetails {
     photoReference: string;
     height: number;
     width: number;
+    url?: string;
   }>;
   reviews?: Array<{
     authorName: string;
@@ -82,6 +83,8 @@ export const GOOGLE_PLACES_TYPES = {
   'ice_rink': null, // Use keywords: "ice rink ice skating"
   'tennis_court': null, // Use keywords: "tennis court"
   'basketball_court': null, // Use keywords: "basketball court"
+  'martial_arts_gym': null, // Custom category
+  'grappling_hall': null, // Custom category
 } as const;
 
 // Keyword mapping for filters without dedicated Google types
@@ -559,6 +562,113 @@ export const SPORT_CATEGORY_RULES: Record<string, FilterRule> = {
     ],
     description: 'Outdoor activities (hiking, climbing, etc.)'
   },
+
+  martial_arts_gym: {
+    primaryType: 'gym',
+    requiredKeywords: ['boxing', 'box', 'muay thai', 'kickboxing', 'k1', 'krav maga', 'sztuki walki', 'fight club', 'gym'],
+    excludedTypes: ['store', 'lodging', 'restaurant'],
+    excludedNamePatterns: [/store/i, /shop/i, /equipment/i],
+    // requiredNamePattern removed to allow broad matching (e.g. "Gracie Barra" matched by keyword search but not name regex)
+    description: 'Striking martial arts gyms (Boxing, Muay Thai, Kickboxing)'
+  },
+
+  grappling_hall: {
+    primaryType: 'gym',
+    requiredKeywords: ['jiu jitsu', 'bjj', 'brazilian jiu-jitsu', 'wrestling', 'judo', 'grappling', 'zapasy', 'dojo', 'mata', 'gym'],
+    excludedTypes: ['store', 'lodging', 'restaurant'],
+    excludedNamePatterns: [/store/i, /shop/i, /equipment/i],
+    // requiredNamePattern removed to allow broad matching
+    description: 'Grappling sport halls (BJJ, Wrestling, Judo)'
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // DIRECT FILTER TYPE ALIASES
+  // These match the IDs used in ActivityFilterModal
+  // ═══════════════════════════════════════════════════════════════════
+
+  gym: {
+    primaryType: 'gym',
+    requiredTypes: ['gym'],
+    excludedTypes: ['store', 'parking', 'spa', 'beauty_salon'],
+    excludedNamePatterns: [/store/i, /shop/i, /equipment/i, /supply/i],
+    description: 'Gyms and fitness centers'
+  },
+
+  stadium: {
+    primaryType: 'stadium',
+    requiredTypes: ['stadium'],
+    excludedTypes: ['store', 'parking'],
+    description: 'Stadiums and large sports venues'
+  },
+
+  swimming_pool: {
+    primaryType: 'point_of_interest',
+    requiredKeywords: ['swimming pool', 'aquatic center', 'pool', 'basen', 'pływalnia'],
+    excludedTypes: ['store', 'parking', 'spa', 'lodging', 'plumber', 'home_goods_store'],
+    excludedNamePatterns: [/hotel/i, /motel/i, /resort/i, /supply/i, /service/i, /equipment/i, /shop/i, /store/i, /sklep/i],
+    requiredNamePattern: /pool|aqua|swim|water|basen|pływaln|wodny/i,
+    minReviews: 3,
+    description: 'Swimming pools and aquatic centers'
+  },
+
+  bowling_alley: {
+    primaryType: 'bowling_alley',
+    requiredTypes: ['bowling_alley'],
+    excludedTypes: ['store', 'parking'],
+    description: 'Bowling alleys'
+  },
+
+  golf_course: {
+    primaryType: 'point_of_interest',
+    requiredKeywords: ['golf course', 'golf club', 'driving range'],
+    excludedTypes: ['store', 'parking', 'lodging'],
+    excludedNamePatterns: [/store/i, /shop/i, /equipment/i],
+    description: 'Golf courses and driving ranges'
+  },
+
+  ice_rink: {
+    primaryType: 'point_of_interest',
+    requiredKeywords: ['ice rink', 'ice skating', 'lodowisko', 'łyżwy'],
+    excludedTypes: ['store', 'parking'],
+    excludedNamePatterns: [/store/i, /shop/i, /equipment/i],
+    description: 'Ice rinks and skating venues'
+  },
+
+  tennis_court: {
+    primaryType: 'point_of_interest',
+    requiredKeywords: ['tennis court', 'tennis club', 'kort tenisowy'],
+    excludedTypes: ['store', 'parking'],
+    excludedNamePatterns: [/store/i, /shop/i, /equipment/i],
+    description: 'Tennis courts and clubs'
+  },
+
+  basketball_court: {
+    primaryType: 'point_of_interest',
+    requiredKeywords: ['basketball court', 'boisko do koszykówki', 'outdoor court'],
+    excludedTypes: ['store', 'parking'],
+    excludedNamePatterns: [/store/i, /shop/i, /equipment/i],
+    description: 'Basketball courts'
+  },
+
+  sports_complex: {
+    primaryType: 'point_of_interest',
+    requiredKeywords: ['sports complex', 'sports center', 'sports hall', 'hala sportowa', 'centrum sportowe'],
+    requiredTypes: ['gym', 'stadium'],
+    excludedTypes: ['store', 'parking', 'school', 'university'],
+    excludedNamePatterns: [/store/i, /shop/i, /school/i, /szkoła/i],
+    description: 'Sports complexes and multi-sport facilities'
+  },
+
+  all: {
+    primaryType: 'sports_complex',
+    requiredTypes: ['sports_complex', 'gym', 'park'],
+    excludedTypes: [
+      'store', 'restaurant', 'food', 'bar', 'lodging', 'cafe',
+      'school', 'parking', 'doctor', 'hospital', 'dentist'
+    ],
+    minReviews: 5,
+    description: 'Initial map view showing main sports and recreation venues'
+  }
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -910,6 +1020,7 @@ class PlacesApiService {
           photoReference: photo.photo_reference,
           height: photo.height,
           width: photo.width,
+          url: this.getPlacePhotoUrl(photo.photo_reference, 200)
         })) || [],
       }));
 
@@ -1079,6 +1190,7 @@ class PlacesApiService {
         photoReference: photo.photo_reference,
         height: photo.height,
         width: photo.width,
+        url: this.getPlacePhotoUrl(photo.photo_reference, 200)
       })) || [],
     }));
 
@@ -1148,6 +1260,7 @@ class PlacesApiService {
         photoReference: photo.photo_reference,
         height: photo.height,
         width: photo.width,
+        url: this.getPlacePhotoUrl(photo.photo_reference, 200)
       })) || [],
     }));
 
@@ -1212,6 +1325,7 @@ class PlacesApiService {
         photoReference: photo.photo_reference,
         height: photo.height,
         width: photo.width,
+        url: this.getPlacePhotoUrl(photo.photo_reference, 200)
       })) || [],
     }));
 
@@ -1285,7 +1399,8 @@ class PlacesApiService {
         photos: result.photos?.map((photo: any) => ({
           photoReference: photo.photo_reference,
           height: photo.height,
-          width: photo.width
+          width: photo.width,
+          url: this.getPlacePhotoUrl(photo.photo_reference, 400, 300)
         })) || [],
         reviews: result.reviews?.map((review: any) => ({
           authorName: review.author_name,

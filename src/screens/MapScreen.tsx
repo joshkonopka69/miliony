@@ -59,26 +59,57 @@ import { MyEvent, SportActivity } from '../types/event';
 const EVENT_DURATION_MS = 2 * 60 * 60 * 1000;
 
 const normalizeSportActivity = (activity?: string): SportActivity => {
-  const value = (activity || 'basketball').toLowerCase();
+  const value = (activity || 'basketball').toLowerCase().trim();
   switch (value) {
     case 'football':
     case 'soccer':
-      return 'Football';
+      return 'football';
     case 'tennis':
-      return 'Tennis';
+      return 'tennis';
     case 'volleyball':
-      return 'Volleyball';
+      return 'volleyball';
     case 'running':
-      return 'Running';
+      return 'running';
     case 'cycling':
-      return 'Cycling';
+      return 'cycling';
     case 'swimming':
-      return 'Swimming';
+      return 'swimming';
     case 'gym':
     case 'fitness':
-      return 'Gym';
+      return 'gym';
+    case 'judo':
+      return 'judo';
+    case 'wrestling':
+      return 'wrestling';
+    case 'muay thai':
+      return 'muay thai';
+    case 'kickboxing':
+      return 'kickboxing';
+    case 'rollerblading':
+      return 'rollerblading';
+    case 'ice skating':
+      return 'ice skating';
+    case 'skating':
+      return 'skating';
+    case 'padel':
+      return 'padel';
+    case 'squash':
+      return 'squash';
+    case 'bouldering':
+    case 'climbing':
+      return 'bouldering';
+    case 'table tennis':
+      return 'table tennis';
+    case 'yoga':
+      return 'yoga';
+    case 'pilates':
+      return 'pilates';
+    case 'crossfit':
+      return 'crossfit';
+    case 'badminton':
+      return 'badminton';
     default:
-      return 'Basketball';
+      return 'basketball';
   }
 };
 
@@ -616,7 +647,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 100,
     left: 20,
-    backgroundColor: '#FDB924',
+    backgroundColor: '#FFD700',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,

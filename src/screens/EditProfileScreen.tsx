@@ -42,9 +42,9 @@ export default function EditProfileScreen() {
     bio: profile?.bio || '',
     age: profile?.age?.toString() || '',
     gender: profile?.gender || '',
-    phone: profile?.phone || '',
     favorite_sports: profile?.favorite_sports || [],
   });
+
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -102,11 +102,8 @@ export default function EditProfileScreen() {
       newErrors.age = 'Please enter a valid age';
     }
 
-    if (formData.phone && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone)) {
-      newErrors.phone = 'Please enter a valid phone number';
-    }
-
     if (formData.favorite_sports.length === 0) {
+
       newErrors.favorite_sports = 'Please select at least one sport';
     }
 
@@ -124,9 +121,9 @@ export default function EditProfileScreen() {
       bio: formData.bio.trim(),
       age: formData.age ? Number(formData.age) : undefined,
       gender: (formData.gender as "male" | "female" | "other" | "prefer_not_to_say") || undefined,
-      phone: formData.phone.trim() || undefined,
       favorite_sports: formData.favorite_sports,
     };
+
 
     const success = await updateProfile(updates);
     if (success) {
@@ -387,21 +384,8 @@ export default function EditProfileScreen() {
                 </View>
               </View>
 
-              {/* Phone */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Phone Number</Text>
-                <TextInput
-                  style={[styles.input, errors.phone && styles.inputError]}
-                  value={formData.phone}
-                  onChangeText={(value) => handleInputChange('phone', value)}
-                  placeholder="Enter your phone number"
-                  placeholderTextColor="#8e8e93"
-                  keyboardType="phone-pad"
-                />
-                {errors.phone && <Text style={styles.fieldError}>{errors.phone}</Text>}
-              </View>
-
               {/* Favorite Sports */}
+
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Favorite Sports *</Text>
                 <TouchableOpacity

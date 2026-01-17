@@ -252,10 +252,14 @@ export class EventService {
     radiusKm?: number
   ): Promise<Event[]> {
     try {
+      const cutoff = new Date();
+      cutoff.setHours(cutoff.getHours() - 24);
+
       let supabaseQuery = supabase
         .from('events')
         .select('*')
-        .eq('status', 'live')
+        .in('status', ['live', 'active', 'upcoming'])
+        .gte('scheduled_datetime', cutoff.toISOString())
         .ilike('name', `%${query}%`);
 
       if (activity) {

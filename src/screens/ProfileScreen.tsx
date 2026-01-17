@@ -72,51 +72,66 @@ export default function ProfileScreen() {
   });
 
   // Define all possible badges
+  // Badge images mapping for local assets
+  const badgeImages = {
+    basketball: require('../../assets/badges/basketball.png'),
+    football: require('../../assets/badges/football.png'),
+    tennis: require('../../assets/badges/tennis.png'),
+    running: require('../../assets/badges/running.png'),
+    volleyball: require('../../assets/badges/volleyball.png'),
+    cycling: require('../../assets/badges/cycling.png'),
+    gym: require('../../assets/badges/gym.png'),
+    swimming: require('../../assets/badges/swimming.png'),
+    allrounder: require('../../assets/badges/allrounder.png'),
+    community_star: require('../../assets/badges/community_star.png'),
+  };
+
   const allBadges = [
     // Basketball Badges
-    { id: 'basketball_rookie', sport: 'basketball', name: 'Basketball Rookie', icon: '🏀', description: 'Play 1 basketball game', required: 1, color: '#F97316' },
-    { id: 'basketball_player', sport: 'basketball', name: 'Basketball Player', icon: '🏀', description: 'Play 5 basketball games', required: 5, color: '#F97316' },
-    { id: 'basketball_pro', sport: 'basketball', name: 'Basketball Pro', icon: '🏀', description: 'Play 10 basketball games', required: 10, color: '#F97316' },
-    { id: 'basketball_legend', sport: 'basketball', name: 'Basketball Legend', icon: '🏆', description: 'Play 20 basketball games', required: 20, color: '#FFD700' },
+    { id: 'basketball_rookie', sport: 'basketball', name: `${t.allBadges.basketball} ${t.allBadges.tiers.rookie}`, icon: '🏀', image: badgeImages.basketball, description: `Play 1 ${t.allBadges.basketball.toLowerCase()} game`, required: 1, color: '#F97316' },
+    { id: 'basketball_player', sport: 'basketball', name: `${t.allBadges.basketball} ${t.allBadges.tiers.player}`, icon: '🏀', image: badgeImages.basketball, description: `Play 5 ${t.allBadges.basketball.toLowerCase()} games`, required: 5, color: '#F97316' },
+    { id: 'basketball_pro', sport: 'basketball', name: `${t.allBadges.basketball} ${t.allBadges.tiers.pro}`, icon: '🏀', image: badgeImages.basketball, description: `Play 10 ${t.allBadges.basketball.toLowerCase()} games`, required: 10, color: '#F97316' },
+    { id: 'basketball_legend', sport: 'basketball', name: `${t.allBadges.basketball} ${t.allBadges.tiers.legend}`, icon: '🏆', image: badgeImages.basketball, description: `Play 20 ${t.allBadges.basketball.toLowerCase()} games`, required: 20, color: '#FFD700' },
 
     // Football Badges
-    { id: 'football_rookie', sport: 'football', name: 'Football Rookie', icon: '⚽', description: 'Play 1 football game', required: 1, color: '#10B981' },
-    { id: 'football_player', sport: 'football', name: 'Football Player', icon: '⚽', description: 'Play 5 football games', required: 5, color: '#10B981' },
-    { id: 'football_pro', sport: 'football', name: 'Football Pro', icon: '⚽', description: 'Play 10 football games', required: 10, color: '#10B981' },
-    { id: 'football_legend', sport: 'football', name: 'Football Legend', icon: '🏆', description: 'Play 20 football games', required: 20, color: '#FFD700' },
+    { id: 'football_rookie', sport: 'football', name: `${t.allBadges.football} ${t.allBadges.tiers.rookie}`, icon: '⚽', image: badgeImages.football, description: `Play 1 ${t.allBadges.football.toLowerCase()} game`, required: 1, color: '#10B981' },
+    { id: 'football_player', sport: 'football', name: `${t.allBadges.football} ${t.allBadges.tiers.player}`, icon: '⚽', image: badgeImages.football, description: `Play 5 ${t.allBadges.football.toLowerCase()} games`, required: 5, color: '#10B981' },
+    { id: 'football_pro', sport: 'football', name: `${t.allBadges.football} ${t.allBadges.tiers.pro}`, icon: '⚽', image: badgeImages.football, description: `Play 10 ${t.allBadges.football.toLowerCase()} games`, required: 10, color: '#10B981' },
+    { id: 'football_legend', sport: 'football', name: `${t.allBadges.football} ${t.allBadges.tiers.legend}`, icon: '🏆', image: badgeImages.football, description: `Play 20 ${t.allBadges.football.toLowerCase()} games`, required: 20, color: '#FFD700' },
 
     // Tennis Badges
-    { id: 'tennis_rookie', sport: 'tennis', name: 'Tennis Rookie', icon: '🎾', description: 'Play 1 tennis game', required: 1, color: '#EAB308' },
-    { id: 'tennis_player', sport: 'tennis', name: 'Tennis Player', icon: '🎾', description: 'Play 5 tennis games', required: 5, color: '#EAB308' },
-    { id: 'tennis_pro', sport: 'tennis', name: 'Tennis Pro', icon: '🎾', description: 'Play 10 tennis games', required: 10, color: '#EAB308' },
+    { id: 'tennis_rookie', sport: 'tennis', name: `${t.allBadges.tennis} ${t.allBadges.tiers.rookie}`, icon: '🎾', image: badgeImages.tennis, description: `Play 1 ${t.allBadges.tennis.toLowerCase()} game`, required: 1, color: '#FFD700' },
+    { id: 'tennis_player', sport: 'tennis', name: `${t.allBadges.tennis} ${t.allBadges.tiers.player}`, icon: '🎾', image: badgeImages.tennis, description: `Play 5 ${t.allBadges.tennis.toLowerCase()} games`, required: 5, color: '#FFD700' },
+    { id: 'tennis_pro', sport: 'tennis', name: `${t.allBadges.tennis} ${t.allBadges.tiers.pro}`, icon: '🎾', image: badgeImages.tennis, description: `Play 10 ${t.allBadges.tennis.toLowerCase()} games`, required: 10, color: '#FFD700' },
 
     // Running Badges
-    { id: 'running_rookie', sport: 'running', name: 'Running Rookie', icon: '🏃‍♂️', description: 'Complete 1 run', required: 1, color: '#EF4444' },
-    { id: 'running_player', sport: 'running', name: 'Running Enthusiast', icon: '🏃‍♂️', description: 'Complete 5 runs', required: 5, color: '#EF4444' },
-    { id: 'running_pro', sport: 'running', name: 'Marathon Runner', icon: '🏃‍♂️', description: 'Complete 10 runs', required: 10, color: '#EF4444' },
-    { id: 'running_legend', sport: 'running', name: 'Running Legend', icon: '🏆', description: 'Complete 20 runs', required: 20, color: '#FFD700' },
+    { id: 'running_rookie', sport: 'running', name: `${t.allBadges.running} ${t.allBadges.tiers.rookie}`, icon: '🏃‍♂️', image: badgeImages.running, description: `Complete 1 ${t.allBadges.running.toLowerCase()}`, required: 1, color: '#EF4444' },
+    { id: 'running_player', sport: 'running', name: `${t.allBadges.running} ${t.allBadges.tiers.enthusiast}`, icon: '🏃‍♂️', image: badgeImages.running, description: `Complete 5 ${t.allBadges.running.toLowerCase()}s`, required: 5, color: '#EF4444' },
+    { id: 'running_pro', sport: 'running', name: t.allBadges.tiers.marathoner, icon: '🏃‍♂️', image: badgeImages.running, description: `Complete 10 ${t.allBadges.running.toLowerCase()}s`, required: 10, color: '#EF4444' },
+    { id: 'running_legend', sport: 'running', name: `${t.allBadges.running} ${t.allBadges.tiers.legend}`, icon: '🏆', image: badgeImages.running, description: `Complete 20 ${t.allBadges.running.toLowerCase()}s`, required: 20, color: '#FFD700' },
+
 
     // Volleyball Badges
-    { id: 'volleyball_rookie', sport: 'volleyball', name: 'Volleyball Rookie', icon: '🏐', description: 'Play 1 volleyball game', required: 1, color: '#3B82F6' },
-    { id: 'volleyball_player', sport: 'volleyball', name: 'Volleyball Player', icon: '🏐', description: 'Play 5 volleyball games', required: 5, color: '#3B82F6' },
+    { id: 'volleyball_rookie', sport: 'volleyball', name: `${t.allBadges.volleyball} ${t.allBadges.tiers.rookie}`, icon: '🏐', image: badgeImages.volleyball, description: `Play 1 ${t.allBadges.volleyball.toLowerCase()} game`, required: 1, color: '#3B82F6' },
+    { id: 'volleyball_player', sport: 'volleyball', name: `${t.allBadges.volleyball} ${t.allBadges.tiers.player}`, icon: '🏐', image: badgeImages.volleyball, description: `Play 5 ${t.allBadges.volleyball.toLowerCase()} games`, required: 5, color: '#3B82F6' },
 
     // Cycling Badges
-    { id: 'cycling_rookie', sport: 'cycling', name: 'Cycling Rookie', icon: '🚴‍♂️', description: 'Complete 1 ride', required: 1, color: '#8B5CF6' },
-    { id: 'cycling_player', sport: 'cycling', name: 'Cycling Enthusiast', icon: '🚴‍♂️', description: 'Complete 5 rides', required: 5, color: '#8B5CF6' },
-    { id: 'cycling_pro', sport: 'cycling', name: 'Cycling Pro', icon: '🚴‍♂️', description: 'Complete 10 rides', required: 10, color: '#8B5CF6' },
+    { id: 'cycling_rookie', sport: 'cycling', name: `${t.allBadges.cycling} ${t.allBadges.tiers.rookie}`, icon: '🚴‍♂️', image: badgeImages.cycling, description: `Complete 1 ${t.allBadges.cycling.toLowerCase()}`, required: 1, color: '#8B5CF6' },
+    { id: 'cycling_player', sport: 'cycling', name: `${t.allBadges.cycling} ${t.allBadges.tiers.enthusiast}`, icon: '🚴‍♂️', image: badgeImages.cycling, description: `Complete 5 ${t.allBadges.cycling.toLowerCase()}s`, required: 5, color: '#8B5CF6' },
+    { id: 'cycling_pro', sport: 'cycling', name: `${t.allBadges.cycling} ${t.allBadges.tiers.pro}`, icon: '🚴‍♂️', image: badgeImages.cycling, description: `Complete 10 ${t.allBadges.cycling.toLowerCase()}s`, required: 10, color: '#8B5CF6' },
 
     // Gym Badges
-    { id: 'gym_rookie', sport: 'gym', name: 'Gym Rookie', icon: '💪', description: 'Complete 1 gym session', required: 1, color: '#6B7280' },
-    { id: 'gym_player', sport: 'gym', name: 'Gym Regular', icon: '💪', description: 'Complete 5 gym sessions', required: 5, color: '#6B7280' },
-    { id: 'gym_pro', sport: 'gym', name: 'Gym Pro', icon: '💪', description: 'Complete 10 gym sessions', required: 10, color: '#6B7280' },
+    { id: 'gym_rookie', sport: 'gym', name: `${t.allBadges.gym} ${t.allBadges.tiers.rookie}`, icon: '💪', image: badgeImages.gym, description: `Complete 1 ${t.allBadges.gym.toLowerCase()} session`, required: 1, color: '#6B7280' },
+    { id: 'gym_player', sport: 'gym', name: `${t.allBadges.gym} ${t.allBadges.tiers.regular}`, icon: '💪', image: badgeImages.gym, description: `Complete 5 ${t.allBadges.gym.toLowerCase()} sessions`, required: 5, color: '#6B7280' },
+    { id: 'gym_pro', sport: 'gym', name: `${t.allBadges.gym} ${t.allBadges.tiers.pro}`, icon: '💪', image: badgeImages.gym, description: `Complete 10 ${t.allBadges.gym.toLowerCase()} sessions`, required: 10, color: '#6B7280' },
 
     // Swimming Badges
-    { id: 'swimming_rookie', sport: 'swimming', name: 'Swimming Rookie', icon: '🏊‍♂️', description: 'Complete 1 swim', required: 1, color: '#06B6D4' },
-    { id: 'swimming_player', sport: 'swimming', name: 'Swimming Enthusiast', icon: '🏊‍♂️', description: 'Complete 5 swims', required: 5, color: '#06B6D4' },
+    { id: 'swimming_rookie', sport: 'swimming', name: `${t.allBadges.swimming} ${t.allBadges.tiers.rookie}`, icon: '🏊‍♂️', image: badgeImages.swimming, description: `Complete 1 ${t.allBadges.swimming.toLowerCase()} swim`, required: 1, color: '#06B6D4' },
+    { id: 'swimming_player', sport: 'swimming', name: `${t.allBadges.swimming} ${t.allBadges.tiers.enthusiast}`, icon: '🏊‍♂️', image: badgeImages.swimming, description: `Complete 5 ${t.allBadges.swimming.toLowerCase()} swims`, required: 5, color: '#06B6D4' },
 
     // Special Badges
-    { id: 'all_rounder', sport: 'special', name: 'All-Rounder', icon: '⭐', description: 'Play 3 different sports', required: 3, color: '#FFD700' },
-    { id: 'social_butterfly', sport: 'special', name: 'Social Butterfly', icon: '🦋', description: 'Join 10 events total', required: 10, color: '#EC4899' },
+    { id: 'all_rounder', sport: 'special', name: t.allBadges.specialBadges.allRounderName, icon: '⭐', image: badgeImages.allrounder, description: t.allBadges.specialBadges.allRounderRequirement, required: 3, color: '#FFD700' },
+    { id: 'social_butterfly', sport: 'special', name: t.allBadges.specialBadges.socialButterflyName, icon: '🤝', image: badgeImages.community_star, description: t.allBadges.specialBadges.socialButterflyRequirement, required: 10, color: '#EC4899' },
   ];
 
   // Calculate earned badges based on game stats
@@ -379,7 +394,7 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <SMLogo />
         <Text style={styles.headerTitle}>{isOwnProfile ? t.profile.title : profile?.display_name}</Text>
-        {isOwnProfile ? (
+        {isOwnProfile && (
           <TouchableOpacity
             style={styles.editButton}
             onPress={() => navigation.navigate(ROUTES.EDIT_PROFILE)}
@@ -387,16 +402,9 @@ export default function ProfileScreen() {
           >
             <Ionicons name="create-outline" size={24} color="#000000" />
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => navigation.navigate(ROUTES.CHAT, { userId: targetUserId })}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chatbubble-ellipses-outline" size={24} color="#FFD700" />
-          </TouchableOpacity>
         )}
       </View>
+
 
       <ScrollView
         style={styles.scrollView}
@@ -422,7 +430,8 @@ export default function ProfileScreen() {
                 {isUploadingPhoto ? (
                   <View style={styles.uploadingContainer}>
                     <ActivityIndicator size="large" color="#FFD700" />
-                    <Text style={styles.uploadingText}>Uploading...</Text>
+                    <Text style={styles.uploadingText}>{t.profile.uploading}</Text>
+
                   </View>
                 ) : profile?.avatar_url ? (
                   <Image source={{ uri: profile.avatar_url }} style={styles.profileImage} />
@@ -447,8 +456,9 @@ export default function ProfileScreen() {
           </View>
 
           {/* User Info */}
-          <Text style={styles.userName}>{profile?.display_name || 'User'}</Text>
-          <Text style={styles.userHandle}>{getUserHandle(profile?.display_name || 'user')}</Text>
+          <Text style={styles.userName}>{profile?.display_name || t.profile.userDefault}</Text>
+          <Text style={styles.userHandle}>{getUserHandle(profile?.display_name || t.profile.userDefault.toLowerCase())}</Text>
+
           <Text style={styles.joinDate}>
             {t.profile.joined} {getJoinYear(profile?.created_at || new Date().toISOString())}
           </Text>
@@ -499,9 +509,14 @@ export default function ProfileScreen() {
               <View key={badge.id} style={styles.carouselBadgeCard}>
                 <View style={[
                   styles.carouselBadgeIcon,
-                  { backgroundColor: badge.color + '20' }
+                  { backgroundColor: '#F9FAFB' }
                 ]}>
-                  <Text style={styles.carouselBadgeEmoji}>{badge.icon}</Text>
+                  {badge.image ? (
+                    <Image source={badge.image} style={styles.carouselBadgeImage} />
+                  ) : (
+                    <Text style={styles.carouselBadgeEmoji}>{badge.icon}</Text>
+                  )}
+
                   <View style={styles.carouselEarnedBadge}>
                     <Ionicons name="checkmark-circle" size={18} color="#10B981" />
                   </View>
@@ -512,6 +527,7 @@ export default function ProfileScreen() {
               </View>
             ))}
           </ScrollView>
+
         ) : (
           <View style={styles.emptyBadges}>
             <Ionicons name="trophy-outline" size={48} color="#CCCCCC" />
@@ -524,7 +540,7 @@ export default function ProfileScreen() {
         <View style={styles.friendsSection}>
           <View style={styles.friendsHeader}>
             <Text style={styles.friendsTitle}>{t.profile.friends}</Text>
-            {isOwnProfile ? (
+            {isOwnProfile && (
               <TouchableOpacity
                 style={styles.addButton}
                 onPress={handleAddFriends}
@@ -533,15 +549,8 @@ export default function ProfileScreen() {
                 <Ionicons name="person-add" size={18} color="#FFD700" />
                 <Text style={styles.addButtonText}>{t.profile.addFriends}</Text>
               </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => navigation.navigate(ROUTES.ADD_FRIEND)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.addButtonText}>{t.profile.viewAll}</Text>
-              </TouchableOpacity>
             )}
+
           </View>
 
           {friends.length > 0 ? (
@@ -573,8 +582,9 @@ export default function ProfileScreen() {
               <Ionicons name="people-outline" size={48} color="#CCCCCC" />
               <Text style={styles.friendsPlaceholderText}>{t.profile.noFriends}</Text>
               <Text style={styles.friendsPlaceholderSubtext}>
-                {isOwnProfile ? t.profile.noFriendsSubtext : `${profile?.display_name || 'User'} has no friends yet.`}
+                {isOwnProfile ? t.profile.noFriendsSubtext : t.profile.noFriendsOther.replace('{name}', profile?.display_name || t.profile.userDefault)}
               </Text>
+
             </View>
           )}
         </View>
@@ -583,15 +593,18 @@ export default function ProfileScreen() {
         <View style={styles.groupsSection}>
           <View style={styles.groupsHeader}>
             <Text style={styles.groupsTitle}>{t.profile.groups}</Text>
-            <TouchableOpacity
-              style={styles.viewGroupsButton}
-              onPress={() => navigation.navigate(ROUTES.MY_GROUPS)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.viewGroupsText}>{t.profile.viewGroups}</Text>
-              <Ionicons name="chevron-forward" size={16} color="#FFD700" />
-            </TouchableOpacity>
+            {isOwnProfile && (
+              <TouchableOpacity
+                style={styles.viewGroupsButton}
+                onPress={() => navigation.navigate(ROUTES.MY_GROUPS)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.viewGroupsText}>{t.profile.viewGroups}</Text>
+                <Ionicons name="chevron-forward" size={16} color="#FFD700" />
+              </TouchableOpacity>
+            )}
           </View>
+
 
           {groups.length > 0 ? (
             <ScrollView
@@ -622,8 +635,9 @@ export default function ProfileScreen() {
               <Ionicons name="people-circle-outline" size={48} color="#CCCCCC" />
               <Text style={styles.groupsPlaceholderText}>{t.profile.noGroups}</Text>
               <Text style={styles.groupsPlaceholderSubtext}>
-                {isOwnProfile ? t.profile.noGroupsSubtext : `${profile?.display_name || 'User'} isn't in any groups yet.`}
+                {isOwnProfile ? t.profile.noGroupsSubtext : t.profile.noGroupsOther.replace('{name}', profile?.display_name || t.profile.userDefault)}
               </Text>
+
             </View>
           )}
         </View>
@@ -634,7 +648,7 @@ export default function ProfileScreen() {
 
       {/* Bottom Navigation */}
       <BottomNavBar activeTab="MyProfile" />
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 
@@ -849,7 +863,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
   },
+  carouselBadgeImage: {
+    width: 48,
+    height: 48,
+    resizeMode: 'contain',
+  },
   carouselBadgeName: {
+
     fontSize: 13,
     fontWeight: '600',
     color: '#000000',

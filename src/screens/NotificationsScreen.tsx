@@ -20,6 +20,10 @@ import { useNotificationManager } from '../hooks/useNotifications';
 import { NotificationData, NotificationType } from '../services/notificationService';
 import { useTranslation, Language } from '../contexts/TranslationContext';
 import { SMLogo } from '../components';
+import { friendService } from '../services/friendService';
+import { supabase } from '../config/supabase';
+import { useAuth } from '../contexts/AuthContext';
+
 
 const LOCALE_MAP: Record<Language, string> = {
   en: 'en-US',
@@ -34,6 +38,7 @@ export default function NotificationsScreen() {
   const navigation = useAppNavigation();
   const { t, language } = useTranslation();
   const locale = LOCALE_MAP[language] ?? 'en-US';
+  const { user } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -55,9 +60,123 @@ export default function NotificationsScreen() {
   const [selectedNotifications, setSelectedNotifications] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [processingRequests, setProcessingRequests] = useState<Set<string>>(new Set());
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+
+  // Real-time notifications subscription
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('notifications-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('[NotificationsScreen] New notification received:', payload);
+        refreshNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, refreshNotifications]);
+
+  // Handle Accept Friend Request
+  const handleAcceptFriendRequest = async (notification: NotificationData) => {
+    const senderId = notification.data?.senderId;
+    if (!senderId || !user?.id) {
+      Alert.alert('Error', 'Unable to accept request. Missing sender information.');
+      return;
+    }
+
+    setProcessingRequests(prev => new Set(prev).add(notification.id || ''));
+
+    try {
+      // Get the request ID from friend_requests table
+      const requestId = await friendService.getReceivedRequestIdFromUser(user.id, senderId);
+      if (!requestId) {
+        Alert.alert('Error', 'Friend request not found. It may have been cancelled.');
+        return;
+      }
+
+      const success = await friendService.acceptFriendRequest(requestId);
+      if (success) {
+        Alert.alert('Success', 'Friend request accepted! You are now friends.');
+        if (notification.id) {
+          await deleteNotification(notification.id);
+        }
+        await refreshNotifications();
+      } else {
+        Alert.alert('Error', 'Failed to accept friend request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+      Alert.alert('Error', 'An error occurred. Please try again.');
+    } finally {
+      setProcessingRequests(prev => {
+        const next = new Set(prev);
+        next.delete(notification.id || '');
+        return next;
+      });
+    }
+  };
+
+  // Handle Decline Friend Request
+  const handleDeclineFriendRequest = async (notification: NotificationData) => {
+    const senderId = notification.data?.senderId;
+    if (!senderId || !user?.id) {
+      Alert.alert('Error', 'Unable to decline request. Missing sender information.');
+      return;
+    }
+
+    Alert.alert(
+      'Decline Friend Request',
+      'Are you sure you want to decline this friend request?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Decline',
+          style: 'destructive',
+          onPress: async () => {
+            setProcessingRequests(prev => new Set(prev).add(notification.id || ''));
+
+            try {
+              const requestId = await friendService.getReceivedRequestIdFromUser(user.id, senderId);
+              if (!requestId) {
+                Alert.alert('Error', 'Friend request not found.');
+                return;
+              }
+
+              const success = await friendService.declineFriendRequest(requestId);
+              if (success) {
+                if (notification.id) {
+                  await deleteNotification(notification.id);
+                }
+                await refreshNotifications();
+              } else {
+                Alert.alert('Error', 'Failed to decline friend request.');
+              }
+            } catch (error) {
+              console.error('Error declining friend request:', error);
+              Alert.alert('Error', 'An error occurred.');
+            } finally {
+              setProcessingRequests(prev => {
+                const next = new Set(prev);
+                next.delete(notification.id || '');
+                return next;
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const getNotificationCopy = useCallback(
     (notification: NotificationData) => {
@@ -66,6 +185,20 @@ export default function NotificationsScreen() {
       }
 
       const data = notification.data || {};
+
+      // OPTIMIZATION: If we have a descriptive title and body from the server, 
+      // and it's not a type that requires complex local variable replacement (like reminders),
+      // we should prefer the server-provided values to avoid localization sync issues.
+      const useServerContent = notification.title && notification.body &&
+        !['event_reminder', 'friend_request', 'group_invite'].includes(notification.type);
+
+      if (useServerContent) {
+        return {
+          title: notification.title,
+          body: notification.body,
+        };
+      }
+
       switch (notification.type) {
         case 'friend_request': {
           const name = data.senderName || data.sender_id || 'Someone';
@@ -86,18 +219,52 @@ export default function NotificationsScreen() {
         }
         case 'event_reminder': {
           const eventName = data.eventName || notification.title || 'Event';
-          const reminderOffset = data.reminder || data.offsetHours || '12h';
-          const bodyText =
-            reminderOffset === '1h' || reminderOffset === 1
-              ? t.notifications.reminder1h.replace('{event}', String(eventName))
-              : t.notifications.reminder12h.replace('{event}', String(eventName));
+          const reminderOffset = data.reminder || data.offsetHours || '24h';
+
+          let bodyText = '';
+          if (reminderOffset === '1h' || reminderOffset === 1) {
+            bodyText = t.notifications.reminder1h.replace('{event}', String(eventName));
+          } else if (reminderOffset === '24h' || reminderOffset === 24) {
+            bodyText = (t.notifications.reminder24h || '{event} starts in 24 hours.').replace('{event}', String(eventName));
+          } else if (reminderOffset === '12h' || reminderOffset === 12) {
+            bodyText = t.notifications.reminder12h.replace('{event}', String(eventName));
+          } else {
+            bodyText = t.notifications.reminder12h.replace('{event}', String(eventName));
+          }
 
           return {
-            title: t.notifications.title,
+            title: notification.title || t.notifications.title,
             body: bodyText,
           };
         }
+        case 'event_participant_joined': {
+          const eventName = data.eventName || 'an event';
+          return {
+            title: t.notifications.participantJoinedTitle || 'New Participant',
+            body: (t.notifications.participantJoinedBody || 'Someone joined {event}')
+              .replace('{event}', String(eventName)),
+          };
+        }
+        case 'event_cancelled': {
+          const eventName = data.eventName || 'an event';
+          return {
+            title: t.notifications.eventCancelledTitle || 'Event Cancelled',
+            body: (t.notifications.eventCancelledBody || '{event} has been cancelled')
+              .replace('{event}', String(eventName)),
+          };
+        }
+        case 'event_invitation': {
+          const inviterName = data.inviterName || 'Someone';
+          const eventName = data.eventName || 'an event';
+          return {
+            title: t.notifications.eventInviteTitle || 'Event Invitation',
+            body: (t.notifications.eventInviteBody || '{name} invited you to {event}')
+              .replace('{name}', String(inviterName))
+              .replace('{event}', String(eventName)),
+          };
+        }
         default:
+
           return {
             title: notification.title,
             body: notification.body,
@@ -161,7 +328,13 @@ export default function NotificationsScreen() {
   const handleNotificationNavigation = (notification: NotificationData) => {
     switch (notification.type) {
       case 'friend_request':
-        navigation.navigate('FriendRequests');
+        // Handle inline with Accept/Decline buttons - no navigation needed
+        break;
+
+      case 'friend_request_accepted':
+        if (notification.data?.acceptorId) {
+          navigation.navigate('Profile', { userId: notification.data.acceptorId });
+        }
         break;
       case 'event_invitation':
       case 'event_updated':
@@ -169,13 +342,22 @@ export default function NotificationsScreen() {
       case 'event_reminder':
       case 'event_starting_soon':
       case 'event_participant_joined':
+      case 'event_created':
         const eventId = notification.data?.event_id || notification.data?.eventId;
         if (eventId) {
           navigation.navigate('EventDetails', { id: eventId } as any);
         }
         break;
       case 'group_invite':
-        navigation.navigate(ROUTES.MY_GROUPS);
+      case 'group_invite_accepted':
+        if (notification.data?.groupId) {
+          navigation.navigate('GroupDetails' as any, { groupId: notification.data.groupId });
+        } else {
+          navigation.navigate(ROUTES.MY_GROUPS);
+        }
+        break;
+      case 'achievement_unlocked':
+        navigation.navigate('AllBadges');
         break;
       case 'chat_message':
         if (notification.data?.chat_id) {
@@ -292,6 +474,8 @@ export default function NotificationsScreen() {
       weather_alert: '🌤️',
       achievement_unlocked: '🏆',
       friend_activity: '🎯',
+      event_created: '🎉',
+      group_invite_accepted: '🤝',
       general: '🔔',
     };
     return icons[type] || '🔔';
@@ -317,28 +501,54 @@ export default function NotificationsScreen() {
       weather_alert: '#FFC107',
       achievement_unlocked: '#FFD700',
       friend_activity: '#E91E63',
+      event_created: '#4CAF50',
+      group_invite_accepted: '#3B82F6',
       general: '#666666',
     };
     return colors[type] || '#666666';
   };
 
   const formatNotificationTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
-    if (diffMinutes < 1) return rtf.format(0, 'minute');
-    if (diffMinutes < 60) return rtf.format(-diffMinutes, 'minute');
+      // Check if Intl.RelativeTimeFormat is available
+      const hasRelativeTimeFormat =
+        typeof Intl !== 'undefined' &&
+        typeof Intl.RelativeTimeFormat === 'function';
 
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return rtf.format(-diffHours, 'hour');
+      if (!hasRelativeTimeFormat) {
+        if (diffMinutes < 1) return 'Just now';
+        if (diffMinutes < 60) return `${diffMinutes}m ago`;
 
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return rtf.format(-diffDays, 'day');
+        const diffHours = Math.floor(diffMinutes / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
 
-    return date.toLocaleDateString(locale);
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 7) return `${diffDays}d ago`;
+
+        return date.toLocaleDateString();
+      }
+
+      const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+
+      if (diffMinutes < 1) return rtf.format(0, 'minute');
+      if (diffMinutes < 60) return rtf.format(-diffMinutes, 'minute');
+
+      const diffHours = Math.floor(diffMinutes / 60);
+      if (diffHours < 24) return rtf.format(-diffHours, 'hour');
+
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays < 7) return rtf.format(-diffDays, 'day');
+
+      return date.toLocaleDateString(locale);
+    } catch (e) {
+      console.error('Error formatting notification time:', e);
+      return '';
+    }
   };
 
   const filteredNotifications = getFilteredNotifications();
@@ -517,6 +727,15 @@ export default function NotificationsScreen() {
                               </Text>
                             </View>
 
+                            {!isSelectionMode && (
+                              <TouchableOpacity
+                                style={styles.dismissButton}
+                                onPress={() => notification.id && deleteNotification(notification.id)}
+                              >
+                                <Text style={styles.dismissIcon}>×</Text>
+                              </TouchableOpacity>
+                            )}
+
                             {isSelectionMode && notification.id && (
                               <TouchableOpacity
                                 style={[styles.selectionIndicator, selectedNotifications.has(notification.id) && styles.selectionIndicatorSelected]}
@@ -533,12 +752,37 @@ export default function NotificationsScreen() {
                             {copy.body}
                           </Text>
 
+                          {/* Accept/Decline buttons for friend requests */}
+                          {notification.type === 'friend_request' && !isSelectionMode && (
+                            <View style={styles.friendRequestActions}>
+                              {processingRequests.has(notification.id || '') ? (
+                                <ActivityIndicator size="small" color="#FFD700" />
+                              ) : (
+                                <>
+                                  <TouchableOpacity
+                                    style={styles.acceptButton}
+                                    onPress={() => handleAcceptFriendRequest(notification)}
+                                  >
+                                    <Text style={styles.acceptButtonText}>Accept</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={styles.declineButton}
+                                    onPress={() => handleDeclineFriendRequest(notification)}
+                                  >
+                                    <Text style={styles.declineButtonText}>Decline</Text>
+                                  </TouchableOpacity>
+                                </>
+                              )}
+                            </View>
+                          )}
+
                           {notification.image_url && (
                             <View style={styles.notificationImageContainer}>
                               <Text style={styles.notificationImagePlaceholder}>📷</Text>
                             </View>
                           )}
                         </View>
+
                       </TouchableOpacity>
                     );
                   })}
@@ -856,6 +1100,16 @@ const styles = StyleSheet.create({
   notificationInfo: {
     flex: 1,
   },
+  dismissButton: {
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dismissIcon: {
+    fontSize: 22,
+    color: '#8e8e93',
+    fontWeight: '300',
+  },
   notificationTitle: {
     fontSize: 16,
     fontWeight: '500',
@@ -956,5 +1210,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#000000',
+  },
+  // Friend request action buttons
+  friendRequestActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  acceptButton: {
+    flex: 1,
+    backgroundColor: '#FFD700', // Yellow - app primary color
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  acceptButtonText: {
+    color: '#000000', // Black text
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  declineButton: {
+    flex: 1,
+    backgroundColor: '#000000', // Black background
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  declineButtonText: {
+    color: '#FFD700', // Yellow text
+    fontWeight: '600',
+    fontSize: 14,
   },
 });

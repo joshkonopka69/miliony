@@ -425,8 +425,9 @@ class GroupService {
         return [];
       }
 
-      return data?.map(item => item.groups).filter(Boolean) || [];
+      return (data?.map(item => (item as any).groups).filter(Boolean) || []) as Group[];
     } catch (error) {
+
       console.error('Error fetching user groups:', error);
       return [];
     }
@@ -604,12 +605,13 @@ class GroupService {
         .insert({
           group_id: groupId,
           invited_user_id: invitedUserId,
-          invited_by,
+          invited_by: invitedBy,
           message,
           status: 'pending',
           created_at: new Date().toISOString(),
           expires_at: expiresAt.toISOString(),
         })
+
         .select(`
           *,
           group:groups (*),
@@ -629,19 +631,14 @@ class GroupService {
       if (invitedUserId) {
         const inviterName = data?.inviter?.display_name || 'Someone';
         const groupName = data?.group?.name || 'your group';
-        await notificationService.sendNotificationWithStorage(invitedUserId, {
-          title: 'Group Invitation',
-          body: `${inviterName} invited you to join ${groupName}.`,
-          type: 'group_invite',
-          data: {
-            groupId,
-            invitationId: data?.id,
-            groupName,
-            inviterId: invitedBy,
-            inviterName,
-          },
-        });
+        await notificationService.sendGroupInviteNotification(
+          invitedUserId,
+          inviterName,
+          groupName,
+          groupId
+        );
       }
+
 
       return data;
     } catch (error) {
@@ -680,6 +677,30 @@ class GroupService {
       if (updateError) {
         console.error('Error updating invitation:', updateError);
         return false;
+      }
+
+      // Notify the original inviter
+      try {
+        const { data: details } = await supabase
+          .from('group_invitations')
+          .select(`
+            invited_by,
+            group:groups (name),
+            acceptor:users (display_name)
+          `)
+          .eq('id', invitationId)
+          .single();
+
+        if (details?.invited_by && details.group && details.acceptor) {
+          await notificationService.sendGroupInviteAcceptedNotification(
+            details.invited_by,
+            (details.acceptor as any).display_name,
+            (details.group as any).name,
+            invitation.group_id
+          );
+        }
+      } catch (notifyError) {
+        console.error('Error sending group invite accepted notification:', notifyError);
       }
 
       return true;

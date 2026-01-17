@@ -28,6 +28,16 @@ interface Location {
   address: string;
 }
 
+export interface EventFormData {
+  title: string;
+  description: string;
+  sportType: string;
+  dateTime: Date;
+  playersNeeded: number;
+  playersConfirmed: number;
+  skillLevel: string;
+}
+
 interface CreateEventModalProps {
   visible: boolean;
   location: Location | null;
@@ -40,12 +50,25 @@ const SPORT_TYPES = [
   { value: 'football', label: 'Football', emoji: '⚽', icon: 'football-outline' },
   { value: 'running', label: 'Running', emoji: '🏃‍♂️', icon: 'walk-outline' },
   { value: 'tennis', label: 'Tennis', emoji: '🎾', icon: 'tennisball-outline' },
+  { value: 'volleyball', label: 'Volleyball', emoji: '🏐', icon: 'american-football-outline' },
   { value: 'cycling', label: 'Cycling', emoji: '🚴‍♂️', icon: 'bicycle-outline' },
   { value: 'swimming', label: 'Swimming', emoji: '🏊‍♂️', icon: 'water-outline' },
   { value: 'gym', label: 'Gym/Fitness', emoji: '💪', icon: 'barbell-outline' },
-  { value: 'volleyball', label: 'Volleyball', emoji: '🏐', icon: 'american-football-outline' },
-  { value: 'climbing', label: 'Climbing', emoji: '🧗‍♂️', icon: 'bonfire-outline' },
-  { value: 'boxing', label: 'Boxing', emoji: '🥊', icon: 'fitness-outline' },
+  { value: 'judo', label: 'Judo', emoji: '🥋', icon: 'fitness-outline' },
+  { value: 'wrestling', label: 'Wrestling', emoji: '🤼‍♂️', icon: 'fitness-outline' },
+  { value: 'muay thai', label: 'Muay Thai', emoji: '🥊', icon: 'fitness-outline' },
+  { value: 'kickboxing', label: 'Kickboxing', emoji: '🥊', icon: 'fitness-outline' },
+  { value: 'padel', label: 'Padel', emoji: '🎾', icon: 'tennisball-outline' },
+  { value: 'squash', label: 'Squash', emoji: '🎾', icon: 'tennisball-outline' },
+  { value: 'badminton', label: 'Badminton', emoji: '🏸', icon: 'tennisball-outline' },
+  { value: 'table tennis', label: 'Table Tennis', emoji: '🏓', icon: 'tennisball-outline' },
+  { value: 'rollerblading', label: 'Rollerblading', emoji: '🛼', icon: 'bicycle-outline' },
+  { value: 'ice skating', label: 'Ice Skating', emoji: '⛸️', icon: 'snow-outline' },
+  { value: 'skating', label: 'Skating', emoji: '🛹', icon: 'bicycle-outline' },
+  { value: 'climbing', label: 'Bouldering/Climbing', emoji: '🧗‍♂️', icon: 'bonfire-outline' },
+  { value: 'yoga', label: 'Yoga', emoji: '🧘', icon: 'body-outline' },
+  { value: 'pilates', label: 'Pilates', emoji: '🧘', icon: 'body-outline' },
+  { value: 'crossfit', label: 'Crossfit', emoji: '🏋️‍♂️', icon: 'barbell-outline' },
 ];
 
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
@@ -436,7 +459,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  sportChipActive: { backgroundColor: theme.colors.accent + '20', borderColor: theme.colors.accent },
+  sportChipActive: { backgroundColor: '#FFFFFF', borderColor: theme.colors.accent, borderWidth: 2 },
   sportEmoji: { fontSize: 18, marginRight: 6 },
   sportLabel: { fontSize: 14, color: '#4B5563', fontWeight: '500' },
   sportLabelActive: { color: theme.colors.accentDark, fontWeight: '700' },

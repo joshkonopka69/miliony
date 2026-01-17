@@ -15,6 +15,7 @@ interface User {
   avatar_url?: string;
   isFriend: boolean;
   friendshipStatus?: 'none' | 'pending' | 'accepted' | 'blocked';
+  isPendingSender?: boolean; // true if I SENT the pending request, false if I RECEIVED it
   mutualFriends?: number;
 }
 
@@ -52,46 +53,81 @@ export default function AddFriendScreen() {
     navigation.goBack();
   };
 
+  // Debounce timer ref
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
     if (query.length > 2) {
-      const userId = getUserId();
-      if (!userId) {
-        Alert.alert(t.common.error, t.friends.loginRequired);
-        return;
-      }
+      // Debounce search by 300ms
+      searchTimeoutRef.current = setTimeout(async () => {
+        const userId = getUserId();
+        if (!userId) {
+          Alert.alert(t.common.error, t.friends.loginRequired);
+          return;
+        }
 
-      setIsSearching(true);
-      try {
-        // Search for users
-        const users = await supabaseService.searchUsers(query, userId);
+        setIsSearching(true);
+        try {
+          // Search for users
+          const users = await supabaseService.searchUsers(query, userId);
 
-        // Check friendship status and mutual friends for each user
-        const usersWithStatus = await Promise.all(
-          users.map(async (user: any) => {
-            const [status, mutualCount] = await Promise.all([
-              supabaseService.getFriendshipStatus(userId, user.id),
-              friendService.getMutualFriendsCount(userId, user.id)
-            ]);
+          if (users.length === 0) {
+            setSearchResults([]);
+            setIsSearching(false);
+            return;
+          }
+
+          // Get user IDs for batch query
+          const userIds = users.map((user: any) => user.id);
+
+          // OPTIMIZED: Batch get friendship status and friend requests in parallel
+          // Only 2 API calls total instead of 4*N where N = number of users
+          const [friendRequestStatus] = await Promise.all([
+            friendService.getBatchFriendRequestStatus(userId, userIds),
+          ]);
+
+          // Map results - no individual API calls per user!
+          const usersWithStatus = users.map((user: any) => {
+            const requestStatus = friendRequestStatus.get(user.id) || { sentRequestId: null, receivedRequestId: null };
+
+            const isPendingSender = requestStatus.sentRequestId !== null;
+            const isPendingReceiver = requestStatus.receivedRequestId !== null;
+
+            // If there's a pending request, show pending status
+            // Otherwise check if already friends from the friends set
+            let effectiveStatus: 'none' | 'pending' | 'accepted' | 'blocked' = 'none';
+            if (isPendingSender || isPendingReceiver) {
+              effectiveStatus = 'pending';
+            } else if (friends.has(user.id)) {
+              effectiveStatus = 'accepted';
+            }
 
             return {
               id: user.id,
               display_name: user.display_name,
               avatar_url: user.avatar_url,
-              isFriend: status === 'accepted',
-              friendshipStatus: status,
-              mutualFriends: mutualCount,
+              isFriend: friends.has(user.id),
+              friendshipStatus: effectiveStatus,
+              isPendingSender, // true = I sent, false = They sent (or no pending)
+              mutualFriends: 0, // Skip expensive mutual friends count for performance
             };
-          })
-        );
+          });
 
-        setSearchResults(usersWithStatus);
-      } catch (error: any) {
-        console.error('Error searching users:', error);
-        Alert.alert(t.common.error, error.message || t.common.error);
-      } finally {
-        setIsSearching(false);
-      }
+          setSearchResults(usersWithStatus);
+        } catch (error: any) {
+          console.error('Error searching users:', error);
+          Alert.alert(t.common.error, error.message || t.common.error);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 300); // 300ms debounce
     } else {
       setSearchResults([]);
     }
@@ -113,19 +149,147 @@ export default function AddFriendScreen() {
           text: t.friends.sendRequest,
           onPress: async () => {
             try {
-              await supabaseService.sendFriendRequest(userId, friendId);
+              // Use friendService which correctly inserts into friend_requests table
+              const success = await friendService.sendFriendRequest(userId, friendId, `Hi ${userName}!`);
+              if (!success) {
+                Alert.alert(t.common.error, 'Failed to send friend request.');
+                return;
+              }
               Alert.alert(t.common.success, t.friends.addSuccess.replace('{name}', userName));
 
-              // Update search results to show pending status
+              // Update search results to show pending status AND mark as sender
               setSearchResults(prev =>
                 prev.map(user =>
                   user.id === friendId
-                    ? { ...user, friendshipStatus: 'pending' as const }
+                    ? { ...user, friendshipStatus: 'pending' as const, isPendingSender: true }
                     : user
                 )
               );
             } catch (error: any) {
               console.error('Error sending friend request:', error);
+              Alert.alert(t.common.error, error.message || t.common.error);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleCancelRequest = async (receiverId: string, userName: string) => {
+    const userId = getUserId();
+    if (!userId) {
+      Alert.alert(t.common.error, t.friends.loginRequired);
+      return;
+    }
+
+    Alert.alert(
+      'Cancel Request',
+      `Cancel friend request to ${userName}?`,
+      [
+        { text: t.common.cancel, style: 'cancel' },
+        {
+          text: 'Cancel Request',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const requestId = await friendService.getPendingRequestIdToUser(userId, receiverId);
+
+              if (!requestId) {
+                Alert.alert(t.common.error, 'No pending request found.');
+                return;
+              }
+
+              await friendService.cancelFriendRequest(requestId);
+              Alert.alert(t.common.success, 'Friend request cancelled.');
+
+              setSearchResults(prev =>
+                prev.map(user =>
+                  user.id === receiverId
+                    ? { ...user, friendshipStatus: 'none' as const }
+                    : user
+                )
+              );
+            } catch (error: any) {
+              console.error('Error cancelling friend request:', error);
+              Alert.alert(t.common.error, error.message || t.common.error);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleAcceptRequest = async (senderId: string, senderName: string) => {
+    const userId = getUserId();
+    if (!userId) {
+      Alert.alert(t.common.error, t.friends.loginRequired);
+      return;
+    }
+
+    try {
+      const requestId = await friendService.getReceivedRequestIdFromUser(userId, senderId);
+      if (!requestId) {
+        Alert.alert(t.common.error, 'No pending request found.');
+        return;
+      }
+
+      const success = await friendService.acceptFriendRequest(requestId);
+      if (success) {
+        Alert.alert(t.common.success, `You are now friends with ${senderName}!`);
+        setSearchResults(prev =>
+          prev.map(user =>
+            user.id === senderId
+              ? { ...user, isFriend: true, friendshipStatus: 'accepted' as const }
+              : user
+          )
+        );
+      } else {
+        Alert.alert(t.common.error, 'Failed to accept friend request.');
+      }
+    } catch (error: any) {
+      console.error('Error accepting friend request:', error);
+      Alert.alert(t.common.error, error.message || t.common.error);
+    }
+  };
+
+  const handleDeclineRequest = async (senderId: string, senderName: string) => {
+    const userId = getUserId();
+    if (!userId) {
+      Alert.alert(t.common.error, t.friends.loginRequired);
+      return;
+    }
+
+    Alert.alert(
+      'Decline Request',
+      `Decline friend request from ${senderName}?`,
+      [
+        { text: t.common.cancel, style: 'cancel' },
+        {
+          text: 'Decline',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const requestId = await friendService.getReceivedRequestIdFromUser(userId, senderId);
+              if (!requestId) {
+                Alert.alert(t.common.error, 'No pending request found.');
+                return;
+              }
+
+              const success = await friendService.declineFriendRequest(requestId);
+              if (success) {
+                Alert.alert(t.common.success, 'Friend request declined.');
+                setSearchResults(prev =>
+                  prev.map(user =>
+                    user.id === senderId
+                      ? { ...user, friendshipStatus: 'none' as const }
+                      : user
+                  )
+                );
+              } else {
+                Alert.alert(t.common.error, 'Failed to decline friend request.');
+              }
+            } catch (error: any) {
+              console.error('Error declining friend request:', error);
               Alert.alert(t.common.error, error.message || t.common.error);
             }
           }
@@ -188,19 +352,27 @@ export default function AddFriendScreen() {
     };
 
     const getButtonText = () => {
-      if (item.friendshipStatus === 'pending') return t.friends.pending;
+      if (item.friendshipStatus === 'pending') {
+        // isPendingSender = true means I sent it, show Cancel
+        // isPendingSender = false means They sent it to me, show Accept
+        return item.isPendingSender ? (t.common.cancel || 'Cancel') : 'Accept';
+      }
       if (item.isFriend) return t.friends.remove;
       return t.friends.add;
     };
 
     const getButtonStyle = () => {
-      if (item.friendshipStatus === 'pending') return styles.pendingButton;
+      if (item.friendshipStatus === 'pending') {
+        return item.isPendingSender ? styles.pendingButton : styles.acceptButton;
+      }
       if (item.isFriend) return styles.removeButton;
       return styles.addButton;
     };
 
     const getButtonTextStyle = () => {
-      if (item.friendshipStatus === 'pending') return styles.pendingButtonText;
+      if (item.friendshipStatus === 'pending') {
+        return item.isPendingSender ? styles.pendingButtonText : styles.acceptButtonText;
+      }
       if (item.isFriend) return styles.removeButtonText;
       return styles.addButtonText;
     };
@@ -225,19 +397,43 @@ export default function AddFriendScreen() {
             </Text>
           )}
         </View>
-        <TouchableOpacity
-          style={[styles.actionButton, getButtonStyle()]}
-          onPress={() =>
-            item.isFriend
-              ? handleRemoveFriend(item.id, item.display_name)
-              : handleAddFriend(item.id, item.display_name)
-          }
-          disabled={item.friendshipStatus === 'pending'}
-        >
-          <Text style={[styles.actionButtonText, getButtonTextStyle()]}>
-            {getButtonText()}
-          </Text>
-        </TouchableOpacity>
+
+        {/* Show different buttons based on request direction */}
+        {item.friendshipStatus === 'pending' && !item.isPendingSender ? (
+          // I RECEIVED a request - show Accept and Decline buttons
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.acceptButton]}
+              onPress={() => handleAcceptRequest(item.id, item.display_name)}
+            >
+              <Text style={[styles.actionButtonText, styles.acceptButtonText]}>Accept</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.declineButton]}
+              onPress={() => handleDeclineRequest(item.id, item.display_name)}
+            >
+              <Text style={[styles.actionButtonText, styles.declineButtonText]}>Decline</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // Normal single button (Add, Cancel, Remove)
+          <TouchableOpacity
+            style={[styles.actionButton, getButtonStyle()]}
+            onPress={() => {
+              if (item.friendshipStatus === 'pending' && item.isPendingSender) {
+                handleCancelRequest(item.id, item.display_name);
+              } else if (item.isFriend) {
+                handleRemoveFriend(item.id, item.display_name);
+              } else {
+                handleAddFriend(item.id, item.display_name);
+              }
+            }}
+          >
+            <Text style={[styles.actionButtonText, getButtonTextStyle()]}>
+              {getButtonText()}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -408,11 +604,11 @@ const styles = StyleSheet.create({
   logoBackground: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#FFD700',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#fbbf24',
+    shadowColor: '#FFD700',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -571,6 +767,26 @@ const styles = StyleSheet.create({
   },
   pendingButtonText: {
     color: '#6b7280',
+  },
+  acceptButton: {
+    backgroundColor: '#FFD700', // Yellow - app primary color
+    borderColor: '#FFD700',
+    marginRight: 4,
+  },
+  acceptButtonText: {
+    color: '#000000', // Black text
+  },
+  declineButton: {
+    backgroundColor: '#000000', // Black background
+    borderColor: '#000000',
+    marginLeft: 4,
+  },
+  declineButtonText: {
+    color: '#FFD700', // Yellow text
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   emptyState: {
     alignItems: 'center',

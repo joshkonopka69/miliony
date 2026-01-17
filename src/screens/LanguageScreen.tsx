@@ -203,8 +203,8 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   selectedLanguageItem: {
-    backgroundColor: '#fbbf24',
-    borderColor: '#fbbf24',
+    backgroundColor: '#FFD700',
+    borderColor: '#FFD700',
   },
   languageName: {
     fontSize: 16,

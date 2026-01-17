@@ -475,7 +475,7 @@ class PrivacyService {
         supabase.from('privacy_settings').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('consent_settings').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('user_activities').select('*').eq('user_id', userId),
-        supabase.from('friendships').select('*').eq('user_id', userId),
+        supabase.from('user_friendships').select('*').eq('user_id', userId),
         supabase.from('events').select('*').eq('created_by', userId),
         supabase.from('event_messages').select('*').eq('sender_id', userId),
       ]);
@@ -515,7 +515,7 @@ class PrivacyService {
         'consent_settings',
         'data_retention_settings',
         'user_activities',
-        'friendships',
+        'user_friendships',
         'friend_requests',
         'user_blocks',
         'user_reports',
@@ -561,7 +561,7 @@ class PrivacyService {
   }> {
     try {
       const issues: string[] = [];
-      
+
       // Check if user has accepted terms and privacy policy
       const consent = await this.getConsentSettings(userId);
       if (!consent?.terms_accepted || !consent?.privacy_policy_accepted) {

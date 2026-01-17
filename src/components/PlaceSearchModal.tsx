@@ -72,7 +72,7 @@ export default function PlaceSearchModal({
         radius: 10000,
       });
       setSearchResults(results);
-      
+
       // Add to recent searches
       if (!recentSearches.includes(query)) {
         setRecentSearches(prev => [query, ...prev.slice(0, 4)]);
@@ -103,7 +103,7 @@ export default function PlaceSearchModal({
       </View>
       {item.photos && item.photos.length > 0 && (
         <Image
-          source={{ uri: item.photos[0] }}
+          source={{ uri: item.photos[0].url || `https://via.placeholder.com/400x300/cccccc/666666?text=Photo` }}
           style={styles.placeImage}
           resizeMode="cover"
         />

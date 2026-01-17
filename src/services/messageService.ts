@@ -150,26 +150,28 @@ export class MessageService {
     onNewMessage: (message: Message) => void,
     onError?: (error: any) => void
   ) {
-    let query = supabase
-      .from('messages')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1);
+    const channel = supabase
+      .channel(`room-${eventId || groupId || 'messages'}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: eventId ? `event_id=eq.${eventId}` : groupId ? `group_id=eq.${groupId}` : undefined,
+        },
+        (payload) => {
+          onNewMessage(payload.new as Message);
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Subscription error');
+          onError?.(new Error('Channel error'));
+        }
+      });
 
-    if (eventId) {
-      query = query.eq('event_id', eventId);
-    } else if (groupId) {
-      query = query.eq('group_id', groupId);
-    }
-
-    return query.on('INSERT', (payload) => {
-      onNewMessage(payload.new as Message);
-    }).subscribe((status, error) => {
-      if (error) {
-        console.error('Subscription error:', error);
-        onError?.(error);
-      }
-    });
+    return channel;
   }
 
   // Send event invitation message
@@ -242,7 +244,7 @@ export class MessageService {
     try {
       const { error } = await supabase
         .from('messages')
-        .update({ 
+        .update({
           content: newContent,
           updated_at: new Date().toISOString(),
         })

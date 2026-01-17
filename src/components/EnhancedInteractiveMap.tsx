@@ -101,7 +101,8 @@ export default function EnhancedInteractiveMap({
   // Update filters when external filters change
   useEffect(() => {
     if (externalFilters) {
-      console.log('EnhancedInteractiveMap: Received external filters:', externalFilters);
+      console.log('🔄 EnhancedInteractiveMap: Received external filters:', JSON.stringify(externalFilters));
+      console.log('🔄 EnhancedInteractiveMap: Current filters before update:', JSON.stringify(currentFilters));
       setCurrentFilters(externalFilters);
     }
   }, [externalFilters]);
@@ -186,9 +187,26 @@ export default function EnhancedInteractiveMap({
 
   useEffect(() => {
     if (userLocation) {
-      debouncedSearchPlaces();
+      console.log('🎯 EnhancedInteractiveMap: searchPlaces effect triggered');
+      console.log('🎯 EnhancedInteractiveMap: userLocation:', JSON.stringify(userLocation));
+      console.log('🎯 EnhancedInteractiveMap: currentFilters:', JSON.stringify(currentFilters));
+      // Call searchPlaces directly to avoid stale closure in debounced function
+      // Use a small timeout to debounce rapid changes
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ EnhancedInteractiveMap: Timeout elapsed, calling searchPlaces now');
+        searchPlaces();
+      }, 500);
+      return () => clearTimeout(timeoutId);
     }
   }, [userLocation, currentFilters]);
+
+  useEffect(() => {
+    console.log('📊 EnhancedInteractiveMap: Places count changed:', places.length);
+  }, [places]);
+
+  useEffect(() => {
+    console.log('🔍 EnhancedInteractiveMap: currentFilters changed:', JSON.stringify(currentFilters));
+  }, [currentFilters]);
 
   useEffect(() => {
     // Filter events based on search query
@@ -243,8 +261,6 @@ export default function EnhancedInteractiveMap({
   };
 
   const loadInitialData = async () => {
-    // Seed mock data
-    await firestoreService.seedMockData();
     // Load events
     await loadEvents();
   };
@@ -286,23 +302,30 @@ export default function EnhancedInteractiveMap({
       const placesData = await placesApiService.searchNearby(userLocation, currentFilters);
       console.log('EnhancedInteractiveMap: Received places data:', placesData.length, 'places');
 
+      if (placesData.length > 0) {
+        console.log('EnhancedInteractiveMap: First place sample:', JSON.stringify(placesData[0], null, 2));
+      }
+
       // Optimize markers for performance
       const optimizedPlaces = performanceOptimizer.optimizeMapMarkers(placesData, 50);
+      console.log('EnhancedInteractiveMap: Optimized to', optimizedPlaces.length, 'places');
       setPlaces(optimizedPlaces);
 
-      // Load events in the current region
-      const eventsData = await firestoreService.getEventsInBounds(
-        {
-          lat: region.latitude + region.latitudeDelta / 2,
-          lng: region.longitude + region.longitudeDelta / 2,
+      // Load events in the current region using Supabase
+      const eventsData = await enhancedEventService.getEvents({
+        bounds: {
+          north: region.latitude + region.latitudeDelta,
+          south: region.latitude - region.latitudeDelta,
+          east: region.longitude + region.longitudeDelta,
+          west: region.longitude - region.longitudeDelta,
         },
-        {
-          lat: region.latitude - region.latitudeDelta / 2,
-          lng: region.longitude - region.longitudeDelta / 2,
-        }
-      );
-      setAllEvents(eventsData);
-      setFilteredEvents(eventsData);
+        ...eventSearchFilters,
+      });
+
+      // Ensure events is an array and filter out any null/undefined events
+      const validEvents = Array.isArray(eventsData) ? eventsData.filter(event => event && event.id) : [];
+      setAllEvents(validEvents);
+      setFilteredEvents(validEvents);
     } catch (error) {
       const appError = errorHandler.handleApiError(error, 'searchPlaces');
       errorHandler.showUserFriendlyError(appError, 'Search');
@@ -383,25 +406,32 @@ export default function EnhancedInteractiveMap({
     if (!selectedPlace) return;
 
     try {
-      const userId = getUserId();
-      const newEvent = await firestoreService.createEvent({
-        creatorId: userId || 'anonymous',
-        activity: eventData.activity,
-        placeId: selectedPlace.placeId,
-        placeName: selectedPlace.name,
-        address: selectedPlace.address,
+      setLoading(true);
+      const result = await enhancedEventService.createEvent({
+        name: eventData.title,
+        activity: eventData.sportType || eventData.activity,
+        location_name: selectedPlace.name,
+        latitude: selectedPlace.latitude || selectedPlace.coordinates?.latitude,
+        longitude: selectedPlace.longitude || selectedPlace.coordinates?.longitude,
+        place_id: selectedPlace.placeId,
         description: eventData.description,
-        maxParticipants: eventData.maxParticipants,
-        time: eventData.time.toISOString(),
-        coordinates: selectedPlace.coordinates,
+        max_participants: eventData.playersNeeded || eventData.maxParticipants,
+        start_time: (eventData.dateTime || eventData.time)?.toISOString(),
       });
 
-      setFilteredEvents(prev => [...prev, newEvent]);
-      setShowEventCreation(false);
-      Alert.alert('Success', 'Event created successfully!');
+      if (result.success && result.event) {
+        // Refresh events list to show the new event
+        await loadEvents();
+        setShowEventCreation(false);
+        Alert.alert('Success', 'Event created successfully!');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to create event');
+      }
     } catch (error) {
       console.error('Error creating event:', error);
       Alert.alert('Error', 'Failed to create event');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -971,7 +1001,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   eventMarker: {
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#FFD700',
     borderRadius: 20,
     width: 40,
     height: 40,
