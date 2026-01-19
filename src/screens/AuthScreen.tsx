@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, StatusBar, Animated, Dimensions, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, Animated, Dimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useDialog } from '../contexts/DialogContext';
 import { LoginForm, SocialLoginButtons, PasswordResetModal } from '../components/auth';
 
 const { width } = Dimensions.get('window');
@@ -12,7 +13,8 @@ const { width } = Dimensions.get('window');
 export default function AuthScreen() {
   const navigation = useNavigation<NavigationProp<any>>();
   const { t } = useTranslation();
-  const { user } = useAuth(); // Removed non-existent sendPasswordReset for now
+  const { user } = useAuth();
+  const { showSuccess, showError } = useDialog();
   const [showPasswordReset, setShowPasswordReset] = useState(false);
 
 
@@ -40,7 +42,7 @@ export default function AuthScreen() {
   };
 
   const handleAuthError = (error: any) => {
-    Alert.alert('Authentication Error', error?.message || 'An error occurred during authentication');
+    showError('Authentication Error', error?.message || 'An error occurred during authentication');
   };
 
   const handleForgotPassword = () => {
@@ -53,11 +55,11 @@ export default function AuthScreen() {
 
   const handlePasswordResetSuccess = () => {
     setShowPasswordReset(false);
-    Alert.alert('Success', 'Password reset email sent! Check your inbox.');
+    showSuccess('Success', 'Password reset email sent! Check your inbox.');
   };
 
   const handlePasswordResetError = (error: any) => {
-    Alert.alert('Error', error.message || 'Failed to send password reset email');
+    showError('Error', error.message || 'Failed to send password reset email');
   };
 
   return (

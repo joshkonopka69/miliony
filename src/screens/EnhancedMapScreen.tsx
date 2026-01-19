@@ -10,7 +10,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  Alert,
   ActivityIndicator,
   ScrollView,
   Platform,
@@ -33,6 +32,7 @@ import {
   getPlacePhotoUrl,
   type PlaceLocation,
 } from '../services/googlePlacesService';
+import { useAlert } from '../hooks/useAlert';
 
 // Filter categories
 const FILTER_CATEGORIES = [
@@ -147,6 +147,7 @@ export default function EnhancedMapScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
   const mapRef = useRef<MapView>(null);
+  const alert = useAlert();
 
   // Map & Location State
   const [region, setRegion] = useState({
@@ -199,7 +200,7 @@ export default function EnhancedMapScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        alert(
           'Permission Denied',
           'Location permission is required to show nearby venues'
         );
@@ -315,7 +316,7 @@ export default function EnhancedMapScreen() {
         setLocations(results);
 
         if (results.length === 0) {
-          Alert.alert('No Results', `No ${filter} found within ${searchRadius / 1000}km`);
+          alert('No Results', `No ${filter} found within ${searchRadius / 1000}km`);
         }
       } catch (error: any) {
         console.error('Error fetching locations:', error);
@@ -423,17 +424,17 @@ export default function EnhancedMapScreen() {
     try {
       // Validation
       if (!eventFormData.title.trim()) {
-        Alert.alert('Error', 'Please enter an event title');
+        alert('Error', 'Please enter an event title');
         return;
       }
 
       if (eventFormData.dateTime <= new Date()) {
-        Alert.alert('Error', 'Event must be scheduled for a future time');
+        alert('Error', 'Event must be scheduled for a future time');
         return;
       }
 
       if (eventFormData.playersConfirmed > eventFormData.playersNeeded) {
-        Alert.alert('Error', 'Confirmed players cannot exceed total players needed');
+        alert('Error', 'Confirmed players cannot exceed total players needed');
         return;
       }
 
@@ -446,7 +447,7 @@ export default function EnhancedMapScreen() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        Alert.alert('Error', 'You must be logged in to create events');
+        alert('Error', 'You must be logged in to create events');
         return;
       }
 
@@ -481,7 +482,7 @@ export default function EnhancedMapScreen() {
         status: 'joined',
       });
 
-      Alert.alert('Success', 'Event created successfully!');
+      alert('Success', 'Event created successfully!');
 
       // Close modal and reset form
       setIsCreateEventModalVisible(false);
@@ -499,7 +500,7 @@ export default function EnhancedMapScreen() {
       await fetchEventsFromSupabase();
     } catch (error: any) {
       console.error('Error creating event:', error);
-      Alert.alert('Error', 'Failed to create event. Please try again.');
+      alert('Error', 'Failed to create event. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -507,7 +508,7 @@ export default function EnhancedMapScreen() {
 
   const handleEventPress = (event: LocationEvent) => {
     // TODO: Navigate to event details screen
-    Alert.alert('Event', event.title);
+    alert('Event', event.title);
   };
 
   // ===========================

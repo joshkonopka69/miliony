@@ -9,6 +9,7 @@ import { AnalyticsProvider } from './src/contexts/AnalyticsContext';
 import { ModerationProvider } from './src/contexts/ModerationContext';
 import { GroupProvider } from './src/contexts/GroupContext';
 import { NotificationProvider } from './src/contexts/NotificationContext';
+import { DialogProvider } from './src/contexts/DialogContext';
 
 export default function App() {
   return (
@@ -20,8 +21,10 @@ export default function App() {
               <ModerationProvider>
                 <GroupProvider>
                   <NotificationProvider>
-                    <StatusBar style="auto" />
-                    <AppNavigator />
+                    <DialogProvider>
+                      <StatusBar style="auto" />
+                      <AppNavigator />
+                    </DialogProvider>
                   </NotificationProvider>
                 </GroupProvider>
               </ModerationProvider>

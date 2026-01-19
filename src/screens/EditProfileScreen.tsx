@@ -8,7 +8,6 @@ import {
   ScrollView,
   SafeAreaView,
   StatusBar,
-  Alert,
   Image,
   ActivityIndicator,
   Animated,
@@ -18,6 +17,7 @@ import {
 import { useAppNavigation } from '../navigation';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useAlert } from '../hooks/useAlert';
 import * as ImagePicker from 'expo-image-picker';
 
 import { SMLogo } from '../components';
@@ -36,6 +36,7 @@ export default function EditProfileScreen() {
     profileCompletionPercentage,
     profileStrength,
   } = useUserProfile();
+  const alert = useAlert();
 
   const [formData, setFormData] = useState({
     display_name: profile?.display_name || '',
@@ -127,7 +128,7 @@ export default function EditProfileScreen() {
 
     const success = await updateProfile(updates);
     if (success) {
-      Alert.alert('Success', 'Profile updated successfully!', [
+      alert('Success', 'Profile updated successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     }
@@ -138,7 +139,7 @@ export default function EditProfileScreen() {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (permissionResult.granted === false) {
-        Alert.alert('Permission Required', 'Please grant camera roll permissions to upload a profile picture.');
+        alert('Permission Required', 'Please grant camera roll permissions to upload a profile picture.');
         return;
       }
 
@@ -160,21 +161,21 @@ export default function EditProfileScreen() {
 
         const avatarUrl = await uploadProfilePicture(file);
         if (avatarUrl) {
-          Alert.alert('Success', 'Profile picture updated successfully!');
+          alert('Success', 'Profile picture updated successfully!');
         } else {
-          Alert.alert('Error', 'Failed to upload profile picture. Please try again.');
+          alert('Error', 'Failed to upload profile picture. Please try again.');
         }
         setIsUploadingImage(false);
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      alert('Error', 'Failed to pick image. Please try again.');
       setIsUploadingImage(false);
     }
   };
 
   const handleDeleteImage = async () => {
-    Alert.alert(
+    alert(
       'Delete Profile Picture',
       'Are you sure you want to delete your profile picture?',
       [
@@ -185,9 +186,9 @@ export default function EditProfileScreen() {
           onPress: async () => {
             const success = await deleteProfilePicture();
             if (success) {
-              Alert.alert('Success', 'Profile picture deleted successfully!');
+              alert('Success', 'Profile picture deleted successfully!');
             } else {
-              Alert.alert('Error', 'Failed to delete profile picture. Please try again.');
+              alert('Error', 'Failed to delete profile picture. Please try again.');
             }
           },
         },
@@ -197,7 +198,7 @@ export default function EditProfileScreen() {
 
   const handleBack = () => {
     if (Object.keys(errors).length > 0 || isUpdating) {
-      Alert.alert(
+      alert(
         'Unsaved Changes',
         'You have unsaved changes. Are you sure you want to go back?',
         [

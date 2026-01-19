@@ -18,7 +18,6 @@ export { default as TermsOfServiceScreen } from './TermsOfServiceScreen';
 export { default as PrivacyPolicyScreen } from './PrivacyPolicyScreen';
 export { default as PrivacySettingsScreen } from './PrivacySettingsScreen';
 export { default as PlaceDetailsExampleScreen } from './PlaceDetailsExampleScreen';
-export { default as EventTestScreen } from './EventTestScreen';
 export { default as BackendTestScreen } from './BackendTestScreen';
 
 // Analytics exports

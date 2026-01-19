@@ -22,7 +22,6 @@ import {
   TermsOfServiceScreen,
   PrivacyPolicyScreen,
   PrivacySettingsScreen,
-  EventTestScreen,
   BackendTestScreen,
   // Analytics screens
   AnalyticsDashboard,
@@ -207,11 +206,6 @@ export default function AppNavigator() {
         <Stack.Screen
           name={ROUTES.PRIVACY_SETTINGS}
           component={PrivacySettingsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="EventTest"
-          component={EventTestScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen
