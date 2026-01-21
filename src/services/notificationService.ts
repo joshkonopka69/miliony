@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { supabase } from '../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { translations, Language } from '../contexts/TranslationContext';
@@ -290,8 +291,12 @@ class NotificationService {
       // Get push token
       if (Device.isDevice) {
         try {
+          const projectId = 
+            Constants.expoConfig?.extra?.eas?.projectId ?? 
+            '372e8a03-e24f-4695-9ec5-f86f6408a7fa';
+          
           this.expoPushToken = (await Notifications.getExpoPushTokenAsync({
-            projectId: '372e8a03-e24f-4695-9ec5-f86f6408a7fa'
+            projectId
           })).data;
           console.log('Expo push token:', this.expoPushToken);
 

@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
+import ClusteredMapView from 'react-native-map-clustering';
 import * as Location from 'expo-location';
 import { useAppNavigation } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
@@ -33,7 +34,7 @@ import {
   type PlaceLocation,
 } from '../services/googlePlacesService';
 import { useAlert } from '../hooks/useAlert';
-import { BellIcon, CogIcon } from '../components/icons/HeroIcons';
+import { BellIcon, CogIcon, AdjustmentsIcon } from '../components/icons/HeroIcons';
 
 // Filter categories with icon names instead of emojis
 const FILTER_CATEGORIES = [
@@ -577,8 +578,8 @@ export default function EnhancedMapScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Map */}
-      <MapView
-        ref={mapRef}
+      <ClusteredMapView
+        ref={mapRef as any}
         style={styles.map}
         provider={PROVIDER_GOOGLE}
         initialRegion={region}
@@ -586,6 +587,7 @@ export default function EnhancedMapScreen() {
         showsMyLocationButton={true}
         onRegionChangeComplete={setRegion}
         onLongPress={handleMapLongPress}
+        clusterColor="#6366f1"
       >
         {/* Location Markers (Google Places) */}
         {locations.map((location) => (
@@ -638,7 +640,7 @@ export default function EnhancedMapScreen() {
             </View>
           </Marker>
         ))}
-      </MapView>
+      </ClusteredMapView>
 
       {/* Filter Bar */}
       <SafeAreaView style={styles.filterBarSafeArea} edges={['top']}>
@@ -666,6 +668,12 @@ export default function EnhancedMapScreen() {
         <View style={styles.topBar}>
           <SportMapLogo />
           <View style={styles.topBarActions}>
+            <TouchableOpacity
+              style={styles.topBarButton}
+              onPress={() => navigation.navigate(ROUTES.CHAT)}
+            >
+              <AdjustmentsIcon size={24} color="#000000" />
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.topBarButton}
               onPress={() => navigation.navigate(ROUTES.NOTIFICATIONS)}
