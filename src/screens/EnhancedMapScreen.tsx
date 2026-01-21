@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useAppNavigation } from '../navigation/hooks';
@@ -33,18 +33,19 @@ import {
   type PlaceLocation,
 } from '../services/googlePlacesService';
 import { useAlert } from '../hooks/useAlert';
+import { BellIcon, CogIcon } from '../components/icons/HeroIcons';
 
-// Filter categories
+// Filter categories with icon names instead of emojis
 const FILTER_CATEGORIES = [
-  { id: 'all', label: 'All', emoji: '🏆' },
-  { id: 'sport_halls', label: 'Sport Halls', emoji: '🏟️' },
-  { id: 'sport_fields', label: 'Sport Fields', emoji: '⚽' },
-  { id: 'parks', label: 'Parks', emoji: '🌳' },
-  { id: 'fight_clubs', label: 'Fight Clubs', emoji: '🥊' },
-  { id: 'outside_courts', label: 'Outside Courts', emoji: '🏀' },
-  { id: 'water_sports', label: 'Water Sports', emoji: '🚣' },
-  { id: 'fitness', label: 'Fitness', emoji: '🏋️' },
-  { id: 'outdoor', label: 'Outdoor', emoji: '⛰️' },
+  { id: 'all', label: 'All', icon: 'trophy-outline' as const, iconLib: 'ionicons' as const },
+  { id: 'sport_halls', label: 'Sport Halls', icon: 'business-outline' as const, iconLib: 'ionicons' as const },
+  { id: 'sport_fields', label: 'Sport Fields', icon: 'football-outline' as const, iconLib: 'ionicons' as const },
+  { id: 'parks', label: 'Parks', icon: 'leaf-outline' as const, iconLib: 'ionicons' as const },
+  { id: 'fight_clubs', label: 'Fight Clubs', icon: 'fitness-outline' as const, iconLib: 'ionicons' as const },
+  { id: 'outside_courts', label: 'Outside Courts', icon: 'basketball-outline' as const, iconLib: 'ionicons' as const },
+  { id: 'water_sports', label: 'Water Sports', icon: 'water-outline' as const, iconLib: 'ionicons' as const },
+  { id: 'fitness', label: 'Fitness', icon: 'barbell-outline' as const, iconLib: 'ionicons' as const },
+  { id: 'outdoor', label: 'Outdoor', icon: 'trail-sign-outline' as const, iconLib: 'ionicons' as const },
 ];
 
 // Sport emoji mapping
@@ -109,14 +110,15 @@ interface LocationEvent {
   currentParticipants: number;
 }
 
-// Filter Chip Component
+// Filter Chip Component with vector icons
 const FilterChip: React.FC<{
-  emoji: string;
+  icon: string;
+  iconLib: 'ionicons' | 'material';
   label: string;
   isActive: boolean;
   onPress: () => void;
   isLoading?: boolean;
-}> = ({ emoji, label, isActive, onPress, isLoading }) => (
+}> = ({ icon, iconLib, label, isActive, onPress, isLoading }) => (
   <TouchableOpacity
     style={[styles.filterChip, isActive && styles.filterChipActive]}
     onPress={onPress}
@@ -126,7 +128,12 @@ const FilterChip: React.FC<{
       <ActivityIndicator size="small" color={isActive ? 'white' : '#6366f1'} />
     ) : (
       <>
-        <Text style={styles.filterEmoji}>{emoji}</Text>
+        <Ionicons 
+          name={icon as any} 
+          size={18} 
+          color={isActive ? '#FFFFFF' : '#374151'} 
+          style={styles.filterIcon}
+        />
         <Text style={[styles.filterLabel, isActive && styles.filterLabelActive]}>{label}</Text>
       </>
     )}
@@ -543,6 +550,28 @@ export default function EnhancedMapScreen() {
     fetchEventsFromSupabase();
   }, [getUserLocation, fetchEventsFromSupabase]);
 
+  // ===========================
+  // LONG PRESS EVENT CREATION
+  // ===========================
+  const handleMapLongPress = useCallback((e: any) => {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
+    
+    // Create a temporary location for event creation
+    const tempLocation: PlaceLocation = {
+      id: `custom-${Date.now()}`,
+      placeId: '',
+      name: 'Custom Location',
+      address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+      latitude,
+      longitude,
+      types: [],
+      rating: 0,
+    };
+    
+    setSelectedLocation(tempLocation);
+    setIsCreateEventModalVisible(true);
+  }, []);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -556,6 +585,7 @@ export default function EnhancedMapScreen() {
         showsUserLocation={true}
         showsMyLocationButton={true}
         onRegionChangeComplete={setRegion}
+        onLongPress={handleMapLongPress}
       >
         {/* Location Markers (Google Places) */}
         {locations.map((location) => (
@@ -568,9 +598,11 @@ export default function EnhancedMapScreen() {
             onPress={() => handleLocationMarkerPress(location)}
           >
             <View style={styles.locationMarker}>
-              <Text style={styles.markerEmoji}>
-                {FILTER_CATEGORIES.find((f) => f.id === activeFilter)?.emoji || '📍'}
-              </Text>
+              <Ionicons 
+                name={(FILTER_CATEGORIES.find((f) => f.id === activeFilter)?.icon || 'location-outline') as any}
+                size={20}
+                color="#6366f1"
+              />
             </View>
             <Callout onPress={() => handleCalloutPress(location)}>
               <View style={styles.calloutContainer}>
@@ -618,7 +650,8 @@ export default function EnhancedMapScreen() {
           {FILTER_CATEGORIES.map((category) => (
             <FilterChip
               key={category.id}
-              emoji={category.emoji}
+              icon={category.icon}
+              iconLib={category.iconLib}
               label={category.label}
               isActive={activeFilter === category.id}
               onPress={() => handleFilterSelect(category.id)}
@@ -637,13 +670,13 @@ export default function EnhancedMapScreen() {
               style={styles.topBarButton}
               onPress={() => navigation.navigate(ROUTES.NOTIFICATIONS)}
             >
-              <Ionicons name="notifications-outline" size={24} color="#000000" />
+              <BellIcon size={24} color="#000000" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.topBarButton}
               onPress={() => navigation.navigate(ROUTES.SETTINGS)}
             >
-              <Ionicons name="settings-outline" size={24} color="#000000" />
+              <CogIcon size={24} color="#000000" />
             </TouchableOpacity>
           </View>
         </View>
@@ -713,7 +746,7 @@ const styles = StyleSheet.create({
   // Filter Bar
   filterBarSafeArea: {
     position: 'absolute',
-    top: 70,
+    top: 56,
     left: 0,
     right: 0,
     paddingHorizontal: 16,
@@ -743,12 +776,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#6366f1',
     borderColor: '#6366f1',
   },
-  filterEmoji: {
-    fontSize: 16,
-    marginRight: 6,
+  filterIcon: {
+    marginRight: 4,
   },
   filterLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#374151',
   },
@@ -842,15 +874,13 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   topBar: {
-    height: 70,
+    height: 56,
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   logoContainer: {
     flexDirection: 'row',

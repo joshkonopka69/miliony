@@ -289,13 +289,17 @@ class NotificationService {
 
       // Get push token
       if (Device.isDevice) {
-        this.expoPushToken = (await Notifications.getExpoPushTokenAsync({
-          projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'sportmap-cc906'
-        })).data;
-        console.log('Expo push token:', this.expoPushToken);
+        try {
+          this.expoPushToken = (await Notifications.getExpoPushTokenAsync({
+            projectId: '372e8a03-e24f-4695-9ec5-f86f6408a7fa'
+          })).data;
+          console.log('Expo push token:', this.expoPushToken);
 
-        // Save token to database
-        await this.savePushToken(this.expoPushToken);
+          // Save token to database
+          await this.savePushToken(this.expoPushToken);
+        } catch (tokenError) {
+          console.warn('Could not get push token:', tokenError);
+        }
       } else {
         console.warn('Must use physical device for push notifications');
       }

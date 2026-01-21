@@ -1,43 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useTranslation } from '../contexts/TranslationContext';
+import { MapPinIcon, TrophyIcon, UserIcon } from './icons/HeroIcons';
 
-// Custom Map Icon Component - Using your map-pin.png image
-const MapIcon = ({ size = 24 }: { size?: number }) => (
+// Icon wrapper for consistent styling
+const IconWrapper = ({ children, size = 24 }: { children: React.ReactNode; size?: number }) => (
   <View style={[styles.iconContainer, { width: size, height: size }]}>
-    <Image
-      source={require('../../assets/map-pin.png')}
-      style={{
-        width: size * 1.0,
-        height: size * 1.0,
-      }}
-      resizeMode="contain"
-    />
-  </View>
-);
-
-// Custom Games Icon Component - Using your sports.png image (30% bigger)
-const GamesIcon = ({ size = 24 }: { size?: number }) => (
-  <View style={[styles.iconContainer, { width: size, height: size }]}>
-    <Image
-      source={require('../../assets/sports.png')}
-      style={{
-        width: size * 1.3,
-        height: size * 1.3,
-      }}
-      resizeMode="contain"
-    />
-  </View>
-);
-
-// Custom Profile Icon Component - Black color
-const ProfileIcon = ({ size = 24 }: { size?: number }) => (
-  <View style={[styles.iconContainer, { width: size, height: size }]}>
-    <View style={styles.profileIcon}>
-      <View style={[styles.profileHead, { backgroundColor: '#000000' }]} />
-      <View style={[styles.profileBody, { backgroundColor: '#000000' }]} />
-    </View>
+    {children}
   </View>
 );
 
@@ -90,7 +60,9 @@ export default function BottomNavBar({ activeTab, onProfilePress }: BottomNavBar
               onPress={() => handleNavigation('Home')}
               activeOpacity={0.7}
             >
-              <MapIcon size={24} />
+              <IconWrapper size={24}>
+                <MapPinIcon size={24} color="#000000" />
+              </IconWrapper>
               <Text style={[
                 styles.navLabel,
                 activeTab === 'Home' && styles.activeLabel
@@ -108,7 +80,9 @@ export default function BottomNavBar({ activeTab, onProfilePress }: BottomNavBar
               onPress={() => handleNavigation('MyGames')}
               activeOpacity={0.7}
             >
-              <GamesIcon size={24} />
+              <IconWrapper size={24}>
+                <TrophyIcon size={24} color="#000000" />
+              </IconWrapper>
               <Text style={[
                 styles.navLabel,
                 activeTab === 'MyGames' && styles.activeLabel
@@ -126,7 +100,9 @@ export default function BottomNavBar({ activeTab, onProfilePress }: BottomNavBar
               onPress={handleProfilePress}
               activeOpacity={0.7}
             >
-              <ProfileIcon size={24} />
+              <IconWrapper size={24}>
+                <UserIcon size={24} color="#000000" />
+              </IconWrapper>
               <Text style={[
                 styles.navLabel,
                 activeTab === 'MyProfile' && styles.activeLabel

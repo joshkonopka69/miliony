@@ -14,6 +14,7 @@ import {
   TextInput,
   Image
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation';
 import { ROUTES } from '../navigation/types';
 import { useNotificationManager } from '../hooks/useNotifications';
@@ -456,29 +457,29 @@ export default function NotificationsScreen() {
 
   const getNotificationIcon = (type: NotificationType): string => {
     const icons: { [key in NotificationType]: string } = {
-      new_event_nearby: '📍',
-      friend_request: '👤',
-      friend_request_accepted: '✅',
-      event_invitation: '📅',
-      event_invite: '📅',
-      group_invite: '👥',
-      event_cancelled: '❌',
-      event_updated: '📝',
-      event_update: '📝',
-      event_reminder: '⏰',
-      chat_message: '💬',
-      system_announcement: '📢',
-      event_participant_joined: '👥',
-      event_participant_left: '👋',
-      event_starting_soon: '🚀',
-      weather_alert: '🌤️',
-      achievement_unlocked: '🏆',
-      friend_activity: '🎯',
-      event_created: '🎉',
-      group_invite_accepted: '🤝',
-      general: '🔔',
+      new_event_nearby: 'location-outline',
+      friend_request: 'person-outline',
+      friend_request_accepted: 'checkmark-circle-outline',
+      event_invitation: 'calendar-outline',
+      event_invite: 'calendar-outline',
+      group_invite: 'people-outline',
+      event_cancelled: 'close-circle-outline',
+      event_updated: 'create-outline',
+      event_update: 'create-outline',
+      event_reminder: 'alarm-outline',
+      chat_message: 'chatbubble-outline',
+      system_announcement: 'megaphone-outline',
+      event_participant_joined: 'people-outline',
+      event_participant_left: 'exit-outline',
+      event_starting_soon: 'rocket-outline',
+      weather_alert: 'partly-sunny-outline',
+      achievement_unlocked: 'trophy-outline',
+      friend_activity: 'flash-outline',
+      event_created: 'add-circle-outline',
+      group_invite_accepted: 'hand-right-outline',
+      general: 'notifications-outline',
     };
-    return icons[type] || '🔔';
+    return icons[type] || 'notifications-outline';
   };
 
   const getNotificationColor = (type: NotificationType): string => {
@@ -588,7 +589,7 @@ export default function NotificationsScreen() {
           placeholderTextColor="#8e8e93"
         />
         <TouchableOpacity style={styles.searchButton}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Ionicons name="search-outline" size={20} color="#8e8e93" />
         </TouchableOpacity>
       </View>
 
@@ -712,9 +713,11 @@ export default function NotificationsScreen() {
                         <View style={styles.notificationContent}>
                           <View style={styles.notificationHeader}>
                             <View style={styles.notificationIconContainer}>
-                              <Text style={styles.notificationIcon}>
-                                {getNotificationIcon(notification.type)}
-                              </Text>
+                              <Ionicons 
+                                name={getNotificationIcon(notification.type) as any}
+                                size={22}
+                                color={getNotificationColor(notification.type)}
+                              />
                               {!notification.read && <View style={styles.unreadIndicator} />}
                             </View>
 

@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
   },
   logo: {
     width: 60,
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   formSection: {
-    gap: 20,
+    gap: 16,
   },
   inputGroup: {
     gap: 8,
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   },
   registerSection: {
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 16,
   },
   registerText: {
     fontSize: 14,

@@ -8,6 +8,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../styles/theme';
 
@@ -38,11 +39,11 @@ interface CustomDialogProps {
 }
 
 const DIALOG_ICONS: Record<DialogType, string> = {
-  success: '🎉',
-  error: '❌',
-  warning: '⚠️',
-  info: 'ℹ️',
-  confirm: '❓',
+  success: 'checkmark-circle',
+  error: 'close-circle',
+  warning: 'warning',
+  info: 'information-circle',
+  confirm: 'help-circle',
 };
 
 const DIALOG_GRADIENTS: Record<DialogType, [string, string]> = {
@@ -141,14 +142,13 @@ export default function CustomDialog({ visible, config, onDismiss }: CustomDialo
             ]}
           >
             <TouchableOpacity activeOpacity={1}>
-              {/* Header with gradient */}
               <LinearGradient
                 colors={gradientColors}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.header}
               >
-                <Text style={styles.icon}>{icon}</Text>
+                <Ionicons name={icon as any} size={32} color="#1A1A1A" style={styles.iconStyle} />
                 <Text style={styles.title}>{config.title}</Text>
               </LinearGradient>
 
@@ -217,6 +217,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 20,
     paddingHorizontal: 24,
+  },
+  iconStyle: {
+    marginRight: 12,
   },
   icon: {
     fontSize: 32,

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Animated, Dimensions, Modal, Alert, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../navigation/hooks-only';
 import { useTranslation, Language } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -195,7 +196,8 @@ export default function WelcomeScreen() {
               onPress={() => setShowLanguageModal(true)}
               activeOpacity={0.7}
             >
-              <Text style={styles.languageButtonText}>🌐 {getCurrentLanguageName()}</Text>
+              <Ionicons name="globe-outline" size={16} color="#4A5568" />
+              <Text style={styles.languageButtonText}>{getCurrentLanguageName()}</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -254,9 +256,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'space-between',
-    paddingTop: 20, // Reduced from 60
-    paddingBottom: 40,
+    justifyContent: 'flex-start',
+    paddingTop: 16,
+    paddingBottom: 24,
     paddingHorizontal: 24,
   },
   header: {
@@ -286,16 +288,18 @@ const styles = StyleSheet.create({
     zIndex: 1, // Ensure it stays behind SMLogo
   },
   subtitle: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: '#666666',
+    fontSize: 17,
+    fontWeight: '500',
+    color: '#1A202C',
     textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 20,
+    lineHeight: 26,
+    paddingHorizontal: 16,
+    letterSpacing: 0.2,
   },
   authSection: {
     alignItems: 'center',
     width: '100%',
+    marginTop: 32,
   },
   buttonContainer: {
     width: '100%',
@@ -403,20 +407,24 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   languageButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginTop: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e1e5e9',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 20,
+    backgroundColor: 'transparent',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    gap: 6,
   },
   languageButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333333',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4A5568',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   modalOverlay: {
     flex: 1,
