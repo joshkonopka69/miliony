@@ -33,20 +33,25 @@ export class DeepLinkHandler {
   private async handleDeepLink(url: string): Promise<void> {
     console.log('Deep link received:', url);
 
+    // Notify listeners first
+    this.listeners.forEach(listener => listener(url));
+
     // Check if it's an email confirmation link
     if (url.includes('token_hash') && url.includes('type=email')) {
       const result = await emailConfirmationHandler.handleEmailConfirmation(url);
-      
-      // Notify listeners
-      this.listeners.forEach(listener => listener(url));
-      
+
       if (result.success) {
         console.log('Email confirmed successfully');
-        // Navigate to main app or show success message
       } else {
         console.error('Email confirmation failed:', result.message);
-        // Show error message
       }
+    }
+
+    // Check if it's a password recovery link
+    if (url.includes('type=recovery') || url.includes('reset-password')) {
+      console.log('Password recovery link detected');
+      // The session should be automatically set by Supabase when the link is clicked
+      // React Navigation will handle navigating to the ResetPassword screen
     }
   }
 

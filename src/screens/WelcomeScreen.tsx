@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Animated, Dimensions, Modal, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Animated, Dimensions, Modal, Image } from 'react-native';
 import { useAppNavigation } from '../navigation/hooks-only';
 import { useTranslation, Language } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SMLogo } from '../components';
+import { useToast } from '../components/ToastProvider';
 
 const { width } = Dimensions.get('window');
 
@@ -29,6 +30,7 @@ export default function WelcomeScreen() {
   const navigation = useAppNavigation();
   const { t, language, setLanguage, availableLanguages } = useTranslation();
   const { loginWithGoogle, loginWithApple } = useAuth();
+  const { showError } = useToast();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -64,10 +66,10 @@ export default function WelcomeScreen() {
       if (result.success) {
         navigation.navigate('Map');
       } else {
-        Alert.alert('Authentication Error', result.error?.message || 'Google sign-in failed');
+        showError(result.error?.message || 'Google sign-in failed', 'Authentication Error');
       }
     } catch (error: any) {
-      Alert.alert('Authentication Error', error.message || 'An error occurred during Google sign-in');
+      showError(error.message || 'An error occurred during Google sign-in', 'Authentication Error');
     }
   };
 
@@ -77,10 +79,10 @@ export default function WelcomeScreen() {
       if (result.success) {
         navigation.navigate('Map');
       } else {
-        Alert.alert('Authentication Error', result.error?.message || 'Apple sign-in failed');
+        showError(result.error?.message || 'Apple sign-in failed', 'Authentication Error');
       }
     } catch (error: any) {
-      Alert.alert('Authentication Error', error.message || 'An error occurred during Apple sign-in');
+      showError(error.message || 'An error occurred during Apple sign-in', 'Authentication Error');
     }
   };
 
@@ -124,7 +126,7 @@ export default function WelcomeScreen() {
           >
             <SMLogo size={180} style={{ marginBottom: 0, zIndex: 10 }} />
             <Image
-              source={require('../../assets/logo_text.png')}
+              source={require('../../assets/logo/sportsmap-text-logo.png')}
               style={styles.logoText}
               resizeMode="contain"
             />
@@ -195,7 +197,7 @@ export default function WelcomeScreen() {
               onPress={() => setShowLanguageModal(true)}
               activeOpacity={0.7}
             >
-              <Text style={styles.languageButtonText}>🌐 {getCurrentLanguageName()}</Text>
+              <Text style={styles.languageButtonText}><Text style={{fontSize: 14, color: '#333333'}}>🌐</Text> {getCurrentLanguageName()}</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -229,7 +231,7 @@ export default function WelcomeScreen() {
                   {lang.name}
                 </Text>
                 {language === lang.code && (
-                  <Text style={styles.checkmark}>✓</Text>
+                  <Text style={{fontSize: 16, color: '#000000'}}>✓</Text>
                 )}
               </TouchableOpacity>
             ))}

@@ -209,7 +209,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setIsLoading(true);
       setError(null);
 
-      await notificationService.ensureEventReminders(user.id);
+      // NOTE: Removed ensureEventReminders() here - it was causing duplicate reminders
+      // when real-time subscription triggered refresh. Reminders are checked on initial load only.
       const notificationsData = await notificationService.getUserNotifications(user.id, 50);
       setNotifications(notificationsData);
 

@@ -7,8 +7,7 @@ import {
     Modal,
     Image,
     Animated,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from 'react-native';
 import { useTranslation } from '../contexts/TranslationContext';
 
 export interface ProfilePreviewUser {
@@ -38,7 +37,7 @@ const SPORT_EMOJI: Record<string, string> = {
     volleyball: '🏐',
     baseball: '⚾',
     hockey: '🏒',
-    golf: '⛳',
+    golf: 'golf-outline',
     yoga: '🧘',
     pilates: '🤸',
     weightlifting: '🏋️',
@@ -94,7 +93,7 @@ export default function ProfilePreviewModal({
                         onPress={onClose}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="close" size={20} color="#6B7280" />
+                        <Text style={{fontSize: 18, color: '#6B7280'}}>✕</Text>
                     </TouchableOpacity>
 
                     {/* Avatar */}
@@ -117,7 +116,7 @@ export default function ProfilePreviewModal({
                             {user.favorite_sports.slice(0, 4).map((sport, index) => (
                                 <View key={index} style={styles.sportTag}>
                                     <Text style={styles.sportEmoji}>
-                                        {SPORT_EMOJI[sport.toLowerCase()] || '🏅'}
+                                        {SPORT_EMOJI[sport.toLowerCase()] || '🏆'}
                                     </Text>
                                     <Text style={styles.sportName}>{sport}</Text>
                                 </View>
@@ -134,7 +133,7 @@ export default function ProfilePreviewModal({
                         <Text style={styles.viewProfileText}>
                             {t.profile?.viewProfile || 'View Full Profile'}
                         </Text>
-                        <Ionicons name="arrow-forward" size={18} color="#000000" />
+                        <Text style={{fontSize: 16, color: '#000000'}}>•</Text>
                     </TouchableOpacity>
                 </TouchableOpacity>
             </TouchableOpacity>

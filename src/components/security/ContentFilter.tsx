@@ -8,9 +8,10 @@ import {
   Switch,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useModeration } from '../../hooks/useModeration';
+import { useToast } from '../ToastProvider';
+import { useDialog } from '../../contexts/DialogContext';
 import { ContentFilter, FilterResult } from '../../utils/contentFilters';
 
 interface ContentFilterProps {
@@ -34,6 +35,8 @@ export default function ContentFilterComponent({
   onContentFlagged,
 }: ContentFilterProps) {
   const { moderateContent } = useModeration();
+  const toast = useToast();
+  const dialog = useDialog();
   const [isFiltering, setIsFiltering] = useState(false);
   const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
   const [customFilters, setCustomFilters] = useState<ContentFilter[]>([]);
@@ -51,7 +54,7 @@ export default function ContentFilterComponent({
 
       // Auto-moderate content
       const moderationResult = await moderateContent(content);
-      
+
       if (moderationResult) {
         const result: FilterResult = {
           passed: moderationResult.status === 'approved',
@@ -77,7 +80,7 @@ export default function ContentFilterComponent({
       }
     } catch (error) {
       console.error('Error filtering content:', error);
-      Alert.alert('Error', 'Failed to filter content. Please try again.');
+      toast.showError('Error', 'Failed to filter content. Please try again.');
     } finally {
       setIsFiltering(false);
     }
@@ -85,7 +88,7 @@ export default function ContentFilterComponent({
 
   const getSuggestions = (reasons: string[]): string[] => {
     const suggestions: string[] = [];
-    
+
     if (reasons.includes('spam')) {
       suggestions.push('Remove promotional language');
     }
@@ -98,15 +101,16 @@ export default function ContentFilterComponent({
     if (reasons.includes('fake')) {
       suggestions.push('Verify information accuracy');
     }
-    
+
     return suggestions;
   };
 
   const handleManualReview = () => {
-    Alert.alert(
-      'Manual Review Required',
-      'This content has been flagged for manual review. Please review the content and take appropriate action.',
-      [
+    dialog.showDialog({
+      type: 'confirm',
+      title: 'Manual Review Required',
+      message: 'This content has been flagged for manual review. Please review the content and take appropriate action.',
+      buttons: [
         {
           text: 'Approve',
           onPress: () => {
@@ -124,6 +128,7 @@ export default function ContentFilterComponent({
         },
         {
           text: 'Block',
+          style: 'destructive',
           onPress: () => {
             const result: FilterResult = {
               passed: false,
@@ -142,8 +147,9 @@ export default function ContentFilterComponent({
           text: 'Cancel',
           style: 'cancel',
         },
-      ]
-    );
+      ],
+      autoHide: false,
+    });
   };
 
   const renderFilterResult = () => {
@@ -167,7 +173,7 @@ export default function ContentFilterComponent({
           <Text style={styles.scoreText}>
             Score: {(filterResult.score * 100).toFixed(0)}%
           </Text>
-          
+
           {filterResult.reasons.length > 0 && (
             <View style={styles.reasonsContainer}>
               <Text style={styles.reasonsTitle}>Issues Found:</Text>

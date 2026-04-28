@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  Alert,
   Image,
   ActivityIndicator,
 } from 'react-native';
@@ -19,8 +18,10 @@ import PlaceInfoModal from '../components/PlaceInfoModal';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
 import * as Location from 'expo-location';
-import { supabase } from '../services/supabase';
+import { userService } from '../services/userService';
+import { supabase } from '../config/supabase';
 import { MyEvent, SportActivity } from '../types/event';
+import { useToast } from '../components/ToastProvider';
 
 // ===========================
 // SPORT TYPE TO EMOJI MAPPING
@@ -30,17 +31,17 @@ import { MyEvent, SportActivity } from '../types/event';
 //   basketball: '🏀',
 //   football: '⚽',
 //   soccer: '⚽',
-//   running: '🏃‍♂️',
+//   running: 'walk-outline‍♂️',
 //   tennis: '🎾',
-//   cycling: '🚴‍♂️',
-//   swimming: '🏊‍♂️',
+//   cycling: 'bicycle-outline‍♂️',
+//   swimming: 'water-outline‍♂️',
 //   gym: '💪',
 //   volleyball: '🏐',
-//   climbing: '🧗‍♂️',
+//   climbing: 'trending-up-outline‍♂️',
 //   yoga: '🧘',
 //   badminton: '🏸',
 //   baseball: '⚾',
-//   golf: '⛳',
+//   golf: 'golf-outline',
 //   hockey: '🏒',
 //   // Fallback
 //   default: '🏃',
@@ -117,9 +118,14 @@ export default function MapScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
   const { getUserId } = useAuth();
+  const { showSuccess, showError, showInfo } = useToast();
   const userId = getUserId();
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{
+    types: string[];
+    keywords: string[];
+    radius: number;
+  }>({
     types: [],
     keywords: [],
     radius: 3000,
@@ -245,11 +251,7 @@ export default function MapScreen() {
   //   } catch (err: any) {
   //     console.error('❌ Error fetching events:', err);
   //     setError(err.message || 'Failed to load events');
-  //     Alert.alert(
-  //       'Error Loading Events',
-  //       'Could not fetch sport events. Please try again later.',
-  //       [{ text: 'OK' }]
-  //     );
+  //      showError(err.message || 'Failed to load events', 'Error Loading Events');
   //   } finally {
   //     setLoading(false);
   //   }
@@ -264,7 +266,7 @@ export default function MapScreen() {
         // Request location permission
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert(t.map.permissionDenied, t.map.locationAccessNeeded);
+          showInfo(t.map.locationAccessNeeded, t.map.permissionDenied);
           return;
         }
 
@@ -277,13 +279,39 @@ export default function MapScreen() {
 
         console.log('📍 User location obtained:', location.coords);
 
+        // Fetch user preferences for personalized filtering
+        if (userId) {
+          console.log('👤 Fetching user preferences for personalized filtering...');
+          try {
+            const profile = await userService.getUserProfile(userId);
+            console.log('👤 Profile data received:', profile ? 'yes' : 'null');
+            console.log('👤 Favorite sports:', profile?.favorite_sports);
+
+            if (profile && profile.favorite_sports && profile.favorite_sports.length > 0) {
+              console.log('basketball-outline Setting default filters based on favorite sports:', profile.favorite_sports);
+              setFilters(prev => ({
+                ...prev,
+                keywords: profile.favorite_sports
+              }));
+              showSuccess(t.map.personalizedFiltersApplied, 'Personalized View');
+            } else {
+              console.log('⚠️ No favorite sports found in profile');
+            }
+          } catch (profileError) {
+            console.error('Error fetching user profile:', profileError);
+          }
+        } else {
+          console.log('⚠️ No userId available for personalized filtering');
+        }
+
       } catch (error) {
         console.error('Error setting up location:', error);
       }
     };
 
     setupLocation();
-  }, [t.map.locationAccessNeeded, t.map.permissionDenied]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   // ===========================
   // REAL-TIME EVENT UPDATES
@@ -398,11 +426,7 @@ export default function MapScreen() {
     // when users click on this location
 
     // Show success feedback
-    Alert.alert(
-      'Event Created! 🎉',
-      `Your "${newEvent.name}" event is now live! Visit this location on the map to see it.`,
-      [{ text: 'Awesome!' }]
-    );
+    showSuccess(`Your "${newEvent.name}" event is now live! Visit this location on the map to see it.`, 'Event Created! 🎉');
   };
 
   // Handle event press from place modal
@@ -413,7 +437,7 @@ export default function MapScreen() {
       setIsPlaceModalVisible(false);
     } catch (error) {
       console.error('Failed to open event details:', error);
-      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+      showError(t.eventDetails.errorMessage, t.common.error);
     }
   };
 
@@ -430,6 +454,7 @@ export default function MapScreen() {
         onLocationSelect={handleLocationSelect}
         hideControls={true}
         externalFilters={filters}
+        highlightMarkers={filters.keywords.length > 0 || filters.types.length > 0}
       />
 
       {/* Clean Top Bar - Overlaid */}
@@ -439,12 +464,12 @@ export default function MapScreen() {
           {/* Logo on Left */}
           <View style={styles.logoContainer}>
             <Image
-              source={require('../../assets/logo.png')}
+              source={require('../../assets/logo/sm-icon-logo.png')}
               style={styles.logoIcon}
               resizeMode="contain"
             />
             <Image
-              source={require('../../assets/logo_text.png')}
+              source={require('../../assets/logo/sportsmap-text-logo.png')}
               style={styles.logoText}
               resizeMode="contain"
             />

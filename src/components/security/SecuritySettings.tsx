@@ -8,9 +8,9 @@ import {
   Switch,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useModeration } from '../../hooks/useModeration';
+import { useToast } from '../ToastProvider';
 import { SecurityConfig } from '../../services/securityService';
 
 interface SecuritySettingsProps {
@@ -26,6 +26,7 @@ export default function SecuritySettingsComponent({
   showCategories = true,
   editable = true,
 }: SecuritySettingsProps) {
+  const toast = useToast();
   const {
     getSecurityConfig,
     updateSecurityConfig,
@@ -57,8 +58,8 @@ export default function SecuritySettingsComponent({
   };
 
   const handleConfigChange = (key: string, value: any) => {
-    setSecurityConfig(prev => 
-      prev.map(config => 
+    setSecurityConfig(prev =>
+      prev.map(config =>
         config.key === key ? { ...config, value } : config
       )
     );
@@ -71,15 +72,15 @@ export default function SecuritySettingsComponent({
     try {
       setIsSaving(true);
       const success = await updateSecurityConfig(key, value);
-      
+
       if (success) {
-        Alert.alert('Success', 'Security configuration updated successfully');
+        toast.showSuccess('Success', 'Security configuration updated successfully');
       } else {
-        Alert.alert('Error', 'Failed to update security configuration');
+        toast.showError('Error', 'Failed to update security configuration');
       }
     } catch (error) {
       console.error('Error saving security config:', error);
-      Alert.alert('Error', 'Failed to update security configuration');
+      toast.showError('Error', 'Failed to update security configuration');
     } finally {
       setIsSaving(false);
     }
@@ -95,10 +96,10 @@ export default function SecuritySettingsComponent({
         await updateSecurityConfig(config.key, config.value);
       }
       onSave?.(securityConfig);
-      Alert.alert('Success', 'All security configurations saved successfully');
+      toast.showSuccess('Success', 'All security configurations saved successfully');
     } catch (error) {
       console.error('Error saving all configs:', error);
-      Alert.alert('Error', 'Failed to save security configurations');
+      toast.showError('Error', 'Failed to save security configurations');
     } finally {
       setIsSaving(false);
     }
@@ -213,7 +214,7 @@ export default function SecuritySettingsComponent({
             {category.replace(/_/g, ' ').toUpperCase()}
           </Text>
         </View>
-        
+
         {configs.map(renderConfigItem)}
       </View>
     );
@@ -225,7 +226,7 @@ export default function SecuritySettingsComponent({
     return (
       <View style={styles.analyticsCard}>
         <Text style={styles.analyticsTitle}>Security Analytics</Text>
-        
+
         <View style={styles.analyticsRow}>
           <Text style={styles.analyticsLabel}>Total Threats:</Text>
           <Text style={styles.analyticsValue}>{securityAnalytics.total_threats}</Text>
@@ -302,7 +303,7 @@ export default function SecuritySettingsComponent({
   return (
     <View style={styles.container}>
       {renderAnalyticsCard()}
-      
+
       {renderCategoryFilter()}
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

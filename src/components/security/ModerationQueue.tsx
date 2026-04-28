@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { useModeration } from '../../hooks/useModeration';
+import { useDialog } from '../../contexts/DialogContext';
 import { ModerationQueue } from '../../services/moderationService';
 
 interface ModerationQueueProps {
@@ -34,6 +34,7 @@ export default function ModerationQueueComponent({
     error,
     clearError,
   } = useModeration();
+  const dialog = useDialog();
 
   const [refreshing, setRefreshing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ModerationQueue | null>(null);
@@ -62,22 +63,13 @@ export default function ModerationQueueComponent({
   };
 
   const handleTakeAction = (item: ModerationQueue, action: string) => {
-    Alert.alert(
+    dialog.showConfirm(
       'Take Action',
       `Are you sure you want to ${action} this item?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Confirm',
-          onPress: () => {
-            onTakeAction?.(item, action);
-            setSelectedItem(null);
-          },
-        },
-      ]
+      () => {
+        onTakeAction?.(item, action);
+        setSelectedItem(null);
+      }
     );
   };
 
@@ -102,15 +94,15 @@ export default function ModerationQueueComponent({
 
   const getFilteredQueue = () => {
     let filtered = moderationQueue;
-    
+
     if (filter !== 'all') {
       filtered = filtered.filter(item => item.status === filter);
     }
-    
+
     if (maxItems) {
       filtered = filtered.slice(0, maxItems);
     }
-    
+
     return filtered;
   };
 
@@ -212,7 +204,7 @@ export default function ModerationQueueComponent({
   return (
     <View style={styles.container}>
       {renderHeader()}
-      
+
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>

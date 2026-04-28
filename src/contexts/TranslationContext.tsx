@@ -535,6 +535,64 @@ export interface Translations {
     emptyResultsTitle: string;
     emptyResultsSubtitle: string;
   };
+
+  // Edit Profile Screen
+  editProfile: {
+    title: string;
+    changePhoto: string;
+    deletePhoto: string;
+    profileCompletion: string;
+    complete: string;
+    displayName: string;
+    bio: string;
+    age: string;
+    gender: string;
+    favoriteSports: string;
+    selectSports: string;
+    saveChanges: string;
+    male: string;
+    female: string;
+    other: string;
+    preferNotToSay: string;
+    unsavedChangesTitle: string;
+    unsavedChangesMessage: string;
+    discard: string;
+    deletePhotoTitle: string;
+    deletePhotoMessage: string;
+    profileUpdated: string;
+    photoUpdated: string;
+    photoDeleted: string;
+    photoUploadError: string;
+    photoDeleteError: string;
+    permissionRequired: string;
+    permissionMessage: string;
+    displayNameRequired: string;
+    validAge: string;
+    selectOneSport: string;
+    pickImageError: string;
+  };
+
+  // Place Details
+  placeDetails: {
+    title: string;
+    loadingDetails: string;
+    fetchingInfo: string;
+    reviews: string;
+    hours: string;
+    categories: string;
+    facilities: string;
+    upcomingEvents: string;
+    loadingEvents: string;
+    noEvents: string;
+    call: string;
+    website: string;
+    directions: string;
+    createMeetup: string;
+    viewOnMaps: string;
+    planEvent: string;
+    accept: string;
+    decline: string;
+  };
 }
 
 // Map of common mojibake sequences -> correct UTF-8 characters
@@ -1135,6 +1193,61 @@ export const translations: Record<Language, Translations> = {
       emptyResultsTitle: 'No people found',
       emptyResultsSubtitle: 'Try a different name or username.',
     },
+
+    editProfile: {
+      title: 'Edit Profile',
+      changePhoto: 'Change Photo',
+      deletePhoto: 'Delete',
+      profileCompletion: 'Profile Completion',
+      complete: 'Complete',
+      displayName: 'Display Name',
+      bio: 'Bio',
+      age: 'Age',
+      gender: 'Gender',
+      favoriteSports: 'Favorite Sports',
+      selectSports: 'Select your favorite sports',
+      saveChanges: 'Save Changes',
+      male: 'Male',
+      female: 'Female',
+      other: 'Other',
+      preferNotToSay: 'Prefer Not To Say',
+      unsavedChangesTitle: 'Unsaved Changes',
+      unsavedChangesMessage: 'You have unsaved changes. Are you sure you want to go back?',
+      discard: 'Discard',
+      deletePhotoTitle: 'Delete Profile Picture',
+      deletePhotoMessage: 'Are you sure you want to delete your profile picture?',
+      profileUpdated: 'Profile updated successfully!',
+      photoUpdated: 'Profile picture updated successfully!',
+      photoDeleted: 'Profile picture deleted successfully!',
+      photoUploadError: 'Failed to upload profile picture. Please try again.',
+      photoDeleteError: 'Failed to delete profile picture. Please try again.',
+      permissionRequired: 'Permission Required',
+      permissionMessage: 'Please grant camera roll permissions to upload a profile picture.',
+      displayNameRequired: 'Display name is required',
+      validAge: 'Please enter a valid age',
+      selectOneSport: 'Please select at least one sport',
+      pickImageError: 'Failed to pick image. Please try again.',
+    },
+    placeDetails: {
+      title: 'Place Details',
+      loadingDetails: 'Loading Place Details...',
+      fetchingInfo: 'Fetching place information...',
+      reviews: 'Reviews',
+      hours: 'Hours',
+      categories: 'Categories',
+      facilities: 'Facilities & Services',
+      upcomingEvents: 'Upcoming Events',
+      loadingEvents: 'Loading events...',
+      noEvents: 'No events yet',
+      call: 'Call',
+      website: 'Website',
+      directions: 'Directions',
+      createMeetup: 'Create Meetup Here',
+      viewOnMaps: 'View on Maps',
+      planEvent: 'Plan Event Here',
+      accept: 'Accept',
+      decline: 'Decline',
+    },
   },
   pl: {
     welcome: {
@@ -1644,6 +1757,61 @@ export const translations: Record<Language, Translations> = {
       emptyResultsTitle: 'Nie znaleziono osób',
       emptyResultsSubtitle: 'Spróbuj innego imienia lub nazwy użytkownika.',
     },
+
+    editProfile: {
+      title: 'Edytuj Profil',
+      changePhoto: 'Zmień Zdjęcie',
+      deletePhoto: 'Usuń',
+      profileCompletion: 'Ukończenie Profilu',
+      complete: 'Ukończono',
+      displayName: 'Nazwa Wyświetlana',
+      bio: 'Bio',
+      age: 'Wiek',
+      gender: 'Płeć',
+      favoriteSports: 'Ulubione Sporty',
+      selectSports: 'Wybierz swoje ulubione sporty',
+      saveChanges: 'Zapisz Zmiany',
+      male: 'Mężczyzna',
+      female: 'Kobieta',
+      other: 'Inne',
+      preferNotToSay: 'Wolę nie mówić',
+      unsavedChangesTitle: 'Niezapisane Zmiany',
+      unsavedChangesMessage: 'Masz niezapisane zmiany. Czy na pewno chcesz wrócić?',
+      discard: 'Odrzuć',
+      deletePhotoTitle: 'Usuń Zdjęcie Profilowe',
+      deletePhotoMessage: 'Czy na pewno chcesz usunąć swoje zdjęcie profilowe?',
+      profileUpdated: 'Profil zaktualizowany pomyślnie!',
+      photoUpdated: 'Zdjęcie profilowe zaktualizowane pomyślnie!',
+      photoDeleted: 'Zdjęcie profilowe usunięte pomyślnie!',
+      photoUploadError: 'Nie udało się przesłać zdjęcia profilowego. Spróbuj ponownie.',
+      photoDeleteError: 'Nie udało się usunąć zdjęcia profilowego. Spróbuj ponownie.',
+      permissionRequired: 'Wymagane Uprawnienie',
+      permissionMessage: 'Przyznaj uprawnienia do galerii, aby przesłać zdjęcie profilowe.',
+      displayNameRequired: 'Nazwa wyświetlana jest wymagana',
+      validAge: 'Wprowadź prawidłowy wiek',
+      selectOneSport: 'Wybierz przynajmniej jeden sport',
+      pickImageError: 'Nie udało się wybrać zdjęcia. Spróbuj ponownie.',
+    },
+    placeDetails: {
+      title: 'Szczegóły Miejsca',
+      loadingDetails: 'Ładowanie szczegółów miejsca...',
+      fetchingInfo: 'Pobieranie informacji o miejscu...',
+      reviews: 'Opinie',
+      hours: 'Godziny',
+      categories: 'Kategorie',
+      facilities: 'Udogodnienia i Usługi',
+      upcomingEvents: 'Nadchodzące Wydarzenia',
+      loadingEvents: 'Ładowanie wydarzeń...',
+      noEvents: 'Brak wydarzeń',
+      call: 'Zadzwoń',
+      website: 'Strona',
+      directions: 'Nawiguj',
+      createMeetup: 'Utwórz spotkanie tutaj',
+      viewOnMaps: 'Zobacz na mapach',
+      planEvent: 'Zaplanuj wydarzenie tutaj',
+      accept: 'Akceptuj',
+      decline: 'Odrzuć',
+    },
   },
   es: {
     welcome: {
@@ -2151,6 +2319,61 @@ export const translations: Record<Language, Translations> = {
       emptyResultsTitle: 'No se encontraron personas',
       emptyResultsSubtitle: 'Prueba con otro nombre o usuario.',
     },
+
+    editProfile: {
+      title: 'Editar Perfil',
+      changePhoto: 'Cambiar Foto',
+      deletePhoto: 'Eliminar',
+      profileCompletion: 'Completar Perfil',
+      complete: 'Completo',
+      displayName: 'Nombre',
+      bio: 'Biografía',
+      age: 'Edad',
+      gender: 'Género',
+      favoriteSports: 'Deportes Favoritos',
+      selectSports: 'Selecciona tus deportes favoritos',
+      saveChanges: 'Guardar Cambios',
+      male: 'Masculino',
+      female: 'Femenino',
+      other: 'Otro',
+      preferNotToSay: 'Prefiero no decir',
+      unsavedChangesTitle: 'Cambios sin guardar',
+      unsavedChangesMessage: 'Tienes cambios sin guardar. ¿Estás seguro de que quieres volver?',
+      discard: 'Descartar',
+      deletePhotoTitle: 'Eliminar foto de perfil',
+      deletePhotoMessage: '¿Estás seguro de que quieres eliminar tu foto de perfil?',
+      profileUpdated: '¡Perfil actualizado con éxito!',
+      photoUpdated: '¡Foto de perfil actualizada con éxito!',
+      photoDeleted: '¡Foto de perfil eliminada con éxito!',
+      photoUploadError: 'Error al subir la foto. Inténtalo de nuevo.',
+      photoDeleteError: 'Error al eliminar la foto. Inténtalo de nuevo.',
+      permissionRequired: 'Permiso requerido',
+      permissionMessage: 'Concede permisos de galería para subir una foto de perfil.',
+      displayNameRequired: 'El nombre es obligatorio',
+      validAge: 'Introduce una edad válida',
+      selectOneSport: 'Selecciona al menos un deporte',
+      pickImageError: 'Error al seleccionar imagen. Inténtalo de nuevo.',
+    },
+    placeDetails: {
+      title: 'Detalles del lugar',
+      loadingDetails: 'Cargando detalles...',
+      fetchingInfo: 'Obteniendo información...',
+      reviews: 'Reseñas',
+      hours: 'Horarios',
+      categories: 'Categorías',
+      facilities: 'Instalaciones y Servicios',
+      upcomingEvents: 'Próximos Eventos',
+      loadingEvents: 'Cargando eventos...',
+      noEvents: 'Sin eventos',
+      call: 'Llamar',
+      website: 'Web',
+      directions: 'Direcciones',
+      createMeetup: 'Crear encuentro aquí',
+      viewOnMaps: 'Ver en mapas',
+      planEvent: 'Planificar evento aquí',
+      accept: 'Aceptar',
+      decline: 'Rechazar',
+    },
   },
   fr: {
     welcome: {
@@ -2657,6 +2880,61 @@ export const translations: Record<Language, Translations> = {
       emptyResultsTitle: 'Aucune personne trouvée',
       emptyResultsSubtitle: 'Essayez un autre nom ou pseudo.',
     },
+
+    editProfile: {
+      title: 'Modifier le Profil',
+      changePhoto: 'Changer la Photo',
+      deletePhoto: 'Supprimer',
+      profileCompletion: 'Profil complété à',
+      complete: 'Terminé',
+      displayName: 'Nom d\'affichage',
+      bio: 'Bio',
+      age: 'Âge',
+      gender: 'Genre',
+      favoriteSports: 'Sports Favoris',
+      selectSports: 'Sélectionnez vos sports favoris',
+      saveChanges: 'Enregistrer',
+      male: 'Homme',
+      female: 'Femme',
+      other: 'Autre',
+      preferNotToSay: 'Préfère ne pas dire',
+      unsavedChangesTitle: 'Modifications non enregistrées',
+      unsavedChangesMessage: 'Vous avez des modifications non enregistrées. Voulez-vous vraiment revenir ?',
+      discard: 'Abandonner',
+      deletePhotoTitle: 'Supprimer la photo de profil',
+      deletePhotoMessage: 'Êtes-vous sûr de vouloir supprimer votre photo de profil ?',
+      profileUpdated: 'Profil mis à jour avec succès !',
+      photoUpdated: 'Photo de profil mise à jour !',
+      photoDeleted: 'Photo de profil supprimée !',
+      photoUploadError: 'Échec du téléchargement. Réessayez.',
+      photoDeleteError: 'Échec de la suppression. Réessayez.',
+      permissionRequired: 'Autorisation requise',
+      permissionMessage: 'Accordez les permissions de la galerie pour télécharger une photo.',
+      displayNameRequired: 'Le nom d\'affichage est requis',
+      validAge: 'Entrez un âge valide',
+      selectOneSport: 'Sélectionnez au moins un sport',
+      pickImageError: 'Échec de la sélection. Réessayez.',
+    },
+    placeDetails: {
+      title: 'Détails du lieu',
+      loadingDetails: 'Chargement des détails...',
+      fetchingInfo: 'Récupération des informations...',
+      reviews: 'Avis',
+      hours: 'Horaires',
+      categories: 'Catégories',
+      facilities: 'Installations et Services',
+      upcomingEvents: 'Événements à venir',
+      loadingEvents: 'Chargement des événements...',
+      noEvents: 'Aucun événement',
+      call: 'Appeler',
+      website: 'Site web',
+      directions: 'Itinéraire',
+      createMeetup: 'Créer un rendez-vous ici',
+      viewOnMaps: 'Voir sur la carte',
+      planEvent: 'Planifier un événement ici',
+      accept: 'Accepter',
+      decline: 'Refuser',
+    },
   },
   de: {
     welcome: {
@@ -3162,6 +3440,61 @@ export const translations: Record<Language, Translations> = {
       remove: 'Entfernen',
       emptyResultsTitle: 'Keine Personen gefunden',
       emptyResultsSubtitle: 'Versuche einen anderen Namen oder Nutzernamen.',
+    },
+
+    editProfile: {
+      title: 'Profil bearbeiten',
+      changePhoto: 'Foto ändern',
+      deletePhoto: 'Löschen',
+      profileCompletion: 'Profilvervollständigung',
+      complete: 'Abgeschlossen',
+      displayName: 'Anzeigename',
+      bio: 'Bio',
+      age: 'Alter',
+      gender: 'Geschlecht',
+      favoriteSports: 'Lieblingssportarten',
+      selectSports: 'Wähle deine Lieblingssportarten',
+      saveChanges: 'Änderungen speichern',
+      male: 'Männlich',
+      female: 'Weiblich',
+      other: 'Andere',
+      preferNotToSay: 'Keine Angabe',
+      unsavedChangesTitle: 'Ungespeicherte Änderungen',
+      unsavedChangesMessage: 'Du hast ungespeicherte Änderungen. Möchtest du wirklich zurück?',
+      discard: 'Verwerfen',
+      deletePhotoTitle: 'Profilbild löschen',
+      deletePhotoMessage: 'Möchtest du dein Profilbild wirklich löschen?',
+      profileUpdated: 'Profil erfolgreich aktualisiert!',
+      photoUpdated: 'Profilbild erfolgreich aktualisiert!',
+      photoDeleted: 'Profilbild erfolgreich gelöscht!',
+      photoUploadError: 'Fehler beim Hochladen. Versuche es erneut.',
+      photoDeleteError: 'Fehler beim Löschen. Versuche es erneut.',
+      permissionRequired: 'Berechtigung erforderlich',
+      permissionMessage: 'Bitte erteile die Galerie-Berechtigung zum Hochladen eines Profibildes.',
+      displayNameRequired: 'Anzeigename ist erforderlich',
+      validAge: 'Bitte gib ein gültiges Alter ein',
+      selectOneSport: 'Wähle mindestens eine Sportart',
+      pickImageError: 'Fehler bei der Bildauswahl. Versuche es erneut.',
+    },
+    placeDetails: {
+      title: 'Ortsdetails',
+      loadingDetails: 'Details werden geladen...',
+      fetchingInfo: 'Informationen werden abgerufen...',
+      reviews: 'Bewertungen',
+      hours: 'Öffnungszeiten',
+      categories: 'Kategorien',
+      facilities: 'Einrichtungen & Services',
+      upcomingEvents: 'Kommende Veranstaltungen',
+      loadingEvents: 'Veranstaltungen werden geladen...',
+      noEvents: 'Keine Veranstaltungen',
+      call: 'Anrufen',
+      website: 'Webseite',
+      directions: 'Navigation',
+      createMeetup: 'Treffen hier erstellen',
+      viewOnMaps: 'Auf der Karte anzeigen',
+      planEvent: 'Veranstaltung hier planen',
+      accept: 'Akzeptieren',
+      decline: 'Ablehnen',
     },
   },
 };

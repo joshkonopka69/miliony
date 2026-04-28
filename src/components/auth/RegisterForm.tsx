@@ -73,12 +73,12 @@ export default function RegisterForm({
     ]).start();
   }, []);
 
-  // Sports options
-  const sports = [
-    t.sports.boxing, t.sports.calisthenics, t.sports.gym, t.sports.basketball, t.sports.rollerSkating,
-    t.sports.football, t.sports.volleyball, t.sports.bjj, t.sports.chess, t.sports.pingPong,
-    t.sports.tennis, t.sports.badminton, t.sports.squash, t.sports.mma, t.sports.judo
-  ];
+  // Sports options - Use keys for internal storage to avoid duplicates across languages
+  const sportsKeys = [
+    'boxing', 'calisthenics', 'gym', 'basketball', 'rollerSkating',
+    'football', 'volleyball', 'bjj', 'chess', 'pingPong',
+    'tennis', 'badminton', 'squash', 'mma', 'judo'
+  ] as const;
 
   // Form validation
   const validateForm = (): boolean => {
@@ -159,11 +159,11 @@ export default function RegisterForm({
   };
 
   // Handle sport selection
-  const handleSportToggle = (sport: string) => {
+  const handleSportToggle = (sportKey: string) => {
     const currentSports = formData.favoriteSports;
-    const newSports = currentSports.includes(sport)
-      ? currentSports.filter(s => s !== sport)
-      : [...currentSports, sport];
+    const newSports = currentSports.includes(sportKey)
+      ? currentSports.filter(s => s !== sportKey)
+      : [...currentSports, sportKey];
 
     handleInputChange('favoriteSports', newSports);
   };
@@ -295,16 +295,17 @@ export default function RegisterForm({
               <Text style={styles.sportsLabel}>{t.register.favoriteSports}</Text>
               <Text style={styles.sportsSubtitle}>{t.register.selectSports}</Text>
               <View style={styles.sportsContainer}>
-                {sports.map((sport) => {
-                  const isSelected = formData.favoriteSports.includes(sport);
+                {sportsKeys.map((key) => {
+                  const isSelected = formData.favoriteSports.includes(key);
+                  const translatedSport = t.sports[key as keyof typeof t.sports] || key;
                   return (
                     <TouchableOpacity
-                      key={sport}
+                      key={key}
                       style={[
                         styles.sportChip,
                         isSelected && styles.sportChipSelected
                       ]}
-                      onPress={() => handleSportToggle(sport)}
+                      onPress={() => handleSportToggle(key)}
                       activeOpacity={0.7}
                       disabled={isLoading}
                     >
@@ -312,7 +313,7 @@ export default function RegisterForm({
                         styles.sportChipText,
                         isSelected && styles.sportChipTextSelected
                       ]}>
-                        {sport}
+                        {translatedSport}
                       </Text>
                     </TouchableOpacity>
                   );

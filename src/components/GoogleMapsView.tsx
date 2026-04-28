@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { useDialog } from '../contexts/DialogContext';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 
@@ -20,10 +21,12 @@ interface GoogleMapsViewProps {
   onPlaceSelect?: (place: any) => void;
   onLocationSelect?: (location: { latitude: number; longitude: number }) => void;
   onLocationLongPress?: (location: { latitude: number; longitude: number }) => void;
+  onEventSelect?: (event: any) => void; // Handler for custom event marker clicks
   searchQuery?: string;
   initialLocation?: { latitude: number; longitude: number };
   events?: MapEvent[]; // Events to display as markers
   places?: any[]; // Venue places to display as markers
+  highlightMarkers?: boolean; // Highlight markers when filters are active
 }
 
 const { width, height } = Dimensions.get('window');
@@ -34,34 +37,37 @@ const getSportEmoji = (activity: string): string => {
     basketball: '🏀',
     football: '⚽',
     soccer: '⚽',
-    running: '🏃‍♂️',
+    running: 'walk-outline‍♂️',
     tennis: '🎾',
-    cycling: '🚴‍♂️',
-    swimming: '🏊‍♂️',
+    cycling: 'bicycle-outline‍♂️',
+    swimming: 'water-outline‍♂️',
     gym: '💪',
     volleyball: '🏐',
-    climbing: '🧗‍♂️',
+    climbing: 'trending-up-outline‍♂️',
     yoga: '🧘',
     badminton: '🏸',
     baseball: '⚾',
-    golf: '⛳',
+    golf: 'golf-outline',
     hockey: '🏒',
   };
-  return emojiMap[activity.toLowerCase()] || '🏃';
+  return emojiMap[activity.toLowerCase()] || 'walk-outline';
 };
 
 export default function GoogleMapsView({
   onPlaceSelect,
   onLocationSelect,
   onLocationLongPress,
+  onEventSelect,
   searchQuery,
   initialLocation,
   events = [], // Default to empty array
-  places = [] // Default to empty array
+  places = [], // Default to empty array
+  highlightMarkers = false
 }: GoogleMapsViewProps) {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [mapHtml, setMapHtml] = useState<string>('');
   const webViewRef = useRef<WebView>(null);
+  const dialog = useDialog();
 
   // Track if map is initialized to avoid redundant reloads
   const mapInitialized = useRef(false);
@@ -79,10 +85,10 @@ export default function GoogleMapsView({
 
       const script = `
         if (typeof updateVenueMarkers === 'function') {
-          updateVenueMarkers(${venuesJson});
+          updateVenueMarkers(${venuesJson}, ${highlightMarkers});
         }
         if (typeof updateEventMarkers === 'function') {
-          updateEventMarkers(${eventsJson});
+          updateEventMarkers(${eventsJson}, ${highlightMarkers});
         }
         true;
       `;
@@ -102,7 +108,7 @@ export default function GoogleMapsView({
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location access is needed to show your position on the map.');
+        dialog.showInfo('Permission Denied', 'Location access is needed to show your position on the map.');
         return;
       }
 
@@ -171,6 +177,11 @@ export default function GoogleMapsView({
             font-family: Arial, sans-serif;
             max-width: 300px;
             text-align: center;
+          }
+          @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 10px #FFD700; }
+            50% { transform: scale(1.08); box-shadow: 0 0 25px #FFD700, 0 0 10px #FFD700; }
+            100% { transform: scale(1); box-shadow: 0 0 10px #FFD700; }
           }
         </style>
       </head>
@@ -424,7 +435,62 @@ export default function GoogleMapsView({
           
           // Helper function for custom marker icons with gold circular border
           // Returns HTML element for AdvancedMarkerElement
-          function getMarkerIcon(place) {
+          
+          // Sport-specific fallback icons (hosted on Supabase Storage)
+          const SPORT_ICON_URLS = {
+            'gym': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/gym.png',
+            'stadium': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/stadium.png',
+            'swimming_pool': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/swimming-pool.png',
+            'park': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/park.png',
+            'sports_complex': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/stadium.png',
+            'bowling_alley': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/bowling-alley.png',
+            'golf_course': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/golf-course.png',
+            'ice_rink': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/ice-rink.png',
+            'tennis_court': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/tennis-court.png',
+            'basketball_court': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/basketball-court.png',
+            'martial_arts_gym': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/martial-arts.png',
+            'grappling_hall': 'https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/filter-icons/grappling.png',
+          };
+          
+          // Get sport icon URL based on place types or name
+          function getSportIconUrl(place) {
+            // Check searchType first (most reliable - set during API search)
+            if (place.searchType && SPORT_ICON_URLS[place.searchType]) {
+              return SPORT_ICON_URLS[place.searchType];
+            }
+            
+            // Check place types
+            if (place.types && Array.isArray(place.types)) {
+              for (const type of place.types) {
+                if (SPORT_ICON_URLS[type]) {
+                  return SPORT_ICON_URLS[type];
+                }
+              }
+              // Check for common Google Places types
+              if (place.types.includes('gym')) return SPORT_ICON_URLS['gym'];
+              if (place.types.includes('stadium')) return SPORT_ICON_URLS['stadium'];
+              if (place.types.includes('park')) return SPORT_ICON_URLS['park'];
+              if (place.types.includes('bowling_alley')) return SPORT_ICON_URLS['bowling_alley'];
+            }
+            
+            // Check name for keywords
+            const name = (place.name || '').toLowerCase();
+            if (name.includes('basketball') || name.includes('koszyków') || name.includes('boisko')) return SPORT_ICON_URLS['basketball_court'];
+            if (name.includes('tennis') || name.includes('kort')) return SPORT_ICON_URLS['tennis_court'];
+            if (name.includes('swim') || name.includes('pool') || name.includes('basen') || name.includes('pływal')) return SPORT_ICON_URLS['swimming_pool'];
+            if (name.includes('gym') || name.includes('fitness') || name.includes('siłownia')) return SPORT_ICON_URLS['gym'];
+            if (name.includes('stadium') || name.includes('stadion')) return SPORT_ICON_URLS['stadium'];
+            if (name.includes('golf')) return SPORT_ICON_URLS['golf_course'];
+            if (name.includes('bowling') || name.includes('kręgiel')) return SPORT_ICON_URLS['bowling_alley'];
+            if (name.includes('ice') || name.includes('skating') || name.includes('lodowisko')) return SPORT_ICON_URLS['ice_rink'];
+            if (name.includes('park')) return SPORT_ICON_URLS['park'];
+            if (name.includes('martial') || name.includes('boxing') || name.includes('mma') || name.includes('karate') || name.includes('taekwondo')) return SPORT_ICON_URLS['martial_arts_gym'];
+            if (name.includes('judo') || name.includes('wrestling') || name.includes('bjj') || name.includes('grappling')) return SPORT_ICON_URLS['grappling_hall'];
+            
+            return null;
+          }
+          
+          function getMarkerIcon(place, isHighlighted) {
             let photoUrl = null;
             
             // Try to get photo URL from various formats
@@ -443,32 +509,65 @@ export default function GoogleMapsView({
 
             // Create HTML element for circular marker with gold border
             const markerDiv = document.createElement('div');
-            markerDiv.style.cssText = 'width: 52px; height: 52px; border-radius: 50%; border: 4px solid #FFD700; background-color: white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;';
+            
+            // Premium Gold Glow for highlighted markers
+            const glowStyle = isHighlighted 
+              ? 'box-shadow: 0 0 15px #FFD700, 0 0 5px #FFD700; animation: pulse 2s infinite;' 
+              : 'box-shadow: 0 3px 8px rgba(0,0,0,0.4);';
+            
+            markerDiv.style.cssText = 'width: 52px; height: 52px; border-radius: 50%; border: 4px solid #FFD700; background-color: white; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; ' + glowStyle;
             
             if (photoUrl) {
               const img = document.createElement('img');
               img.src = photoUrl;
               img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 50%;';
               img.onerror = function() {
-                // If image fails to load, show SM text instead
-                markerDiv.innerHTML = '<span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; color: black;">SM</span>';
-                markerDiv.style.backgroundColor = '#FFD700';
+                // If image fails to load, try sport-specific icon or show SM text
+                const sportIcon = getSportIconUrl(place);
+                if (sportIcon) {
+                  const fallbackImg = document.createElement('img');
+                  fallbackImg.src = sportIcon;
+                  fallbackImg.style.cssText = 'width: 70%; height: 70%; object-fit: contain;';
+                  fallbackImg.onerror = function() {
+                    markerDiv.innerHTML = '<span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; color: black;">SM</span>';
+                    markerDiv.style.backgroundColor = '#FFD700';
+                  };
+                  markerDiv.innerHTML = '';
+                  markerDiv.appendChild(fallbackImg);
+                } else {
+                  markerDiv.innerHTML = '<span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; color: black;">SM</span>';
+                  markerDiv.style.backgroundColor = '#FFD700';
+                }
               };
               markerDiv.appendChild(img);
             } else {
-              // Fallback to SM Logo
-              markerDiv.style.backgroundColor = '#FFD700';
-              markerDiv.innerHTML = '<span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; color: black;">SM</span>';
+              // No photo available - try sport-specific icon first
+              const sportIcon = getSportIconUrl(place);
+              if (sportIcon) {
+                const img = document.createElement('img');
+                img.src = sportIcon;
+                img.style.cssText = 'width: 70%; height: 70%; object-fit: contain;';
+                img.onerror = function() {
+                  markerDiv.innerHTML = '<span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; color: black;">SM</span>';
+                  markerDiv.style.backgroundColor = '#FFD700';
+                };
+                markerDiv.appendChild(img);
+              } else {
+                // Fallback to SM Logo
+                markerDiv.style.backgroundColor = '#FFD700';
+                markerDiv.innerHTML = '<span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; color: black;">SM</span>';
+              }
             }
             
             return markerDiv;
           }
 
           // Create venue markers from places data
-          function createVenueMarkers(venuesToCreate) {
+          function createVenueMarkers(venuesToCreate, highlightAll) {
             try {
               // Use provided venues or fall back to initial injected data
               const venues = venuesToCreate || ${JSON.stringify(places).replace(/`/g, '\\`').replace(/\$/g, '\\$')};
+              const isGlobalHighlight = highlightAll !== undefined ? highlightAll : ${highlightMarkers};
               
               window.ReactNativeWebView?.postMessage(JSON.stringify({
                 type: 'log',
@@ -497,7 +596,7 @@ export default function GoogleMapsView({
                   let marker;
                   // Try to use AdvancedMarkerElement if library is available
                   if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
-                    const markerContent = getMarkerIcon(venue);
+                    const markerContent = getMarkerIcon(venue, isGlobalHighlight);
                     marker = new google.maps.marker.AdvancedMarkerElement({
                       position: { lat: venue.coordinates.lat, lng: venue.coordinates.lng },
                       map: map,
@@ -545,8 +644,105 @@ export default function GoogleMapsView({
 
           // Expose functions globally for injectJavaScript
           window.updateVenueMarkers = createVenueMarkers;
-          window.updateEventMarkers = function(events) {
-            // Logic for event markers if needed...
+          
+          // Track event markers separately from venue markers
+          var eventMarkers = [];
+          
+          window.updateEventMarkers = function(eventsToCreate, highlightAll) {
+            try {
+              const sportEvents = eventsToCreate || [];
+              const isGlobalHighlight = highlightAll !== undefined ? highlightAll : false;
+              
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'log',
+                message: '🗺️ WebView: updateEventMarkers called with ' + sportEvents.length + ' events'
+              }));
+              
+              // Clear existing event markers
+              if (eventMarkers && eventMarkers.length > 0) {
+                eventMarkers.forEach(m => {
+                  if (m.setMap) m.setMap(null);
+                  else if (m.map) m.map = null;
+                });
+                eventMarkers = [];
+              }
+              
+              if (!sportEvents || sportEvents.length === 0) return;
+              
+              let createdCount = 0;
+              
+              sportEvents.forEach(function(sportEvent) {
+                if (!sportEvent.latitude || !sportEvent.longitude) return;
+                
+                const emoji = getEmojiForSport(sportEvent.activity || '');
+                
+                // Create custom HTML marker element with sM logo styling
+                const markerDiv = document.createElement('div');
+                const glowStyle = isGlobalHighlight 
+                  ? 'box-shadow: 0 0 15px #FFD700, 0 0 5px #FFD700; animation: pulse 2s infinite;'
+                  : 'box-shadow: 0 3px 8px rgba(0,0,0,0.4);';
+                
+                markerDiv.style.cssText = 'width: 52px; height: 52px; border-radius: 50%; border: 4px solid #FFD700; background-color: #FFD700; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; ' + glowStyle;
+                markerDiv.innerHTML = '<span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 14px; color: black;">sM</span>';
+                
+                // Add participant badge
+                const badge = document.createElement('div');
+                badge.style.cssText = 'position: absolute; bottom: -4px; right: -4px; background: #10b981; color: white; border-radius: 10px; padding: 2px 6px; font-size: 10px; font-weight: bold; border: 2px solid white;';
+                badge.innerText = (sportEvent.participants_count || 0) + '/' + (sportEvent.max_participants || 0);
+                markerDiv.appendChild(badge);
+                
+                let marker;
+                try {
+                  if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+                    marker = new google.maps.marker.AdvancedMarkerElement({
+                      position: { lat: sportEvent.latitude, lng: sportEvent.longitude },
+                      map: map,
+                      title: sportEvent.name || sportEvent.activity || 'Event',
+                      content: markerDiv,
+                      zIndex: 1000
+                    });
+                  } else {
+                    marker = new google.maps.Marker({
+                      position: { lat: sportEvent.latitude, lng: sportEvent.longitude },
+                      map: map,
+                      title: sportEvent.name || sportEvent.activity || 'Event',
+                      icon: {
+                        url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent('<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="20" fill="#FFD700" stroke="white" stroke-width="4"/><text x="24" y="30" font-size="14" text-anchor="middle" font-weight="bold" fill="black">sM</text></svg>'),
+                        scaledSize: new google.maps.Size(48, 48),
+                        anchor: new google.maps.Point(24, 24)
+                      },
+                      zIndex: 1000
+                    });
+                  }
+                  
+                  if (marker) {
+                    marker.addListener('click', function() {
+                      // Only send to React Native for PlaceInfoModal - no infowindow
+                      window.ReactNativeWebView?.postMessage(JSON.stringify({
+                        type: 'event_click',
+                        event: sportEvent
+                      }));
+                    });
+                    
+                    eventMarkers.push(marker);
+                    createdCount++;
+                  }
+                } catch (err) {
+                  console.error('Error creating event marker:', err);
+                }
+              });
+              
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'log',
+                message: '🗺️ WebView: Created ' + createdCount + ' event markers'
+              }));
+            } catch (e) {
+              console.error('Error in updateEventMarkers:', e);
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                type: 'error',
+                message: '🗺️ WebView: Error in updateEventMarkers: ' + e.message
+              }));
+            }
           };
           
           // Create event markers
@@ -583,41 +779,11 @@ export default function GoogleMapsView({
                 });
                 
                 marker.addListener('click', function() {
+                  // Only send to React Native for PlaceInfoModal - no infowindow
                   window.ReactNativeWebView?.postMessage(JSON.stringify({
                     type: 'event_click',
                     event: sportEvent
                   }));
-                  
-                  infowindow.setContent(\`
-                    <div style="padding: 12px; max-width: 250px;">
-                      <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">\${sportEvent.name}</h3>
-                      <p style="margin: 0 0 6px 0; color: #666; font-size: 14px;">
-                        <span style="font-size: 20px; margin-right: 6px;">\${emoji}</span>
-                        \${sportEvent.activity}
-                      </p>
-                      <p style="margin: 0; color: #FFD700; font-weight: 600; font-size: 14px;">
-                        👥 \${sportEvent.participants_count}/\${sportEvent.max_participants} participants
-                      </p>
-                      <button style="
-                        width: 100%;
-                        margin-top: 10px;
-                        padding: 8px;
-                        background: #FFD700;
-                        color: black;
-                        border: none;
-                        border-radius: 8px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        font-size: 14px;
-                      " onclick="window.ReactNativeWebView.postMessage(JSON.stringify({
-                        type: 'event_join',
-                        eventId: '\${sportEvent.id}'
-                      }))">
-                        Join Event
-                      </button>
-                    </div>
-                  \`);
-                  infowindow.open(map, marker);
                 });
               });
             } catch (e) {
@@ -628,35 +794,35 @@ export default function GoogleMapsView({
           // Helper function for emoji mapping in browser
           function getEmojiForSport(sport) {
             const map = {
-              'basketball': '🏀',
-              'football': '⚽',
-              'soccer': '⚽',
-              'running': '🏃‍♂️',
-              'tennis': '🎾',
-              'cycling': '🚴‍♂️',
-              'swimming': '🏊‍♂️',
-              'gym': '💪',
-              'volleyball': '🏐',
-              'climbing': '🧗‍♂️',
+              'basketball': 'basketball-outline',
+              'football': 'football-outline',
+              'soccer': 'football-outline',
+              'running': 'walk-outline‍♂️',
+              'tennis': 'tennisball-outline',
+              'cycling': 'bicycle-outline‍♂️',
+              'swimming': 'water-outline‍♂️',
+              'gym': 'barbell-outline',
+              'volleyball': 'baseball-outline',
+              'climbing': 'trending-up-outline‍♂️',
               'yoga': '🧘',
               'pilates': '🧘',
               'crossfit': '🏋️‍♂️',
               'judo': '🥋',
               'wrestling': '🤼‍♂️',
-              'muay thai': '🥊',
-              'kickboxing': '🥊',
+              'muay thai': 'fitness-outline',
+              'kickboxing': 'fitness-outline',
               'rollerblading': '🛼',
               'ice skating': '⛸️',
               'skating': '🛹',
-              'padel': '🎾',
-              'squash': '🎾',
+              'padel': 'tennisball-outline',
+              'squash': 'tennisball-outline',
               'badminton': '🏸',
               'table tennis': '🏓',
               'baseball': '⚾',
-              'golf': '⛳',
+              'golf': 'golf-outline',
               'hockey': '🏒'
             };
-            return map[sport.toLowerCase()] || '🏃';
+            return map[sport.toLowerCase()] || 'walk-outline';
           }
           
 
@@ -699,26 +865,28 @@ export default function GoogleMapsView({
           longitude: data.longitude
         });
       } else if (data.type === 'event_click') {
-        // Handle event marker click
-        console.log('Event clicked:', data.event);
-        Alert.alert(
-          data.event.name,
-          `${data.event.activity}\n${data.event.participants_count}/${data.event.max_participants} participants`,
-          [
-            { text: 'Close', style: 'cancel' },
-            { text: 'View Details', onPress: () => console.log('View details:', data.event.id) }
-          ]
-        );
+        // Handle custom event marker click - pass to parent for PlaceInfoModal
+        console.log('🎯 Event marker clicked:', data.event);
+        if (onEventSelect) {
+          onEventSelect(data.event);
+        } else {
+          // Fallback to dialog if no handler provided
+          dialog.showDialog({
+            title: data.event.name || data.event.activity,
+            message: `${data.event.activity}\n${data.event.participants_count || 0}/${data.event.max_participants || 0} participants`,
+            type: 'info',
+            buttons: [
+              { text: 'Close', style: 'cancel' }
+            ]
+          });
+        }
       } else if (data.type === 'event_join') {
         // Handle join event button click
         console.log('Join event:', data.eventId);
-        Alert.alert(
+        dialog.showConfirm(
           'Join Event',
           'Would you like to join this event?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Join', onPress: () => console.log('Joining event:', data.eventId) }
-          ]
+          () => console.log('Joining event:', data.eventId)
         );
       }
     } catch (error) {

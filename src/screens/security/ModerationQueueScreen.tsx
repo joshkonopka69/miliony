@@ -19,6 +19,8 @@ import { useModeration } from '../../hooks/useModeration';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
 import { ModerationQueue, ModerationAction } from '../../services/moderationService';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 
 interface ModerationQueueScreenProps {
   navigation: any;
@@ -27,6 +29,8 @@ interface ModerationQueueScreenProps {
 export default function ModerationQueueScreen({ navigation }: ModerationQueueScreenProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const {
     getModerationQueue,
     takeModerationAction,
@@ -74,12 +78,12 @@ export default function ModerationQueueScreen({ navigation }: ModerationQueueScr
 
   const handleTakeAction = async () => {
     if (!selectedItem || !selectedAction || !actionReason) {
-      Alert.alert('Error', 'Please select an action and provide a reason');
+      showError('Please select an action and provide a reason', 'Error');
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to take moderation actions');
+      showError('You must be logged in to take moderation actions', 'Error');
       return;
     }
 
@@ -98,10 +102,11 @@ export default function ModerationQueueScreen({ navigation }: ModerationQueueScr
       const result = await takeModerationAction(action);
 
       if (result) {
-        Alert.alert(
-          'Action Taken',
-          'Moderation action has been applied successfully.',
-          [
+        showConfirmation({
+          title: 'Action Taken',
+          message: 'Moderation action has been applied successfully.',
+          icon: '🛡️',
+          buttons: [
             {
               text: 'OK',
               onPress: () => {
@@ -113,11 +118,11 @@ export default function ModerationQueueScreen({ navigation }: ModerationQueueScr
               },
             },
           ]
-        );
+        });
       }
     } catch (error) {
       console.error('Error taking moderation action:', error);
-      Alert.alert('Error', 'Failed to take moderation action. Please try again.');
+      showError('Failed to take moderation action. Please try again.', 'Error');
     } finally {
       setIsProcessing(false);
     }
@@ -314,7 +319,7 @@ export default function ModerationQueueScreen({ navigation }: ModerationQueueScr
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}

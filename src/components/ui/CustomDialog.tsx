@@ -37,12 +37,12 @@ interface CustomDialogProps {
   onDismiss: () => void;
 }
 
-const DIALOG_ICONS: Record<DialogType, string> = {
-  success: '🎉',
-  error: '❌',
-  warning: '⚠️',
-  info: 'ℹ️',
-  confirm: '❓',
+const DIALOG_ICONS: Record<DialogType, keyof typeof Ionicons.glyphMap> = {
+  success: 'checkmark-circle',
+  error: 'close-circle',
+  warning: 'warning',
+  info: 'information-circle',
+  confirm: 'help-circle',
 };
 
 const DIALOG_GRADIENTS: Record<DialogType, [string, string]> = {
@@ -115,7 +115,7 @@ export default function CustomDialog({ visible, config, onDismiss }: CustomDialo
 
   if (!visible || !config) return null;
 
-  const icon = config.icon || DIALOG_ICONS[config.type];
+  const iconName = DIALOG_ICONS[config.type];
   const gradientColors = DIALOG_GRADIENTS[config.type];
   const buttons = config.buttons || [{ text: 'OK', style: 'default' as const }];
 
@@ -148,7 +148,7 @@ export default function CustomDialog({ visible, config, onDismiss }: CustomDialo
                 end={{ x: 1, y: 1 }}
                 style={styles.header}
               >
-                <Text style={styles.icon}>{icon}</Text>
+                <Text style={{fontSize: 29, color: '#1A1A1A'}}>{iconName}</Text>
                 <Text style={styles.title}>{config.title}</Text>
               </LinearGradient>
 

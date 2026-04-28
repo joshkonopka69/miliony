@@ -10,7 +10,6 @@ import {
   StatusBar,
   TextInput,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 interface TableColumn {
   key: string;
@@ -101,7 +100,7 @@ export function AnalyticsTable({
         <View style={styles.headerActions}>
           {searchable && (
             <View style={styles.searchContainer}>
-              <Ionicons name="search" size={16} color="#666666" />
+              <Text style={{fontSize: 14, color: '#666666'}}>🔍</Text>
               <TextInput
                 style={styles.searchInput}
                 value={searchQuery}
@@ -115,7 +114,7 @@ export function AnalyticsTable({
             style={styles.fullTableButton}
             onPress={() => setShowFullTable(true)}
           >
-            <Ionicons name="expand" size={16} color="#2196F3" />
+            <Text style={{fontSize: 14, color: '#2196F3'}}>•</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -137,11 +136,7 @@ export function AnalyticsTable({
           >
             <Text style={styles.tableHeaderText}>{column.title}</Text>
             {sortable && column.sortable && sortColumn === column.key && (
-              <Ionicons
-                name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color="#2196F3"
-              />
+              <Text style={{fontSize: 14, color: '#2196F3'}}>{sortDirection === 'asc' ? '▲' : '▼'}</Text>
             )}
           </TouchableOpacity>
         ))}
@@ -203,7 +198,7 @@ export function AnalyticsTable({
           onPress={() => handlePageChange(currentPage - 1)}
           disabled={currentPage === 1}
         >
-          <Ionicons name="chevron-back" size={16} color={currentPage === 1 ? '#cccccc' : '#666666'} />
+          <Text style={{fontSize: 14, color: currentPage === 1 ? '#cccccc' : '#666666'}}>•</Text>
         </TouchableOpacity>
 
         {pageNumbers.map(page => (
@@ -231,7 +226,7 @@ export function AnalyticsTable({
           onPress={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
         >
-          <Ionicons name="chevron-forward" size={16} color={currentPage === totalPages ? '#cccccc' : '#666666'} />
+          <Text style={{fontSize: 14, color: currentPage === totalPages ? '#cccccc' : '#666666'}}>›</Text>
         </TouchableOpacity>
       </View>
     );
@@ -251,7 +246,7 @@ export function AnalyticsTable({
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title || 'Full Table'}</Text>
             <TouchableOpacity onPress={() => setShowFullTable(false)}>
-              <Ionicons name="close" size={24} color="#666666" />
+              <Text style={{fontSize: 22, color: '#666666'}}>✕</Text>
             </TouchableOpacity>
           </View>
           
@@ -277,7 +272,7 @@ export function AnalyticsTable({
   const renderEmptyState = () => {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="document-outline" size={48} color="#cccccc" />
+        <Text style={{fontSize: 43, color: '#cccccc'}}>•</Text>
         <Text style={styles.emptyText}>{emptyMessage}</Text>
       </View>
     );

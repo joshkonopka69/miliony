@@ -8,8 +8,9 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { useToast } from '../ToastProvider';
+import { useDialog } from '../../contexts/DialogContext';
 import { useModeration } from '../../hooks/useModeration';
 import { useAuth } from '../../contexts/AuthContext';
 import { ReportCategory, ReportTemplate } from '../../services/reportingService';
@@ -29,6 +30,8 @@ export default function ReportModal({
   contentType,
   contentData,
 }: ReportModalProps) {
+  const toast = useToast();
+  const dialog = useDialog();
   const { user } = useAuth();
   const {
     getReportCategories,
@@ -96,12 +99,12 @@ export default function ReportModal({
 
   const handleSubmitReport = async () => {
     if (!selectedCategory || !selectedTemplate) {
-      Alert.alert('Error', 'Please select a category and template');
+      toast.showWarning('Required Info', 'Please select a category and template');
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to submit a report');
+      dialog.showInfo('Login Required', 'You must be logged in to submit a report');
       return;
     }
 
@@ -124,23 +127,18 @@ export default function ReportModal({
       const result = await submitReport(report);
 
       if (result) {
-        Alert.alert(
+        dialog.showSuccess(
           'Report Submitted',
           'Your report has been submitted successfully. We will review it and take appropriate action.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                onClose();
-                resetForm();
-              },
-            },
-          ]
+          () => {
+            onClose();
+            resetForm();
+          }
         );
       }
     } catch (error) {
       console.error('Error submitting report:', error);
-      Alert.alert('Error', 'Failed to submit report. Please try again.');
+      toast.showError('Error', 'Failed to submit report. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -220,7 +218,7 @@ export default function ReportModal({
 
   const renderField = (field: string) => {
     const isRequired = selectedTemplate?.required_fields.includes(field);
-    
+
     return (
       <View key={field} style={styles.fieldContainer}>
         <Text style={styles.fieldLabel}>
@@ -302,7 +300,7 @@ export default function ReportModal({
             <Text style={styles.sectionDescription}>
               Choose the most appropriate category for your report
             </Text>
-            
+
             {reportCategories.map(renderCategoryItem)}
           </View>
 
@@ -312,7 +310,7 @@ export default function ReportModal({
               <Text style={styles.sectionDescription}>
                 Choose a template that best fits your report
               </Text>
-              
+
               {reportTemplates
                 .filter(template => template.category_id === selectedCategory)
                 .map(renderTemplateItem)}

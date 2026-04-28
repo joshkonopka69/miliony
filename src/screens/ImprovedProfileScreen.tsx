@@ -11,12 +11,13 @@ import {
   ActivityIndicator,
   Alert,
   Image
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from 'react-native';
 import { useAppNavigation } from '../navigation/hooks';
 import { BottomNavBar } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../config/supabase';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 interface UserProfile {
   id: string;
@@ -46,12 +47,12 @@ const SPORT_EMOJI_MAP: Record<string, string> = {
   football: '⚽',
   soccer: '⚽',
   tennis: '🎾',
-  running: '🏃‍♂️',
-  cycling: '🚴‍♂️',
-  swimming: '🏊‍♂️',
+  running: 'walk-outline‍♂️',
+  cycling: 'bicycle-outline‍♂️',
+  swimming: 'water-outline‍♂️',
   gym: '💪',
   volleyball: '🏐',
-  default: '🏅',
+  default: '🏆',
 };
 
 const getSportEmoji = (sportType: string): string => {
@@ -89,6 +90,8 @@ const formatEventDateTime = (dateString: string): string => {
 export default function ImprovedProfileScreen() {
   const navigation = useAppNavigation();
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
 
   const [activeTab, setActiveTab] = useState<'Created' | 'Joined'>('Created');
   const [loading, setLoading] = useState(true);
@@ -104,7 +107,7 @@ export default function ImprovedProfileScreen() {
       // Mock data for preview
       setProfile({
         id: 'mock-user',
-        email: 'josh@sportmap.com',
+        email: 'josh@SportsMap.com',
         display_name: 'josh',
         favorite_sports: ['Basketball', 'Football'],
         created_at: '2025-01-01T00:00:00.000Z',
@@ -222,7 +225,7 @@ export default function ImprovedProfileScreen() {
 
     } catch (error: any) {
       console.error('Error fetching profile:', error);
-      Alert.alert('Error', 'Failed to load profile data');
+      showError('Failed to load profile data', 'Error');
     } finally {
       setLoading(false);
     }
@@ -263,7 +266,7 @@ export default function ImprovedProfileScreen() {
     <TouchableOpacity key={event.id} style={styles.eventCard} activeOpacity={0.7}>
       {/* Sport Icon */}
       <View style={styles.eventIconContainer}>
-        <Text style={styles.eventIcon}>{getSportEmoji(event.sport_type)}</Text>
+        <Text style={{fontSize: 16, color: '#FFD700'}}>{getSportEmoji(event.sport_type)}</Text>
       </View>
 
       {/* Event Info */}
@@ -316,7 +319,7 @@ export default function ImprovedProfileScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color="#000000" />
+          <Text style={{fontSize: 22, color: '#000000'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
         <View style={styles.headerPlaceholder} />
@@ -345,7 +348,7 @@ export default function ImprovedProfileScreen() {
 
             {/* Camera Button */}
             <TouchableOpacity style={styles.cameraButton}>
-              <Ionicons name="camera" size={20} color="#000000" />
+              <Text style={{fontSize: 18, color: '#000000'}}>📷</Text>
             </TouchableOpacity>
           </View>
 
@@ -353,7 +356,7 @@ export default function ImprovedProfileScreen() {
           <Text style={styles.userName}>{profile?.display_name || 'User'}</Text>
           <Text style={styles.userHandle}>{getUserHandle(profile?.display_name || 'user')}</Text>
           <Text style={styles.joinDate}>
-            Joined SportMap in {getJoinYear(profile?.created_at || new Date().toISOString())}
+            Joined SportsMap in {getJoinYear(profile?.created_at || new Date().toISOString())}
           </Text>
         </View>
 

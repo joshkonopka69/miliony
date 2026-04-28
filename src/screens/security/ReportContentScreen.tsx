@@ -17,6 +17,8 @@ import { useModeration } from '../../hooks/useModeration';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
 import { ReportCategory, ReportTemplate } from '../../services/reportingService';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 
 interface ReportContentScreenProps {
   navigation: any;
@@ -26,6 +28,8 @@ interface ReportContentScreenProps {
 export default function ReportContentScreen({ navigation, route }: ReportContentScreenProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const {
     getReportCategories,
     getReportTemplates,
@@ -92,12 +96,12 @@ export default function ReportContentScreen({ navigation, route }: ReportContent
 
   const handleSubmitReport = async () => {
     if (!selectedCategory || !selectedTemplate) {
-      Alert.alert('Error', 'Please select a category and template');
+      showError('Please select a category and template', 'Error');
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to submit a report');
+      showError('You must be logged in to submit a report', 'Error');
       return;
     }
 
@@ -120,20 +124,21 @@ export default function ReportContentScreen({ navigation, route }: ReportContent
       const result = await submitReport(report);
 
       if (result) {
-        Alert.alert(
-          'Report Submitted',
-          'Your report has been submitted successfully. We will review it and take appropriate action.',
-          [
+        showConfirmation({
+          title: 'Report Submitted',
+          message: 'Your report has been submitted successfully. We will review it and take appropriate action.',
+          icon: '✅',
+          buttons: [
             {
               text: 'OK',
               onPress: () => navigation.goBack(),
             },
           ]
-        );
+        });
       }
     } catch (error) {
       console.error('Error submitting report:', error);
-      Alert.alert('Error', 'Failed to submit report. Please try again.');
+      showError('Failed to submit report. Please try again.', 'Error');
     } finally {
       setIsSubmitting(false);
     }
@@ -199,7 +204,7 @@ export default function ReportContentScreen({ navigation, route }: ReportContent
 
   const renderField = (field: string) => {
     const isRequired = selectedTemplate?.required_fields.includes(field);
-    
+
     return (
       <View key={field} style={styles.fieldContainer}>
         <Text style={styles.fieldLabel}>
@@ -253,7 +258,7 @@ export default function ReportContentScreen({ navigation, route }: ReportContent
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -292,7 +297,7 @@ export default function ReportContentScreen({ navigation, route }: ReportContent
           <Text style={styles.sectionDescription}>
             Choose the most appropriate category for your report
           </Text>
-          
+
           {reportCategories.map(renderCategoryItem)}
         </View>
 
@@ -302,7 +307,7 @@ export default function ReportContentScreen({ navigation, route }: ReportContent
             <Text style={styles.sectionDescription}>
               Choose a template that best fits your report
             </Text>
-            
+
             {reportTemplates
               .filter(template => template.category_id === selectedCategory)
               .map(renderTemplateItem)}

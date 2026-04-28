@@ -1,40 +1,92 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+// Clean SportsMap Toast Colors - Gold/Black/White Premium Theme
+const TOAST_COLORS = {
+  success: {
+    background: '#1A1A1A',
+    border: '#FFD700',
+    accent: '#FFD700',
+    text: '#FFFFFF',
+    icon: '✓',
+    iconBg: '#FFD700',
+    iconColor: '#000000',
+  },
+  error: {
+    background: '#1A1A1A',
+    border: '#FF4444',
+    accent: '#FF4444',
+    text: '#FFFFFF',
+    icon: '✕',
+    iconBg: '#FF4444',
+    iconColor: '#FFFFFF',
+  },
+  warning: {
+    background: '#1A1A1A',
+    border: '#FFD700',
+    accent: '#FFD700',
+    text: '#FFFFFF',
+    icon: '!',
+    iconBg: '#FFD700',
+    iconColor: '#000000',
+  },
+  info: {
+    background: '#1A1A1A',
+    border: '#FFD700',
+    accent: '#FFD700',
+    text: '#FFFFFF',
+    icon: 'i',
+    iconBg: '#FFD700',
+    iconColor: '#000000',
+  },
+};
 
 interface ToastProps {
   visible: boolean;
   message: string;
   type: ToastType;
+  title?: string;
   duration?: number;
   onHide: () => void;
   onPress?: () => void;
 }
 
-export default function Toast({ 
-  visible, 
-  message, 
-  type, 
-  duration = 3000, 
-  onHide, 
-  onPress 
+export default function Toast({
+  visible,
+  message,
+  title,
+  type,
+  duration = 3000,
+  onHide,
+  onPress
 }: ToastProps) {
-  const translateY = useRef(new Animated.Value(-100)).current;
+  const translateY = useRef(new Animated.Value(-120)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
     if (visible) {
-      // Show animation
+      // Show animation with spring effect
       Animated.parallel([
-        Animated.timing(translateY, {
+        Animated.spring(translateY, {
           toValue: 0,
-          duration: 300,
+          friction: 8,
+          tension: 65,
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 300,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          friction: 6,
+          tension: 80,
           useNativeDriver: true,
         }),
       ]).start();
@@ -53,13 +105,18 @@ export default function Toast({
   const hideToast = () => {
     Animated.parallel([
       Animated.timing(translateY, {
-        toValue: -100,
-        duration: 300,
+        toValue: -120,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 300,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 0.95,
+        duration: 150,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -67,113 +124,133 @@ export default function Toast({
     });
   };
 
-  const getToastStyle = () => {
-    switch (type) {
-      case 'success':
-        return styles.successToast;
-      case 'error':
-        return styles.errorToast;
-      case 'warning':
-        return styles.warningToast;
-      case 'info':
-        return styles.infoToast;
-      default:
-        return styles.infoToast;
-    }
-  };
+  const getColors = () => TOAST_COLORS[type] || TOAST_COLORS.info;
 
-  const getIcon = () => {
+  const getDefaultTitle = () => {
     switch (type) {
       case 'success':
-        return '✅';
+        return 'Success';
       case 'error':
-        return '❌';
+        return 'Error';
       case 'warning':
-        return '⚠️';
+        return 'Warning';
       case 'info':
-        return 'ℹ️';
+        return 'Info';
       default:
-        return 'ℹ️';
+        return 'Notice';
     }
   };
 
   if (!visible) return null;
 
+  const colors = getColors();
+
   return (
     <Animated.View
       style={[
-        styles.toast,
-        getToastStyle(),
+        styles.toastContainer,
         {
-          transform: [{ translateY }],
+          transform: [{ translateY }, { scale }],
           opacity,
         },
       ]}
     >
       <TouchableOpacity
-        style={styles.toastContent}
-        onPress={onPress}
-        activeOpacity={0.8}
+        activeOpacity={0.95}
+        onPress={onPress || hideToast}
+        style={styles.touchable}
       >
-        <Text style={styles.toastIcon}>{getIcon()}</Text>
-        <Text style={styles.toastMessage}>{message}</Text>
-        <TouchableOpacity onPress={hideToast} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>✕</Text>
-        </TouchableOpacity>
+        <View style={[styles.toast, { backgroundColor: colors.background, borderLeftColor: colors.border }]}>
+          {/* Icon */}
+          <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
+            <Text style={{fontSize: 18, color: colors.iconColor}}>{colors.icon}</Text>
+          </View>
+
+          {/* Content */}
+          <View style={styles.textContainer}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              {title || getDefaultTitle()}
+            </Text>
+            <Text style={[styles.message, { color: colors.text }]} numberOfLines={2}>
+              {message}
+            </Text>
+          </View>
+
+          {/* Close button */}
+          <TouchableOpacity style={styles.closeButton} onPress={hideToast}>
+            <Text style={{fontSize: 16, color: '#999999'}}>✕</Text>
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  toast: {
+  toastContainer: {
     position: 'absolute',
-    top: 60,
-    left: 20,
-    right: 20,
-    zIndex: 1000,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    top: 50,
+    left: 16,
+    right: 16,
+    zIndex: 99999,
+    elevation: 99999,
   },
-  toastContent: {
+  touchable: {
+    width: '100%',
+  },
+  toast: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderBottomWidth: 3,
+    borderBottomColor: '#FFD700',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
   },
-  toastIcon: {
-    fontSize: 20,
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
-  toastMessage: {
+  iconText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  textContainer: {
     flex: 1,
-    fontSize: 16,
-    color: '#ffffff',
-    fontWeight: '500',
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+    letterSpacing: 0.2,
+  },
+  message: {
+    fontSize: 14,
+    fontWeight: '400',
+    opacity: 0.8,
+    lineHeight: 18,
   },
   closeButton: {
-    padding: 4,
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
-  successToast: {
-    backgroundColor: '#10b981',
-  },
-  errorToast: {
-    backgroundColor: '#ef4444',
-  },
-  warningToast: {
-    backgroundColor: '#f59e0b',
-  },
-  infoToast: {
-    backgroundColor: '#3b82f6',
+  closeText: {
+    fontSize: 22,
+    color: '#999999',
+    fontWeight: '300',
   },
 });
-
-

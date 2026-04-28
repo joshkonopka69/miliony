@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
+import { useToast } from './ToastProvider';
 import { BackendService, EventMessage } from '../services/backendService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -24,6 +24,7 @@ export default function EventChat({ eventId, eventTitle }: EventChatProps) {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const toast = useToast();
   const flatListRef = useRef<FlatList>(null);
   const subscriptionRef = useRef<any>(null);
 
@@ -45,7 +46,7 @@ export default function EventChat({ eventId, eventTitle }: EventChatProps) {
       setMessages(messageList);
     } catch (error) {
       console.error('Error loading messages:', error);
-      Alert.alert('Error', 'Failed to load messages');
+      toast.showError('Error', 'Failed to load messages');
     } finally {
       setLoading(false);
     }
@@ -85,11 +86,11 @@ export default function EventChat({ eventId, eventTitle }: EventChatProps) {
           flatListRef.current?.scrollToEnd({ animated: true });
         }, 100);
       } else {
-        Alert.alert('Error', result.error || 'Failed to send message');
+        toast.showError('Error', result.error || 'Failed to send message');
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
+      toast.showError('Error', 'Failed to send message');
     } finally {
       setSending(false);
     }

@@ -5,7 +5,6 @@ import {
     StyleSheet,
     TextInput,
     TouchableOpacity,
-    Alert,
     ActivityIndicator,
     Animated,
     StatusBar,
@@ -14,16 +13,19 @@ import {
     ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/TranslationContext';
 import { ROUTES } from '../navigation/types';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 export default function ResetPasswordScreen() {
     const navigation = useNavigation<any>();
     const { t } = useTranslation();
     const { resetPassword } = useAuth();
+    const { showError, showSuccess } = useToast();
+    const { showConfirmation } = useConfirmation();
 
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -50,17 +52,17 @@ export default function ResetPasswordScreen() {
 
     const handleResetPassword = async () => {
         if (!password || !confirmPassword) {
-            Alert.alert('Error', 'Please fill in all fields');
+            showError('Please fill in all fields', 'Error');
             return;
         }
 
         if (password.length < 6) {
-            Alert.alert('Error', 'Password must be at least 6 characters long');
+            showError('Password must be at least 6 characters long', 'Error');
             return;
         }
 
         if (password !== confirmPassword) {
-            Alert.alert('Error', 'Passwords do not match');
+            showError('Passwords do not match', 'Error');
             return;
         }
 
@@ -68,16 +70,19 @@ export default function ResetPasswordScreen() {
         try {
             const result = await resetPassword(password);
             if (result.success) {
-                Alert.alert(
-                    'Success',
-                    'Your password has been reset successfully. You can now log in with your new password.',
-                    [{ text: 'OK', onPress: () => navigation.navigate(ROUTES.AUTH) }]
-                );
+                showConfirmation({
+                    title: 'Success',
+                    message: 'Your password has been reset successfully. You can now log in with your new password.',
+                    icon: '✅',
+                    buttons: [
+                        { text: 'OK', onPress: () => navigation.navigate(ROUTES.AUTH) }
+                    ]
+                });
             } else {
-                Alert.alert('Error', result.error?.message || 'Failed to reset password');
+                showError(result.error?.message || 'Failed to reset password', 'Error');
             }
         } catch (error: any) {
-            Alert.alert('Error', error.message || 'An unexpected error occurred');
+            showError(error.message || 'An unexpected error occurred', 'Error');
         } finally {
             setIsLoading(false);
         }
@@ -118,11 +123,7 @@ export default function ResetPasswordScreen() {
                                         onPress={() => setShowPassword(!showPassword)}
                                         style={styles.eyeIcon}
                                     >
-                                        <Ionicons
-                                            name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                                            size={20}
-                                            color="#6B7280"
-                                        />
+                                        <Text style={{fontSize: 18, color: '#6B7280'}}>{showPassword ? '•' : '•'}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -149,7 +150,7 @@ export default function ResetPasswordScreen() {
                                 ) : (
                                     <>
                                         <Text style={styles.buttonText}>Update Password</Text>
-                                        <Ionicons name="arrow-forward" size={20} color="#000000" style={{ marginLeft: 8 }} />
+                                        <Text style={{fontSize: 18, color: '#000000'}}>•</Text>
                                     </>
                                 )}
                             </TouchableOpacity>

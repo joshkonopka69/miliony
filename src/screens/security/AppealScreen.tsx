@@ -17,6 +17,8 @@ import { useModeration } from '../../hooks/useModeration';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
 import { AppealRequest } from '../../services/moderationService';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 
 interface AppealScreenProps {
   navigation: any;
@@ -25,6 +27,8 @@ interface AppealScreenProps {
 export default function AppealScreen({ navigation }: AppealScreenProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const {
     createAppealRequest,
     getAppealRequests,
@@ -59,12 +63,12 @@ export default function AppealScreen({ navigation }: AppealScreenProps) {
 
   const handleCreateAppeal = async () => {
     if (!appealReason.trim()) {
-      Alert.alert('Error', 'Please provide a reason for your appeal');
+      showError('Please provide a reason for your appeal', 'Error');
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to create an appeal');
+      showError('You must be logged in to create an appeal', 'Error');
       return;
     }
 
@@ -82,10 +86,11 @@ export default function AppealScreen({ navigation }: AppealScreenProps) {
       const result = await createAppealRequest(appeal);
 
       if (result) {
-        Alert.alert(
-          'Appeal Submitted',
-          'Your appeal has been submitted successfully. We will review it and notify you of the decision.',
-          [
+        showConfirmation({
+          title: 'Appeal Submitted',
+          message: 'Your appeal has been submitted successfully. We will review it and notify you of the decision.',
+          icon: '✅',
+          buttons: [
             {
               text: 'OK',
               onPress: () => {
@@ -97,11 +102,11 @@ export default function AppealScreen({ navigation }: AppealScreenProps) {
               },
             },
           ]
-        );
+        });
       }
     } catch (error) {
       console.error('Error creating appeal:', error);
-      Alert.alert('Error', 'Failed to create appeal. Please try again.');
+      showError('Failed to create appeal. Please try again.', 'Error');
     } finally {
       setIsSubmitting(false);
     }
@@ -110,22 +115,23 @@ export default function AppealScreen({ navigation }: AppealScreenProps) {
   const handleReviewAppeal = async (appealId: string, decision: 'approved' | 'denied') => {
     try {
       const success = await reviewAppeal(appealId, decision, 'Reviewed by moderator');
-      
+
       if (success) {
-        Alert.alert(
-          'Appeal Reviewed',
-          `Appeal has been ${decision} successfully.`,
-          [
+        showConfirmation({
+          title: 'Appeal Reviewed',
+          message: `Appeal has been ${decision} successfully.`,
+          icon: decision === 'approved' ? '✅' : '❌',
+          buttons: [
             {
               text: 'OK',
               onPress: () => loadAppealRequests(),
             },
           ]
-        );
+        });
       }
     } catch (error) {
       console.error('Error reviewing appeal:', error);
-      Alert.alert('Error', 'Failed to review appeal. Please try again.');
+      showError('Failed to review appeal. Please try again.', 'Error');
     }
   };
 
@@ -191,7 +197,17 @@ export default function AppealScreen({ navigation }: AppealScreenProps) {
         <View style={styles.appealActions}>
           <TouchableOpacity
             style={styles.cancelButton}
-            onPress={() => Alert.alert('Cancel Appeal', 'Are you sure you want to cancel this appeal?')}
+            onPress={() => {
+              showConfirmation({
+                title: 'Cancel Appeal',
+                message: 'Are you sure you want to cancel this appeal?',
+                icon: '⚠️',
+                buttons: [
+                  { text: 'No', style: 'cancel' },
+                  { text: 'Yes, Cancel', style: 'destructive', onPress: () => { /* Handle cancel if method exists */ } }
+                ]
+              });
+            }}
           >
             <Text style={styles.cancelButtonText}>Cancel Appeal</Text>
           </TouchableOpacity>
@@ -203,7 +219,7 @@ export default function AppealScreen({ navigation }: AppealScreenProps) {
   const renderCreateForm = () => (
     <View style={styles.createForm}>
       <Text style={styles.formTitle}>Create New Appeal</Text>
-      
+
       <View style={styles.formField}>
         <Text style={styles.fieldLabel}>Action ID (Optional)</Text>
         <TextInput
@@ -267,7 +283,7 @@ export default function AppealScreen({ navigation }: AppealScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}

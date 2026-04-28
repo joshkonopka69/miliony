@@ -5,17 +5,16 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  Alert,
   Animated,
   Dimensions,
   ScrollView
 } from 'react-native';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppNavigation } from '../navigation/hooks';
 import { useTranslation } from '../contexts/TranslationContext';
 import { RegisterForm, EmailVerificationModal } from '../components/auth';
+import { useToast } from '../components/ToastProvider';
 
 
 const { width } = Dimensions.get('window');
@@ -23,6 +22,7 @@ const { width } = Dimensions.get('window');
 export default function RegisterScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
+  const { showError } = useToast();
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
@@ -49,7 +49,7 @@ export default function RegisterScreen() {
   };
 
   const handleAuthError = (error: any) => {
-    Alert.alert('Registration Error', error.message || 'An error occurred during registration');
+    showError(error.message || 'An error occurred during registration', 'Registration Error');
   };
 
   const handleEmailVerificationSuccess = () => {
@@ -58,7 +58,7 @@ export default function RegisterScreen() {
   };
 
   const handleEmailVerificationError = (error: any) => {
-    Alert.alert('Error', error.message || 'Failed to send verification email');
+    showError(error.message || 'Failed to send verification email', 'Error');
   };
 
   const handleBack = () => {
@@ -72,7 +72,7 @@ export default function RegisterScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          <Text style={{fontSize: 22, color: '#1a1a1a'}}>←</Text>
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{t.auth.createAccount}</Text>

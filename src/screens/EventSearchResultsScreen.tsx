@@ -59,15 +59,15 @@ export default function EventSearchResultsScreen() {
 
   const getEventIcon = (activity: string) => {
     const activityLower = activity.toLowerCase();
-    if (activityLower.includes('basketball')) return '🏀';
-    if (activityLower.includes('soccer') || activityLower.includes('football')) return '⚽';
-    if (activityLower.includes('tennis')) return '🎾';
-    if (activityLower.includes('volleyball')) return '🏐';
-    if (activityLower.includes('swimming')) return '🏊';
-    if (activityLower.includes('running')) return '🏃';
-    if (activityLower.includes('cycling')) return '🚴';
-    if (activityLower.includes('gym') || activityLower.includes('fitness')) return '💪';
-    return '🏟️';
+    if (activityLower.includes('basketball')) return '??';
+    if (activityLower.includes('soccer') || activityLower.includes('football')) return '?';
+    if (activityLower.includes('tennis')) return '??';
+    if (activityLower.includes('volleyball')) return '??';
+    if (activityLower.includes('swimming')) return '??';
+    if (activityLower.includes('running')) return '??';
+    if (activityLower.includes('cycling')) return '??';
+    if (activityLower.includes('gym') || activityLower.includes('fitness')) return '??';
+    return '???';
   };
 
   const renderEventItem = ({ item }: { item: Event }) => (
@@ -82,7 +82,7 @@ export default function EventSearchResultsScreen() {
         </View>
         <View style={styles.eventInfo}>
           <Text style={styles.eventTitle}>{item.activity}</Text>
-          <Text style={styles.eventLocation}>📍 {item.placeName}</Text>
+          <Text style={styles.eventLocation}>?? {item.placeName}</Text>
           <Text style={styles.eventAddress}>{item.address}</Text>
         </View>
         <TouchableOpacity
@@ -99,9 +99,9 @@ export default function EventSearchResultsScreen() {
       )}
 
       <View style={styles.eventFooter}>
-        <Text style={styles.eventTime}>🕒 {item.time}</Text>
+        <Text style={styles.eventTime}>?? {item.time}</Text>
         <Text style={styles.eventParticipants}>
-          👥 {item.currentParticipants}/{item.maxParticipants} participants
+          ?? {item.currentParticipants}/{item.maxParticipants} participants
         </Text>
       </View>
     </TouchableOpacity>
@@ -109,7 +109,7 @@ export default function EventSearchResultsScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyStateIcon}>🔍</Text>
+      <Text style={{fontSize: 43, color: '#ccc'}}>👥</Text>
       <Text style={styles.emptyStateTitle}>No events found</Text>
       <Text style={styles.emptyStateText}>
         No events match your search for "{searchQuery}"
@@ -130,10 +130,10 @@ export default function EventSearchResultsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Search Results</Text>
-        <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
+        <Image source={require('../../assets/logo/sm-icon-logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
       </View>
 
       {/* Search Query Display */}

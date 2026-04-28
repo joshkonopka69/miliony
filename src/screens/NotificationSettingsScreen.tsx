@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,18 @@ import {
   SafeAreaView,
   StatusBar,
   Switch,
-  Alert,
   ActivityIndicator,
   Animated,
   TextInput,
   Modal,
 } from 'react-native';
+import { useDialog } from '../contexts/DialogContext';
 import { useAppNavigation } from '../navigation';
 import { useNotificationManager } from '../hooks/useNotifications';
 import { NotificationPreferences } from '../services/notificationService';
 import { SMLogo } from '../components';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 
 export default function NotificationSettingsScreen() {
@@ -34,6 +36,10 @@ export default function NotificationSettingsScreen() {
     requestPermissions,
     getNotificationStatistics,
   } = useNotificationManager();
+
+  const toast = useToast();
+  const dialog = useDialog();
+  const { showConfirmation } = useConfirmation();
 
   const [localPreferences, setLocalPreferences] = useState<NotificationPreferences | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -68,14 +74,15 @@ export default function NotificationSettingsScreen() {
 
   const handleBack = () => {
     if (hasChanges) {
-      Alert.alert(
-        'Unsaved Changes',
-        'You have unsaved changes. Are you sure you want to go back?',
-        [
+      showConfirmation({
+        title: 'Unsaved Changes',
+        message: 'You have unsaved changes. Are you sure you want to go back?',
+        icon: '??',
+        buttons: [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
         ]
-      );
+      });
     } else {
       navigation.goBack();
     }
@@ -110,20 +117,21 @@ export default function NotificationSettingsScreen() {
       const success = await updatePreferencesWithValidation(localPreferences);
       if (success) {
         setHasChanges(false);
-        Alert.alert('Success', 'Notification preferences updated successfully!');
+        toast.showSuccess('Success', 'Notification preferences updated successfully!');
       } else {
-        Alert.alert('Error', 'Failed to update preferences. Please try again.');
+        toast.showError('Error', 'Failed to update preferences. Please try again.');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update preferences');
+      toast.showError('Error', error.message || 'Failed to update preferences');
     }
   };
 
   const handleReset = () => {
-    Alert.alert(
-      'Reset Preferences',
-      'Are you sure you want to reset all notification preferences to default?',
-      [
+    showConfirmation({
+      title: 'Reset Preferences',
+      message: 'Are you sure you want to reset all notification preferences to default?',
+      icon: '??',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Reset',
@@ -132,43 +140,44 @@ export default function NotificationSettingsScreen() {
             const success = await resetPreferencesToDefault();
             if (success) {
               setHasChanges(false);
-              Alert.alert('Success', 'Preferences reset to default!');
+              toast.showSuccess('Success', 'Preferences reset to default!');
             } else {
-              Alert.alert('Error', 'Failed to reset preferences. Please try again.');
+              toast.showError('Error', 'Failed to reset preferences. Please try again.');
             }
           },
         },
       ]
-    );
+    });
   };
 
   const handleTestNotification = async () => {
-    Alert.alert(
-      'Test Notification',
-      'Send a test notification to verify your settings?',
-      [
+    showConfirmation({
+      title: 'Test Notification',
+      message: 'Send a test notification to verify your settings?',
+      icon: '??',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Send Test',
           onPress: async () => {
             const result = await testFCMConnection();
             if (result.success) {
-              Alert.alert('Success', 'Test notification sent successfully!');
+              toast.showSuccess('Success', 'Test notification sent successfully!');
             } else {
-              Alert.alert('Error', result.error || 'Failed to send test notification');
+              toast.showError('Error', result.error || 'Failed to send test notification');
             }
           },
         },
       ]
-    );
+    });
   };
 
   const handleRequestPermissions = async () => {
     const success = await requestPermissions();
     if (success) {
-      Alert.alert('Success', 'Notification permissions granted!');
+      toast.showSuccess('Success', 'Notification permissions granted!');
     } else {
-      Alert.alert('Error', 'Failed to request permissions. Please check your device settings.');
+      toast.showError('Error', 'Failed to request permissions. Please check your device settings.');
     }
   };
 
@@ -184,7 +193,7 @@ export default function NotificationSettingsScreen() {
     // Validate time format
     const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
     if (!timeRegex.test(timeInput)) {
-      Alert.alert('Invalid Time', 'Please enter time in HH:MM format (e.g., 22:00)');
+      toast.showError('Invalid Time', 'Please enter time in HH:MM format (e.g., 22:00)');
       return;
     }
 
@@ -219,7 +228,7 @@ export default function NotificationSettingsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notification Settings</Text>
         <SMLogo />
@@ -230,7 +239,7 @@ export default function NotificationSettingsScreen() {
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity onPress={clearError}>
-            <Text style={styles.errorDismiss}>×</Text>
+            <Text style={{fontSize: 14, color: '#FF6B6B'}}>✕</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -339,7 +348,7 @@ export default function NotificationSettingsScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notification Categories</Text>
 
-            {(Object.entries(localPreferences.categories) as [keyof NotificationPreferences['categories'], boolean][]).map(([category, enabled]) => (
+            {(Object.entries(localPreferences.categories) as [string, boolean][]).map(([category, enabled]) => (
               <View key={category} style={styles.settingItem}>
                 <View style={styles.settingInfo}>
                   <Text style={styles.settingLabel}>
@@ -572,7 +581,7 @@ export default function NotificationSettingsScreen() {
                 style={styles.statsModalClose}
                 onPress={() => setShowStats(false)}
               >
-                <Text style={styles.statsModalCloseText}>×</Text>
+                <Text style={{fontSize: 16, color: '#333'}}>✕</Text>
               </TouchableOpacity>
             </View>
 

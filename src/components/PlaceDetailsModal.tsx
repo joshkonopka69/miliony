@@ -10,12 +10,69 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  ImageSourcePropType,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../contexts/TranslationContext';
 import * as WebBrowser from 'expo-web-browser';
 import { theme } from '../styles/theme';
 import Button from './ui/Button';
 import Card from './ui/Card';
+
+// Sport-specific fallback images mapping
+const SPORT_FALLBACK_IMAGES: Record<string, ImageSourcePropType> = {
+  gym: require('../../assets/filter icons/gym.png'),
+  stadium: require('../../assets/filter icons/stadium.png'),
+  swimming_pool: require('../../assets/filter icons/swimming pool.png'),
+  park: require('../../assets/filter icons/park.png'),
+  sports_complex: require('../../assets/filters/icon_trophy_gold.png'),
+  bowling_alley: require('../../assets/filter icons/bowling alley.png'),
+  golf_course: require('../../assets/filter icons/golf course.png'),
+  ice_rink: require('../../assets/filter icons/ice rink.png'),
+  tennis_court: require('../../assets/filter icons/tennis court.png'),
+  basketball_court: require('../../assets/filter icons/basketball court.png'),
+  martial_arts_gym: require('../../assets/filter icons/Martial arts gyms.png'),
+  grappling_hall: require('../../assets/filter icons/Grappling sport halls.png'),
+};
+
+// Get sport icon based on place types, searchType, or name
+const getSportFallbackImage = (place: { types?: string[]; name?: string; searchType?: string } | null): ImageSourcePropType | null => {
+  if (!place) return null;
+
+  // Check searchType first (most reliable - set during API search)
+  if (place.searchType && SPORT_FALLBACK_IMAGES[place.searchType]) {
+    return SPORT_FALLBACK_IMAGES[place.searchType];
+  }
+
+  // Check place types
+  if (place.types && Array.isArray(place.types)) {
+    for (const type of place.types) {
+      if (SPORT_FALLBACK_IMAGES[type]) {
+        return SPORT_FALLBACK_IMAGES[type];
+      }
+    }
+    // Check for common Google Places types
+    if (place.types.includes('gym')) return SPORT_FALLBACK_IMAGES['gym'];
+    if (place.types.includes('stadium')) return SPORT_FALLBACK_IMAGES['stadium'];
+    if (place.types.includes('park')) return SPORT_FALLBACK_IMAGES['park'];
+    if (place.types.includes('bowling_alley')) return SPORT_FALLBACK_IMAGES['bowling_alley'];
+  }
+
+  // Check name for keywords
+  const name = (place.name || '').toLowerCase();
+  if (name.includes('basketball') || name.includes('koszyków') || name.includes('boisko')) return SPORT_FALLBACK_IMAGES['basketball_court'];
+  if (name.includes('tennis') || name.includes('kort')) return SPORT_FALLBACK_IMAGES['tennis_court'];
+  if (name.includes('swim') || name.includes('pool') || name.includes('basen') || name.includes('pływal')) return SPORT_FALLBACK_IMAGES['swimming_pool'];
+  if (name.includes('gym') || name.includes('fitness') || name.includes('siłownia')) return SPORT_FALLBACK_IMAGES['gym'];
+  if (name.includes('stadium') || name.includes('stadion')) return SPORT_FALLBACK_IMAGES['stadium'];
+  if (name.includes('golf')) return SPORT_FALLBACK_IMAGES['golf_course'];
+  if (name.includes('bowling') || name.includes('kręgiel')) return SPORT_FALLBACK_IMAGES['bowling_alley'];
+  if (name.includes('ice') || name.includes('skating') || name.includes('lodowisko')) return SPORT_FALLBACK_IMAGES['ice_rink'];
+  if (name.includes('park')) return SPORT_FALLBACK_IMAGES['park'];
+  if (name.includes('martial') || name.includes('boxing') || name.includes('mma') || name.includes('karate') || name.includes('taekwondo')) return SPORT_FALLBACK_IMAGES['martial_arts_gym'];
+  if (name.includes('judo') || name.includes('wrestling') || name.includes('bjj') || name.includes('grappling')) return SPORT_FALLBACK_IMAGES['grappling_hall'];
+
+  return null;
+};
 
 interface PlaceDetailsModalProps {
   visible: boolean;
@@ -28,6 +85,7 @@ interface PlaceDetailsModalProps {
     priceLevel?: number;
     photos?: any[];
     types?: string[];
+    searchType?: string; // Category used to search (for fallback icon)
     location: {
       latitude: number;
       longitude: number;
@@ -56,18 +114,20 @@ export default function PlaceDetailsModal({
 
   const fetchPlaceDetails = async () => {
     if (!place) return;
-    
+
     setLoading(true);
     try {
       // In a real app, you would call Google Places API here
       // For now, we'll use the basic place data
       setPlaceDetails(place);
-      
+
       // Get photo URL if available
       if (place.photos && place.photos.length > 0) {
         const photo = place.photos[0];
         const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}`;
         setPhotoUrl(photoUrl);
+      } else {
+        setPhotoUrl(null);
       }
     } catch (error) {
       console.error('Error fetching place details:', error);
@@ -85,7 +145,7 @@ export default function PlaceDetailsModal({
 
   const handleOpenInMaps = async () => {
     if (!place) return;
-    
+
     const url = `https://www.google.com/maps/place/?q=place_id:${place.placeId}`;
     try {
       await WebBrowser.openBrowserAsync(url);
@@ -96,7 +156,7 @@ export default function PlaceDetailsModal({
 
   const handleDirections = async () => {
     if (!place) return;
-    
+
     const url = `https://www.google.com/maps/dir/?api=1&destination=${place.location.latitude},${place.location.longitude}`;
     try {
       await WebBrowser.openBrowserAsync(url);
@@ -115,6 +175,9 @@ export default function PlaceDetailsModal({
     return types.slice(0, 3).join(' • ');
   };
 
+  // Get fallback image for when no photo is available
+  const fallbackImage = getSportFallbackImage(place);
+
   if (!place) return null;
 
   return (
@@ -128,30 +191,38 @@ export default function PlaceDetailsModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color="#333" />
+            <Text style={{fontSize: 22, color: '#333'}}>✕</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Place Details</Text>
+          <Text style={styles.headerTitle}>{t.placeDetails?.title || 'Place Details'}<Text>
           <View style={styles.headerSpacer} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Photo */}
-          {photoUrl && (
-            <View style={styles.photoContainer}>
+          {/* Photo or Fallback Sport Icon */}
+          <View style={styles.photoContainer}>
+            {photoUrl ? (
               <Image source={{ uri: photoUrl }} style={styles.photo} />
-            </View>
-          )}
+            ) : fallbackImage ? (
+              <View style={styles.fallbackContainer}>
+                <Image source={fallbackImage} style={styles.fallbackImage} resizeMode="contain" />
+              </View>
+            ) : (
+              <View style={styles.noPhotoContainer}>
+                <Text style={{fontSize: 54, color: '#FFD700'}}>📍</Text>
+              </View>
+            )}
+          </View>
 
           {/* Place Info */}
           <View style={styles.infoContainer}>
             <Text style={styles.placeName}>{place.name}</Text>
             <Text style={styles.address}>{place.address}</Text>
-            
+
             {/* Rating and Price */}
             <View style={styles.ratingContainer}>
               {place.rating && (
                 <View style={styles.rating}>
-                  <Ionicons name="star" size={16} color="#FFA500" />
+                  <Text style={{fontSize: 14, color: '#FFA500'}}>•</Text>
                   <Text style={styles.ratingText}>{place.rating.toFixed(1)}</Text>
                 </View>
               )}
@@ -169,30 +240,30 @@ export default function PlaceDetailsModal({
           {/* Action Buttons */}
           <View style={styles.actionsContainer}>
             <TouchableOpacity style={styles.actionButton} onPress={handleOpenInMaps}>
-              <Ionicons name="map" size={20} color="#4285F4" />
-              <Text style={styles.actionButtonText}>View on Maps</Text>
+              <Text style={{fontSize: 18, color: '#4285F4'}}>•</Text>
+              <Text style={styles.actionButtonText}>{t.placeDetails?.viewOnMaps || 'View on Maps'}<Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.actionButton} onPress={handleDirections}>
-              <Ionicons name="navigate" size={20} color="#4285F4" />
-              <Text style={styles.actionButtonText}>Directions</Text>
+              <Text style={{fontSize: 18, color: '#4285F4'}}>🧭</Text>
+              <Text style={styles.actionButtonText}>{t.placeDetails?.directions || 'Directions'}<Text>
             </TouchableOpacity>
           </View>
 
           {/* Plan Event Button */}
-          <TouchableOpacity 
-            style={styles.planEventButton} 
+          <TouchableOpacity
+            style={styles.planEventButton}
             onPress={handlePlanEvent}
             activeOpacity={0.8}
           >
-            <Ionicons name="calendar" size={24} color="white" />
-            <Text style={styles.planEventButtonText}>Plan Event Here</Text>
+            <Text style={{fontSize: 22, color: 'white'}}>📅</Text>
+            <Text style={styles.planEventButtonText}>{t.placeDetails?.planEvent || 'Plan Event Here'}<Text>
           </TouchableOpacity>
 
           {loading && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#4285F4" />
-              <Text style={styles.loadingText}>Loading details...</Text>
+              <Text style={styles.loadingText}>{t.placeDetails?.loadingDetails || 'Loading details...'}<Text>
             </View>
           )}
         </ScrollView>
@@ -336,5 +407,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginTop: 12,
+  },
+  fallbackContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 20,
+  },
+  fallbackImage: {
+    width: 120,
+    height: 120,
+  },
+  noPhotoContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 40,
   },
 });

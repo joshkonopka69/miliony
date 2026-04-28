@@ -6,13 +6,14 @@ import {
   TouchableOpacity,
   Switch,
   ScrollView,
-  Alert,
   ActivityIndicator,
   TextInput,
   Modal,
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { useToast } from './ToastProvider';
+import { useDialog } from '../contexts/DialogContext';
 import { useNotificationManager } from '../hooks/useNotifications';
 import { NotificationPreferences } from '../services/notificationService';
 
@@ -33,6 +34,9 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
     clearError,
   } = useNotificationManager();
 
+  const toast = useToast();
+  const dialog = useDialog();
+
   const [localPreferences, setLocalPreferences] = useState<NotificationPreferences | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedTimeField, setSelectedTimeField] = useState<'start_time' | 'end_time' | null>(null);
@@ -49,7 +53,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
     if (!localPreferences) return;
 
     const newPreferences = { ...localPreferences };
-    
+
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
       if (parent === 'categories') {
@@ -74,56 +78,43 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
       const success = await updatePreferencesWithValidation(localPreferences);
       if (success) {
         setHasChanges(false);
-        Alert.alert('Success', 'Notification preferences updated successfully!');
+        toast.showSuccess('Success', 'Notification preferences updated successfully!');
       } else {
-        Alert.alert('Error', 'Failed to update preferences. Please try again.');
+        toast.showError('Error', 'Failed to update preferences. Please try again.');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update preferences');
+      toast.showError('Error', error.message || 'Failed to update preferences');
     }
   };
 
   const handleReset = () => {
-    Alert.alert(
+    dialog.showConfirm(
       'Reset Preferences',
       'Are you sure you want to reset all notification preferences to default?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            const success = await resetPreferencesToDefault();
-            if (success) {
-              setHasChanges(false);
-              Alert.alert('Success', 'Preferences reset to default!');
-            } else {
-              Alert.alert('Error', 'Failed to reset preferences. Please try again.');
-            }
-          },
-        },
-      ]
+      async () => {
+        const success = await resetPreferencesToDefault();
+        if (success) {
+          setHasChanges(false);
+          toast.showSuccess('Success', 'Preferences reset to default!');
+        } else {
+          toast.showError('Error', 'Failed to reset preferences. Please try again.');
+        }
+      }
     );
   };
 
   const handleTestNotification = async () => {
-    Alert.alert(
+    dialog.showConfirm(
       'Test Notification',
       'Send a test notification to verify your settings?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Send Test',
-          onPress: async () => {
-            const result = await testFCMConnection();
-            if (result.success) {
-              Alert.alert('Success', 'Test notification sent successfully!');
-            } else {
-              Alert.alert('Error', result.error || 'Failed to send test notification');
-            }
-          },
-        },
-      ]
+      async () => {
+        const result = await testFCMConnection();
+        if (result.success) {
+          toast.showSuccess('Success', 'Test notification sent successfully!');
+        } else {
+          toast.showError('Error', result.error || 'Failed to send test notification');
+        }
+      }
     );
   };
 
@@ -139,7 +130,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
     // Validate time format
     const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
     if (!timeRegex.test(timeInput)) {
-      Alert.alert('Invalid Time', 'Please enter time in HH:MM format (e.g., 22:00)');
+      toast.showWarning('Invalid Time', 'Please enter time in HH:MM format (e.g., 22:00)');
       return;
     }
 
@@ -168,7 +159,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        
+
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onClose}>
@@ -206,8 +197,8 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
                 <View style={[styles.statusIndicator, fcmStatus.permissionsGranted && styles.statusActive]} />
               </View>
             </View>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.testButton}
               onPress={handleTestNotification}
               disabled={isUpdating}
@@ -223,7 +214,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
           {/* General Settings */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>General Settings</Text>
-            
+
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
                 <Text style={styles.settingLabel}>Push Notifications</Text>
@@ -273,7 +264,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
           {/* Category Settings */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notification Categories</Text>
-            
+
             {Object.entries(localPreferences.categories).map(([category, enabled]) => (
               <View key={category} style={styles.settingItem}>
                 <View style={styles.settingInfo}>
@@ -297,7 +288,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
           {/* Quiet Hours */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Quiet Hours</Text>
-            
+
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
                 <Text style={styles.settingLabel}>Enable Quiet Hours</Text>
@@ -322,7 +313,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
                       When to start quiet hours
                     </Text>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.timeButton}
                     onPress={() => handleTimeChange('start_time')}
                   >
@@ -339,7 +330,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
                       When to end quiet hours
                     </Text>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.timeButton}
                     onPress={() => handleTimeChange('end_time')}
                   >
@@ -355,7 +346,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
           {/* Frequency Settings */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notification Frequency</Text>
-            
+
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
                 <Text style={styles.settingLabel}>Immediate Notifications</Text>
@@ -404,7 +395,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.resetButton}
               onPress={handleReset}
             >
@@ -412,7 +403,7 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
             </TouchableOpacity>
 
             {hasChanges && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.saveButton, isUpdating && styles.saveButtonDisabled]}
                 onPress={handleSave}
                 disabled={isUpdating}
@@ -444,13 +435,13 @@ export default function NotificationSettings({ visible, onClose }: NotificationS
                 maxLength={5}
               />
               <View style={styles.timePickerButtons}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.timePickerButton}
                   onPress={() => setShowTimePicker(false)}
                 >
                   <Text style={styles.timePickerButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.timePickerButton, styles.timePickerButtonPrimary]}
                   onPress={handleTimeSave}
                 >

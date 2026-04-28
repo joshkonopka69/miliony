@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
-  Alert,
   ActivityIndicator,
   Animated,
   Dimensions
@@ -17,6 +16,8 @@ import { useAppNavigation } from '../../navigation';
 import { useGroupManager } from '../../hooks/useGroups';
 import { Group, GroupMember } from '../../services/groupService';
 import { SMLogo } from '../../components';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 
 const { width } = Dimensions.get('window');
 
@@ -32,6 +33,8 @@ interface GroupDetailsScreenProps {
 export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
   const { groupId } = route.params;
   const navigation = useAppNavigation();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const {
     currentGroup,
     groupMembers,
@@ -102,22 +105,23 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
       if (success) {
         setIsUserMember(true);
         setUserRole('member');
-        Alert.alert('Success', 'You have joined the group!');
+        showSuccess('You have joined the group!', 'Success');
       } else {
-        Alert.alert('Error', 'Failed to join group. Please try again.');
+        showError('Failed to join group. Please try again.', 'Error');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to join group');
+      showError('Failed to join group', 'Error');
     } finally {
       setIsJoining(false);
     }
   };
 
   const handleLeaveGroup = () => {
-    Alert.alert(
-      'Leave Group',
-      'Are you sure you want to leave this group?',
-      [
+    showConfirmation({
+      title: 'Leave Group',
+      message: 'Are you sure you want to leave this group?',
+      icon: '??',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Leave',
@@ -129,19 +133,19 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
               if (success) {
                 setIsUserMember(false);
                 setUserRole(null);
-                Alert.alert('Success', 'You have left the group.');
+                showSuccess('You have left the group.', 'Success');
               } else {
-                Alert.alert('Error', 'Failed to leave group. Please try again.');
+                showError('Failed to leave group. Please try again.', 'Error');
               }
             } catch (error) {
-              Alert.alert('Error', 'Failed to leave group');
+              showError('Failed to leave group', 'Error');
             } finally {
               setIsLeaving(false);
             }
           },
         },
       ]
-    );
+    });
   };
 
   const handleViewMembers = () => {
@@ -166,10 +170,10 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
 
   const getPrivacyIcon = (privacy: string): string => {
     switch (privacy) {
-      case 'public': return '🌍';
-      case 'private': return '🔒';
-      case 'invite_only': return '👥';
-      default: return '🔒';
+      case 'public': return '??';
+      case 'private': return '??';
+      case 'invite_only': return '??';
+      default: return '??';
     }
   };
 
@@ -193,27 +197,27 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
 
   const getSportIcon = (sport: string): string => {
     const sportIcons: { [key: string]: string } = {
-      basketball: '🏀',
-      football: '🏈',
-      soccer: '⚽',
-      tennis: '🎾',
-      volleyball: '🏐',
-      baseball: '⚾',
-      hockey: '🏒',
-      swimming: '🏊',
-      running: '🏃',
-      cycling: '🚴',
-      golf: '⛳',
-      boxing: '🥊',
-      yoga: '🧘',
-      weightlifting: '🏋️',
-      crossfit: '💪',
-      climbing: '🧗',
-      surfing: '🏄',
-      skiing: '⛷️',
-      snowboarding: '🏂',
+      basketball: '??',
+      football: '??',
+      soccer: '?',
+      tennis: '??',
+      volleyball: '??',
+      baseball: '?',
+      hockey: '??',
+      swimming: '??',
+      running: '??',
+      cycling: '??',
+      golf: '?',
+      boxing: '??',
+      yoga: '??',
+      weightlifting: '???',
+      crossfit: '??',
+      climbing: '??',
+      surfing: '??',
+      skiing: '??',
+      snowboarding: '??',
     };
-    return sportIcons[sport.toLowerCase()] || '🏆';
+    return sportIcons[sport.toLowerCase()] || '??';
   };
 
   if (isLoading) {
@@ -247,7 +251,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Group Details</Text>
         <SMLogo />
@@ -258,7 +262,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{error}</Text>
           <TouchableOpacity onPress={clearError}>
-            <Text style={styles.errorBannerDismiss}>×</Text>
+            <Text style={{fontSize: 14, color: '#c62828'}}>✕</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -303,7 +307,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
                   {getSportIcon(currentGroup.sport)} {currentGroup.sport}
                 </Text>
                 <Text style={styles.memberCount}>
-                  👥 {currentGroup.member_count} member{currentGroup.member_count !== 1 ? 's' : ''}
+                  ?? {currentGroup.member_count} member{currentGroup.member_count !== 1 ? 's' : ''}
                 </Text>
               </View>
 
@@ -334,7 +338,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
             <View style={styles.locationSection}>
               <Text style={styles.sectionTitle}>Location</Text>
               <View style={styles.locationCard}>
-                <Text style={styles.locationIcon}>📍</Text>
+                <Text style={{fontSize: 16, color: '#666'}}>?</Text>
                 <View style={styles.locationInfo}>
                   <Text style={styles.locationName}>{currentGroup.location.name}</Text>
                   <Text style={styles.locationRadius}>
@@ -367,7 +371,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
               <View style={styles.requirementsCard}>
                 {currentGroup.requirements.age_min && currentGroup.requirements.age_max && (
                   <View style={styles.requirementItem}>
-                    <Text style={styles.requirementIcon}>🎂</Text>
+                    <Text style={{fontSize: 16, color: '#666'}}>?</Text>
                     <Text style={styles.requirementText}>
                       Age: {currentGroup.requirements.age_min} - {currentGroup.requirements.age_max}
                     </Text>
@@ -376,7 +380,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
 
                 {currentGroup.requirements.skill_level && currentGroup.requirements.skill_level !== 'any' && (
                   <View style={styles.requirementItem}>
-                    <Text style={styles.requirementIcon}>⭐</Text>
+                    <Text style={styles.requirementIcon}>?</Text>
                     <Text style={styles.requirementText}>
                       Skill Level: {currentGroup.requirements.skill_level}
                     </Text>
@@ -385,7 +389,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
 
                 {currentGroup.requirements.gender_preference && currentGroup.requirements.gender_preference !== 'any' && (
                   <View style={styles.requirementItem}>
-                    <Text style={styles.requirementIcon}>👤</Text>
+                    <Text style={{fontSize: 16, color: '#666'}}>?</Text>
                     <Text style={styles.requirementText}>
                       Gender: {currentGroup.requirements.gender_preference}
                     </Text>
@@ -481,7 +485,7 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
               style={[styles.actionButton, styles.chatButton]}
               onPress={handleViewChat}
             >
-              <Text style={styles.chatButtonText}>💬 Chat</Text>
+              <Text style={styles.chatButtonText}>?? Chat</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -491,25 +495,25 @@ export default function GroupDetailsScreen({ route }: GroupDetailsScreenProps) {
       {isUserMember && (
         <View style={styles.navigationTabs}>
           <TouchableOpacity style={styles.navTab} onPress={handleViewMembers}>
-            <Text style={styles.navTabIcon}>👥</Text>
+            <Text style={{fontSize: 16, color: '#666'}}>?</Text>
             <Text style={styles.navTabText}>Members</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.navTab} onPress={handleViewEvents}>
-            <Text style={styles.navTabIcon}>📅</Text>
+            <Text style={{fontSize: 16, color: '#666'}}>?</Text>
             <Text style={styles.navTabText}>Events</Text>
           </TouchableOpacity>
 
           {(userRole === 'admin' || userRole === 'moderator') && (
             <TouchableOpacity style={styles.navTab} onPress={handleViewSettings}>
-              <Text style={styles.navTabIcon}>⚙️</Text>
+              <Text style={{fontSize: 16, color: '#666'}}>?</Text>
               <Text style={styles.navTabText}>Settings</Text>
             </TouchableOpacity>
           )}
 
           {userRole === 'admin' && (
             <TouchableOpacity style={styles.navTab} onPress={handleInviteMembers}>
-              <Text style={styles.navTabIcon}>➕</Text>
+              <Text style={styles.navTabIcon}>?</Text>
               <Text style={styles.navTabText}>Invite</Text>
             </TouchableOpacity>
           )}

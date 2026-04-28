@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useAnalytics } from '../../hooks/useAnalytics';
 import { useTranslation } from '../../contexts/TranslationContext';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 import { MetricsCard } from '../../components/analytics/MetricsCard';
 import { AnalyticsChart } from '../../components/analytics/AnalyticsChart';
 import { DateRangePicker } from '../../components/analytics/DateRangePicker';
@@ -29,6 +31,9 @@ export default function SocialAnalytics() {
     refreshAnalytics,
     clearError,
   } = useAnalytics();
+
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
 
   const [selectedDateRange, setSelectedDateRange] = useState<{
     start_date: string;
@@ -78,9 +83,9 @@ export default function SocialAnalytics() {
   const handleExport = async (format: 'pdf' | 'csv' | 'excel' | 'json') => {
     try {
       // Implementation would export social analytics data
-      Alert.alert('Export', `Social analytics exported as ${format.toUpperCase()}`);
+      showSuccess(`Social analytics exported as ${format.toUpperCase()}`, 'Export');
     } catch (error) {
-      Alert.alert('Error', 'Failed to export social analytics');
+      showError('Failed to export social analytics', 'Error');
     }
   };
 
@@ -256,7 +261,7 @@ export default function SocialAnalytics() {
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Content Analytics</Text>
-        
+
         {content_analytics.most_shared_events && content_analytics.most_shared_events.length > 0 && (
           <View style={styles.contentSection}>
             <Text style={styles.contentTitle}>Most Shared Events</Text>
@@ -361,33 +366,33 @@ export default function SocialAnalytics() {
     if (!socialAnalytics) return null;
 
     const insights = [];
-    
-    const acceptanceRate = socialAnalytics.social_engagement.friend_requests_sent > 0 
+
+    const acceptanceRate = socialAnalytics.social_engagement.friend_requests_sent > 0
       ? (socialAnalytics.social_engagement.friend_requests_accepted / socialAnalytics.social_engagement.friend_requests_sent) * 100
       : 0;
-    
+
     if (acceptanceRate > 70) {
       insights.push('High friend request acceptance rate indicates good social connections');
     } else if (acceptanceRate < 30) {
       insights.push('Low friend request acceptance rate - consider improving user matching');
     }
-    
+
     const groupAcceptanceRate = socialAnalytics.social_engagement.group_invitations_sent > 0
       ? (socialAnalytics.social_engagement.group_invitations_accepted / socialAnalytics.social_engagement.group_invitations_sent) * 100
       : 0;
-    
+
     if (groupAcceptanceRate > 60) {
       insights.push('High group invitation acceptance rate shows good group engagement');
     } else if (groupAcceptanceRate < 20) {
       insights.push('Low group invitation acceptance rate - consider improving group relevance');
     }
-    
+
     if (socialAnalytics.network_analysis.average_friends_per_user > 10) {
       insights.push('High average friends per user indicates strong social connections');
     } else if (socialAnalytics.network_analysis.average_friends_per_user < 3) {
       insights.push('Low average friends per user - consider encouraging more social connections');
     }
-    
+
     if (socialAnalytics.total_messages > 1000) {
       insights.push('High message volume indicates active social engagement');
     }
@@ -428,7 +433,7 @@ export default function SocialAnalytics() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.header}>
         <Text style={styles.title}>Social Analytics</Text>
         <ExportButton onExport={handleExport} />

@@ -8,8 +8,7 @@ import {
   ScrollView,
   SafeAreaView,
   StatusBar,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface DateRangePickerProps {
@@ -140,7 +139,7 @@ export function DateRangePicker({
               <Text style={styles.dateInputText}>
                 {showTime ? formatDateTime(tempStartDate) : formatDate(tempStartDate)}
               </Text>
-              <Ionicons name="calendar-outline" size={20} color="#666666" />
+              <Text style={{fontSize: 18, color: '#666666'}}>📅</Text>
             </TouchableOpacity>
           </View>
           
@@ -153,7 +152,7 @@ export function DateRangePicker({
               <Text style={styles.dateInputText}>
                 {showTime ? formatDateTime(tempEndDate) : formatDate(tempEndDate)}
               </Text>
-              <Ionicons name="calendar-outline" size={20} color="#666666" />
+              <Text style={{fontSize: 18, color: '#666666'}}>📅</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -174,14 +173,14 @@ export function DateRangePicker({
     <>
       <TouchableOpacity style={styles.container} onPress={() => setShowModal(true)}>
         <View style={styles.content}>
-          <Ionicons name="calendar-outline" size={20} color="#666666" />
+          <Text style={{fontSize: 18, color: '#666666'}}>📅</Text>
           <View style={styles.dateRangeText}>
             <Text style={styles.dateRangeLabel}>Date Range</Text>
             <Text style={styles.dateRangeValue}>
               {showTime ? formatDateTime(new Date(dateRange.start_date)) : formatDate(new Date(dateRange.start_date))} - {showTime ? formatDateTime(new Date(dateRange.end_date)) : formatDate(new Date(dateRange.end_date))}
             </Text>
           </View>
-          <Ionicons name="chevron-down" size={20} color="#666666" />
+          <Text style={{fontSize: 18, color: '#666666'}}>▼</Text>
         </View>
       </TouchableOpacity>
 
@@ -197,7 +196,7 @@ export function DateRangePicker({
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Date Range</Text>
             <TouchableOpacity onPress={handleCancel}>
-              <Ionicons name="close" size={24} color="#666666" />
+              <Text style={{fontSize: 22, color: '#666666'}}>✕</Text>
             </TouchableOpacity>
           </View>
           

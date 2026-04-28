@@ -12,6 +12,8 @@ export { default as PlaceInfoModal } from './PlaceInfoModal';
 export { default as LoadingSpinner } from './LoadingSpinner';
 export { default as SkeletonLoader, PlaceInfoSkeleton, MapSkeleton } from './SkeletonLoader';
 export { default as Toast } from './Toast';
+export { ToastProvider, useToast } from './ToastProvider';
+export { ConfirmationProvider, useConfirmation } from './ConfirmationModal';
 export { default as ConfirmationDialog } from './ConfirmationDialog';
 export { default as ErrorBoundary } from './ErrorBoundary';
 export { default as PlaceSearchModal } from './PlaceSearchModal';

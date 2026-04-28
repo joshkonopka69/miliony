@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
-  Alert,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,10 +17,14 @@ import { BottomNavBar } from '../components';
 import { EmptyState, SectionHeader, EventCard } from '../components';
 import { MyEvent, SportActivity } from '../types/event';
 import { supabaseService } from '../services/supabase';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 export default function MyEventsScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<MyEvent[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -74,7 +77,7 @@ export default function MyEventsScreen() {
       setEvents(mappedEvents);
     } catch (error) {
       console.error('Error loading events:', error);
-      Alert.alert('Error', 'Failed to load events');
+      showError('Failed to load events', 'Error');
     } finally {
       setLoading(false);
     }
@@ -97,10 +100,11 @@ export default function MyEventsScreen() {
   };
 
   const handleLeaveEvent = (event: MyEvent) => {
-    Alert.alert(
-      t.myEvents.leaveEventTitle || 'Leave Event',
-      (t.myEvents.leaveEventMessage || 'Do you want to leave "{name}"?').replace('{name}', event.name),
-      [
+    showConfirmation({
+      title: t.myEvents.leaveEventTitle || 'Leave Event',
+      message: (t.myEvents.leaveEventMessage || 'Do you want to leave "{name}"?').replace('{name}', event.name),
+      icon: '🚶',
+      buttons: [
         {
           text: t.common.cancel || 'Cancel',
           style: 'cancel',
@@ -112,25 +116,25 @@ export default function MyEventsScreen() {
             try {
               const user = await supabaseService.getCurrentUserProfile();
               if (!user || !user.id) {
-                Alert.alert(t.common.error, 'You must be logged in to leave an event.');
+                showError('You must be logged in to leave an event.', t.common.error);
                 return;
               }
 
               const success = await supabaseService.leaveEvent(event.id, user.id);
               if (success) {
                 setEvents(prev => prev.filter(e => e.id !== event.id));
-                Alert.alert(t.common.success, t.myEvents.leaveEventSuccess);
+                showSuccess(t.myEvents.leaveEventSuccess, t.common.success);
               } else {
-                Alert.alert(t.common.error, 'Failed to leave event');
+                showError('Failed to leave event', t.common.error);
               }
             } catch (error) {
               console.error('Error leaving event:', error);
-              Alert.alert(t.common.error, 'An unexpected error occurred');
+              showError('An unexpected error occurred', t.common.error);
             }
           },
         },
       ]
-    );
+    });
   };
 
   const handleBrowseEvents = () => {
@@ -228,7 +232,7 @@ export default function MyEventsScreen() {
       <SafeAreaView style={styles.topBarSafeArea}>
         <View style={styles.topBar}>
           <Image
-            source={require('../../assets/logo.png')}
+            source={require('../../assets/logo/sm-icon-logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />

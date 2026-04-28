@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 import { usePurchases } from '../context/PurchasesContext';
 
 // Optional deps (the UI will still render without them installed)
@@ -80,7 +80,7 @@ export default function PaywallScreen() {
               <View key={label} style={styles.featureRow}>
                 <View style={styles.checkWrap}>
                   {getLucideIcon('Check', 18, '#34D399') || (
-                    <Text style={styles.fallbackCheck}>✓</Text>
+                    <Text style={{fontSize: 14, color: '#34D399'}}>✓</Text>
                   )}
                 </View>
                 <Text style={styles.featureText}>{label}</Text>

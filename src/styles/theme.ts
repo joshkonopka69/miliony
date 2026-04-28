@@ -1,4 +1,4 @@
-// Modern SportMap Design System
+// Modern SportsMap Design System
 export const theme = {
   colors: {
     // Primary Colors - Modern Blue Gradient

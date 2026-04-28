@@ -6,10 +6,10 @@ import {
   Modal,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useToast } from './ToastProvider';
+import { useDialog } from '../contexts/DialogContext';
 import { theme } from '../styles/theme';
 import Button from './ui/Button';
 import Input from './ui/Input';
@@ -45,6 +45,8 @@ export default function EventCreationModal({
   placeDetails,
 }: EventCreationModalProps) {
   const { getUserId } = useAuth();
+  const toast = useToast();
+  const dialog = useDialog();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -61,7 +63,7 @@ export default function EventCreationModal({
 
   const handleCreateEvent = async () => {
     if (!formData.name.trim() || !formData.activity.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      toast.showWarning('Required Info', 'Please fill in all required fields');
       return;
     }
 
@@ -82,7 +84,7 @@ export default function EventCreationModal({
 
       const userId = getUserId();
       if (!userId) {
-        Alert.alert('Error', 'You must be logged in to create events');
+        dialog.showInfo('Login Required', 'You must be logged in to create events');
         setLoading(false);
         return;
       }
@@ -90,16 +92,16 @@ export default function EventCreationModal({
       const event = await EventService.createEvent(userId, eventData);
 
       if (event) {
-        Alert.alert('Success', 'Event created successfully!');
+        toast.showSuccess('Success', 'Event created successfully!');
         onEventCreated(event);
         onClose();
         resetForm();
       } else {
-        Alert.alert('Error', 'Failed to create event. Please try again.');
+        toast.showError('Error', 'Failed to create event. Please try again.');
       }
     } catch (error) {
       console.error('Error creating event:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      toast.showError('Error', 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -132,7 +134,7 @@ export default function EventCreationModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
+            <Text style={{fontSize: 22, color: theme.colors.textPrimary}}>✕</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Create Event</Text>
           <View style={styles.headerSpacer} />
@@ -143,7 +145,7 @@ export default function EventCreationModal({
           {venueName && (
             <Card style={styles.venueCard}>
               <View style={styles.venueHeader}>
-                <Ionicons name="location" size={20} color={theme.colors.primary} />
+                <Text style={{fontSize: 18, color: theme.colors.primary}}>📍</Text>
                 <Text style={styles.venueTitle}>Event Location</Text>
               </View>
               <Text style={styles.venueName}>{venueName}</Text>
@@ -158,7 +160,7 @@ export default function EventCreationModal({
               value={formData.name}
               onChangeText={(value) => handleInputChange('name', value)}
               placeholder="Enter event name"
-              leftIcon={<Ionicons name="calendar" size={20} color={theme.colors.textSecondary} />}
+              leftIcon={<Text style={{fontSize: 18, color: theme.colors.textSecondary}}>📅</Text>}
             />
 
             <Input
@@ -168,7 +170,7 @@ export default function EventCreationModal({
               placeholder="Describe your event"
               multiline
               numberOfLines={3}
-              leftIcon={<Ionicons name="document-text" size={20} color={theme.colors.textSecondary} />}
+              leftIcon={<Text style={{fontSize: 18, color: theme.colors.textSecondary}}>•</Text>}
             />
 
             <View style={styles.section}>
@@ -206,7 +208,7 @@ export default function EventCreationModal({
               onChangeText={(value) => handleInputChange('maxParticipants', value)}
               placeholder="10"
               keyboardType="numeric"
-              leftIcon={<Ionicons name="people" size={20} color={theme.colors.textSecondary} />}
+              leftIcon={<Text style={{fontSize: 18, color: theme.colors.textSecondary}}>👥</Text>}
             />
 
             <View style={styles.timeRow}>
@@ -216,7 +218,7 @@ export default function EventCreationModal({
                   value={formData.startTime}
                   onChangeText={(value) => handleInputChange('startTime', value)}
                   placeholder="HH:MM"
-                  leftIcon={<Ionicons name="time" size={20} color={theme.colors.textSecondary} />}
+                  leftIcon={<Text style={{fontSize: 18, color: theme.colors.textSecondary}}>🕒</Text>}
                 />
               </View>
               <View style={styles.timeInput}>
@@ -225,7 +227,7 @@ export default function EventCreationModal({
                   value={formData.endTime}
                   onChangeText={(value) => handleInputChange('endTime', value)}
                   placeholder="HH:MM"
-                  leftIcon={<Ionicons name="time" size={20} color={theme.colors.textSecondary} />}
+                  leftIcon={<Text style={{fontSize: 18, color: theme.colors.textSecondary}}>🕒</Text>}
                 />
               </View>
             </View>
@@ -240,7 +242,7 @@ export default function EventCreationModal({
               size="lg"
               loading={loading}
               disabled={loading}
-              icon={<Ionicons name="add-circle" size={24} color={theme.colors.textPrimary} />}
+              icon={<Text style={{fontSize: 22, color: theme.colors.textPrimary}}>＋</Text>}
             />
           </View>
         </ScrollView>

@@ -19,6 +19,7 @@ export interface ActivityFilter {
   types: string[];
   keywords: string[];
   radius: number;
+  showEvents: boolean; // Toggle to show/hide custom event markers
 }
 
 interface ActivityFilterModalProps {
@@ -47,6 +48,65 @@ const BASE_ACTIVITY_TYPES = [
   { id: 'grappling_hall', iconSource: require('../../assets/filter icons/Grappling sport halls.png') },
 ] as const;
 
+// Map favorite sports to filter types
+const SPORT_TO_FILTER_MAP: Record<string, string[]> = {
+  'basketball': ['basketball_court', 'gym', 'sports_complex'],
+  'football': ['stadium', 'park', 'sports_complex'],
+  'soccer': ['stadium', 'park', 'sports_complex'],
+  'tennis': ['tennis_court'],
+  'swimming': ['swimming_pool'],
+  'gym': ['gym'],
+  'fitness': ['gym'],
+  'running': ['park', 'stadium'],
+  'jogging': ['park'],
+  'cycling': ['park'],
+  'volleyball': ['sports_complex', 'park'],
+  'bowling': ['bowling_alley'],
+  'golf': ['golf_course'],
+  'ice skating': ['ice_rink'],
+  'skating': ['ice_rink'],
+  'boxing': ['martial_arts_gym'],
+  'mma': ['martial_arts_gym'],
+  'kickboxing': ['martial_arts_gym'],
+  'muay thai': ['martial_arts_gym'],
+  'martial arts': ['martial_arts_gym'],
+  'judo': ['grappling_hall', 'martial_arts_gym'],
+  'wrestling': ['grappling_hall'],
+  'bjj': ['grappling_hall'],
+  'grappling': ['grappling_hall'],
+  'crossfit': ['gym'],
+  'yoga': ['gym'],
+  'pilates': ['gym'],
+  'climbing': ['gym'],
+  'badminton': ['sports_complex'],
+  'table tennis': ['sports_complex'],
+};
+
+// Convert favorite sports keywords to filter types
+function mapKeywordsToTypes(keywords: string[]): string[] {
+  const types = new Set<string>();
+
+  for (const keyword of keywords) {
+    const lowerKeyword = keyword.toLowerCase().trim();
+
+    // Direct match
+    if (SPORT_TO_FILTER_MAP[lowerKeyword]) {
+      SPORT_TO_FILTER_MAP[lowerKeyword].forEach(t => types.add(t));
+      continue;
+    }
+
+    // Partial match
+    for (const [sport, filterTypes] of Object.entries(SPORT_TO_FILTER_MAP)) {
+      if (lowerKeyword.includes(sport) || sport.includes(lowerKeyword)) {
+        filterTypes.forEach(t => types.add(t));
+        break;
+      }
+    }
+  }
+
+  return Array.from(types);
+}
+
 export default function ActivityFilterModal({
   visible,
   onClose,
@@ -54,9 +114,19 @@ export default function ActivityFilterModal({
   currentFilters,
 }: ActivityFilterModalProps) {
   const { t } = useTranslation();
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(currentFilters.types);
-  const [keywords, setKeywords] = useState(currentFilters.keywords.join(', '));
+
+  // Map keywords (favorite sports) to filter types on initial load
+  const getInitialTypes = () => {
+    const existingTypes = currentFilters.types || [];
+    const mappedTypes = mapKeywordsToTypes(currentFilters.keywords || []);
+    // Merge existing types with mapped types (unique)
+    return [...new Set([...existingTypes, ...mappedTypes])];
+  };
+
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(getInitialTypes);
+  const [keywords, setKeywords] = useState(''); // Keep keywords empty - favorite sports go to types
   const [radius, setRadius] = useState(currentFilters.radius);
+  const [showEvents, setShowEvents] = useState(currentFilters.showEvents ?? true);
 
   const activityTypes = useMemo(
     () =>
@@ -78,9 +148,14 @@ export default function ActivityFilterModal({
 
   // Update local state when currentFilters prop changes
   useEffect(() => {
-    setSelectedTypes(currentFilters.types);
-    setKeywords(currentFilters.keywords.join(', '));
+    // Map keywords (favorite sports) to filter types
+    const mappedTypes = mapKeywordsToTypes(currentFilters.keywords || []);
+    const mergedTypes = [...new Set([...currentFilters.types, ...mappedTypes])];
+    setSelectedTypes(mergedTypes);
+    // Keywords field stays empty - favorite sports are shown as type selections
+    setKeywords('');
     setRadius(currentFilters.radius);
+    setShowEvents(currentFilters.showEvents ?? true);
   }, [currentFilters]);
 
   const handleTypeToggle = (typeId: string) => {
@@ -96,6 +171,7 @@ export default function ActivityFilterModal({
       types: selectedTypes,
       keywords: keywords.split(',').map(k => k.trim()).filter(k => k.length > 0),
       radius: radius,
+      showEvents: showEvents,
     };
 
     console.log('ActivityFilterModal: Applying filters:', filters);
@@ -107,6 +183,7 @@ export default function ActivityFilterModal({
     setSelectedTypes([]);
     setKeywords('');
     setRadius(3000);
+    setShowEvents(true);
   };
 
   return (
@@ -204,6 +281,38 @@ export default function ActivityFilterModal({
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+
+          {/* Show Events Toggle */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Show Events</Text>
+            <Text style={styles.sectionSubtitle}>
+              Show custom events created by users on the map
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.toggleContainer,
+                showEvents && styles.toggleContainerActive
+              ]}
+              onPress={() => setShowEvents(!showEvents)}
+              activeOpacity={0.7}
+            >
+              <View style={[
+                styles.toggleSwitch,
+                showEvents && styles.toggleSwitchActive
+              ]}>
+                <View style={[
+                  styles.toggleKnob,
+                  showEvents && styles.toggleKnobActive
+                ]} />
+              </View>
+              <Text style={[
+                styles.toggleLabel,
+                showEvents && styles.toggleLabelActive
+              ]}>
+                {showEvents ? 'Events Visible' : 'Events Hidden'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
 
@@ -386,5 +495,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#000000',
+  },
+  // Toggle switch styles
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  toggleContainerActive: {
+    borderColor: '#FFD700',
+    borderWidth: 2,
+  },
+  toggleSwitch: {
+    width: 52,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E5E7EB',
+    padding: 2,
+    marginRight: 12,
+  },
+  toggleSwitchActive: {
+    backgroundColor: '#FFD700',
+  },
+  toggleKnob: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleKnobActive: {
+    transform: [{ translateX: 24 }],
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  toggleLabelActive: {
+    color: '#000000',
+    fontWeight: '600',
   },
 });

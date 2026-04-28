@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useDialog } from '../contexts/DialogContext';
 import ExpoGoMap from './ExpoGoMap';
 
 export default function MapDiagnostic() {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialog = useDialog();
 
   const handleMapReady = () => {
     setMapLoaded(true);
@@ -17,10 +19,9 @@ export default function MapDiagnostic() {
   };
 
   const testMap = () => {
-    Alert.alert(
+    dialog.showInfo(
       'Map Diagnostic',
-      `Map Loaded: ${mapLoaded ? '✅ Yes' : '❌ No'}\nError: ${error || 'None'}`,
-      [{ text: 'OK' }]
+      `Map Loaded: ${mapLoaded ? '✅ Yes' : '❌ No'}\nError: ${error || 'None'}`
     );
   };
 
@@ -32,11 +33,11 @@ export default function MapDiagnostic() {
           <Text style={styles.testButtonText}>Test Map</Text>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.mapContainer}>
         <ExpoGoMap />
       </View>
-      
+
       <View style={styles.status}>
         <Text style={styles.statusText}>
           Status: {mapLoaded ? '✅ Map Loaded' : '⏳ Loading...'}

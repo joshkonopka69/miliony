@@ -10,12 +10,10 @@ import {
   RefreshControl,
   StatusBar,
   ActivityIndicator,
-  Alert,
   Image,
   Platform,
   ActionSheetIOS
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from 'react-native';
 import { useAppNavigation } from '../navigation/hooks';
 import { BottomNavBar, SMLogo } from '../components';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,6 +31,8 @@ import { userService, UserGameStats } from '../services/userService';
 import { groupService, Group } from '../services/groupService';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 interface UserProfile {
   id: string;
@@ -50,6 +50,8 @@ export default function ProfileScreen() {
   const targetUserId = route.params?.userId || currentUser?.id;
   const isOwnProfile = !route.params?.userId || route.params?.userId === currentUser?.id;
   const { t } = useTranslation();
+  const { showError, showSuccess } = useToast();
+  const { showConfirmation } = useConfirmation();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,9 +107,9 @@ export default function ProfileScreen() {
     { id: 'tennis_pro', sport: 'tennis', name: `${t.allBadges.tennis} ${t.allBadges.tiers.pro}`, icon: '🎾', image: badgeImages.tennis, description: `Play 10 ${t.allBadges.tennis.toLowerCase()} games`, required: 10, color: '#FFD700' },
 
     // Running Badges
-    { id: 'running_rookie', sport: 'running', name: `${t.allBadges.running} ${t.allBadges.tiers.rookie}`, icon: '🏃‍♂️', image: badgeImages.running, description: `Complete 1 ${t.allBadges.running.toLowerCase()}`, required: 1, color: '#EF4444' },
-    { id: 'running_player', sport: 'running', name: `${t.allBadges.running} ${t.allBadges.tiers.enthusiast}`, icon: '🏃‍♂️', image: badgeImages.running, description: `Complete 5 ${t.allBadges.running.toLowerCase()}s`, required: 5, color: '#EF4444' },
-    { id: 'running_pro', sport: 'running', name: t.allBadges.tiers.marathoner, icon: '🏃‍♂️', image: badgeImages.running, description: `Complete 10 ${t.allBadges.running.toLowerCase()}s`, required: 10, color: '#EF4444' },
+    { id: 'running_rookie', sport: 'running', name: `${t.allBadges.running} ${t.allBadges.tiers.rookie}`, icon: 'walk-outline‍♂️', image: badgeImages.running, description: `Complete 1 ${t.allBadges.running.toLowerCase()}`, required: 1, color: '#EF4444' },
+    { id: 'running_player', sport: 'running', name: `${t.allBadges.running} ${t.allBadges.tiers.enthusiast}`, icon: 'walk-outline‍♂️', image: badgeImages.running, description: `Complete 5 ${t.allBadges.running.toLowerCase()}s`, required: 5, color: '#EF4444' },
+    { id: 'running_pro', sport: 'running', name: t.allBadges.tiers.marathoner, icon: 'walk-outline‍♂️', image: badgeImages.running, description: `Complete 10 ${t.allBadges.running.toLowerCase()}s`, required: 10, color: '#EF4444' },
     { id: 'running_legend', sport: 'running', name: `${t.allBadges.running} ${t.allBadges.tiers.legend}`, icon: '🏆', image: badgeImages.running, description: `Complete 20 ${t.allBadges.running.toLowerCase()}s`, required: 20, color: '#FFD700' },
 
 
@@ -116,9 +118,9 @@ export default function ProfileScreen() {
     { id: 'volleyball_player', sport: 'volleyball', name: `${t.allBadges.volleyball} ${t.allBadges.tiers.player}`, icon: '🏐', image: badgeImages.volleyball, description: `Play 5 ${t.allBadges.volleyball.toLowerCase()} games`, required: 5, color: '#3B82F6' },
 
     // Cycling Badges
-    { id: 'cycling_rookie', sport: 'cycling', name: `${t.allBadges.cycling} ${t.allBadges.tiers.rookie}`, icon: '🚴‍♂️', image: badgeImages.cycling, description: `Complete 1 ${t.allBadges.cycling.toLowerCase()}`, required: 1, color: '#8B5CF6' },
-    { id: 'cycling_player', sport: 'cycling', name: `${t.allBadges.cycling} ${t.allBadges.tiers.enthusiast}`, icon: '🚴‍♂️', image: badgeImages.cycling, description: `Complete 5 ${t.allBadges.cycling.toLowerCase()}s`, required: 5, color: '#8B5CF6' },
-    { id: 'cycling_pro', sport: 'cycling', name: `${t.allBadges.cycling} ${t.allBadges.tiers.pro}`, icon: '🚴‍♂️', image: badgeImages.cycling, description: `Complete 10 ${t.allBadges.cycling.toLowerCase()}s`, required: 10, color: '#8B5CF6' },
+    { id: 'cycling_rookie', sport: 'cycling', name: `${t.allBadges.cycling} ${t.allBadges.tiers.rookie}`, icon: 'bicycle-outline‍♂️', image: badgeImages.cycling, description: `Complete 1 ${t.allBadges.cycling.toLowerCase()}`, required: 1, color: '#8B5CF6' },
+    { id: 'cycling_player', sport: 'cycling', name: `${t.allBadges.cycling} ${t.allBadges.tiers.enthusiast}`, icon: 'bicycle-outline‍♂️', image: badgeImages.cycling, description: `Complete 5 ${t.allBadges.cycling.toLowerCase()}s`, required: 5, color: '#8B5CF6' },
+    { id: 'cycling_pro', sport: 'cycling', name: `${t.allBadges.cycling} ${t.allBadges.tiers.pro}`, icon: 'bicycle-outline‍♂️', image: badgeImages.cycling, description: `Complete 10 ${t.allBadges.cycling.toLowerCase()}s`, required: 10, color: '#8B5CF6' },
 
     // Gym Badges
     { id: 'gym_rookie', sport: 'gym', name: `${t.allBadges.gym} ${t.allBadges.tiers.rookie}`, icon: '💪', image: badgeImages.gym, description: `Complete 1 ${t.allBadges.gym.toLowerCase()} session`, required: 1, color: '#6B7280' },
@@ -126,8 +128,8 @@ export default function ProfileScreen() {
     { id: 'gym_pro', sport: 'gym', name: `${t.allBadges.gym} ${t.allBadges.tiers.pro}`, icon: '💪', image: badgeImages.gym, description: `Complete 10 ${t.allBadges.gym.toLowerCase()} sessions`, required: 10, color: '#6B7280' },
 
     // Swimming Badges
-    { id: 'swimming_rookie', sport: 'swimming', name: `${t.allBadges.swimming} ${t.allBadges.tiers.rookie}`, icon: '🏊‍♂️', image: badgeImages.swimming, description: `Complete 1 ${t.allBadges.swimming.toLowerCase()} swim`, required: 1, color: '#06B6D4' },
-    { id: 'swimming_player', sport: 'swimming', name: `${t.allBadges.swimming} ${t.allBadges.tiers.enthusiast}`, icon: '🏊‍♂️', image: badgeImages.swimming, description: `Complete 5 ${t.allBadges.swimming.toLowerCase()} swims`, required: 5, color: '#06B6D4' },
+    { id: 'swimming_rookie', sport: 'swimming', name: `${t.allBadges.swimming} ${t.allBadges.tiers.rookie}`, icon: 'water-outline‍♂️', image: badgeImages.swimming, description: `Complete 1 ${t.allBadges.swimming.toLowerCase()} swim`, required: 1, color: '#06B6D4' },
+    { id: 'swimming_player', sport: 'swimming', name: `${t.allBadges.swimming} ${t.allBadges.tiers.enthusiast}`, icon: 'water-outline‍♂️', image: badgeImages.swimming, description: `Complete 5 ${t.allBadges.swimming.toLowerCase()} swims`, required: 5, color: '#06B6D4' },
 
     // Special Badges
     { id: 'all_rounder', sport: 'special', name: t.allBadges.specialBadges.allRounderName, icon: '⭐', image: badgeImages.allrounder, description: t.allBadges.specialBadges.allRounderRequirement, required: 3, color: '#FFD700' },
@@ -158,7 +160,7 @@ export default function ProfileScreen() {
         // Mock data for preview if no user at all
         setProfile({
           id: 'mock-user',
-          email: 'josh@sportmap.com',
+          email: 'josh@SportsMap.com',
           display_name: 'josh',
           favorite_sports: ['Basketball', 'Football'],
           created_at: '2025-01-01T00:00:00.000Z',
@@ -233,7 +235,7 @@ export default function ProfileScreen() {
 
     } catch (error: any) {
       console.error('❌ Error fetching profile:', error);
-      Alert.alert(t.common.error, t.profile.errorLoading);
+      showError(t.profile.errorLoading, t.common.error);
     } finally {
       setLoading(false);
     }
@@ -301,16 +303,17 @@ export default function ProfileScreen() {
         }
       );
     } else {
-      // Android Alert
-      Alert.alert(
-        'Change Profile Photo',
-        'Choose an option',
-        [
+      // Android - use custom confirmation modal
+      showConfirmation({
+        title: 'Change Profile Photo',
+        message: 'Choose an option',
+        icon: '📷',
+        buttons: [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Take Photo', onPress: handleTakePhoto },
           { text: 'Choose from Library', onPress: handlePickImage },
         ]
-      );
+      });
     }
   };
 
@@ -322,7 +325,7 @@ export default function ProfileScreen() {
       }
     } catch (error: any) {
       console.error('Error taking photo:', error);
-      Alert.alert('Error', error.message || 'Failed to take photo');
+      showError(error.message || 'Failed to take photo', 'Error');
     }
   };
 
@@ -334,7 +337,7 @@ export default function ProfileScreen() {
       }
     } catch (error: any) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', error.message || 'Failed to pick image');
+      showError(error.message || 'Failed to pick image', 'Error');
     }
   };
 
@@ -363,11 +366,11 @@ export default function ProfileScreen() {
         avatar_url: newPhotoUrl,
       });
 
-      Alert.alert('Success', 'Profile photo updated!');
+      showSuccess('Profile photo updated!', 'Success');
 
     } catch (error: any) {
       console.error('Error uploading photo:', error);
-      Alert.alert('Error', error.message || 'Failed to upload photo');
+      showError(error.message || 'Failed to upload photo', 'Error');
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -400,7 +403,7 @@ export default function ProfileScreen() {
             onPress={() => navigation.navigate(ROUTES.EDIT_PROFILE)}
             activeOpacity={0.7}
           >
-            <Ionicons name="create-outline" size={24} color="#000000" />
+            <Text style={{fontSize: 22, color: '#000000'}}>✏</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -450,7 +453,7 @@ export default function ProfileScreen() {
                 onPress={handlePhotoPress}
                 activeOpacity={0.7}
               >
-                <Ionicons name="camera" size={20} color="#000000" />
+                <Text style={{fontSize: 18, color: '#000000'}}>📷</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -493,7 +496,7 @@ export default function ProfileScreen() {
             activeOpacity={0.7}
           >
             <Text style={styles.viewAllText}>{t.profile.viewAll}</Text>
-            <Ionicons name="chevron-forward" size={18} color="#FFD700" />
+            <Text style={{fontSize: 16, color: '#FFD700'}}>›</Text>
           </TouchableOpacity>
         </View>
 
@@ -518,7 +521,7 @@ export default function ProfileScreen() {
                   )}
 
                   <View style={styles.carouselEarnedBadge}>
-                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                    <Text style={{fontSize: 16, color: '#10B981'}}>✓</Text>
                   </View>
                 </View>
                 <Text style={styles.carouselBadgeName} numberOfLines={2}>
@@ -530,7 +533,7 @@ export default function ProfileScreen() {
 
         ) : (
           <View style={styles.emptyBadges}>
-            <Ionicons name="trophy-outline" size={48} color="#CCCCCC" />
+            <Text style={{fontSize: 43, color: '#CCCCCC'}}>🏆</Text>
             <Text style={styles.emptyBadgesText}>{t.profile.noBadges}</Text>
             <Text style={styles.emptyBadgesSubtext}>{t.profile.noBadgesSubtext}</Text>
           </View>
@@ -546,7 +549,7 @@ export default function ProfileScreen() {
                 onPress={handleAddFriends}
                 activeOpacity={0.7}
               >
-                <Ionicons name="person-add" size={18} color="#FFD700" />
+                <Text style={{fontSize: 16, color: '#FFD700'}}>👤</Text>
                 <Text style={styles.addButtonText}>{t.profile.addFriends}</Text>
               </TouchableOpacity>
             )}
@@ -579,7 +582,7 @@ export default function ProfileScreen() {
             </ScrollView>
           ) : (
             <View style={styles.friendsPlaceholder}>
-              <Ionicons name="people-outline" size={48} color="#CCCCCC" />
+              <Text style={{fontSize: 43, color: '#CCCCCC'}}>👥</Text>
               <Text style={styles.friendsPlaceholderText}>{t.profile.noFriends}</Text>
               <Text style={styles.friendsPlaceholderSubtext}>
                 {isOwnProfile ? t.profile.noFriendsSubtext : t.profile.noFriendsOther.replace('{name}', profile?.display_name || t.profile.userDefault)}
@@ -600,7 +603,7 @@ export default function ProfileScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.viewGroupsText}>{t.profile.viewGroups}</Text>
-                <Ionicons name="chevron-forward" size={16} color="#FFD700" />
+                <Text style={{fontSize: 14, color: '#FFD700'}}>›</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -623,7 +626,7 @@ export default function ProfileScreen() {
                     {group.avatar_url ? (
                       <Image source={{ uri: group.avatar_url }} style={styles.groupImage} />
                     ) : (
-                      <Ionicons name="people" size={30} color="#CCCCCC" />
+                      <Text style={{fontSize: 27, color: '#CCCCCC'}}>👥</Text>
                     )}
                   </View>
                   <Text style={styles.groupName} numberOfLines={1}>{group.name}</Text>
@@ -632,7 +635,7 @@ export default function ProfileScreen() {
             </ScrollView>
           ) : (
             <View style={styles.groupsPlaceholder}>
-              <Ionicons name="people-circle-outline" size={48} color="#CCCCCC" />
+              <Text style={{fontSize: 43, color: '#CCCCCC'}}>•</Text>
               <Text style={styles.groupsPlaceholderText}>{t.profile.noGroups}</Text>
               <Text style={styles.groupsPlaceholderSubtext}>
                 {isOwnProfile ? t.profile.noGroupsSubtext : t.profile.noGroupsOther.replace('{name}', profile?.display_name || t.profile.userDefault)}

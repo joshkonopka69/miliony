@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,26 +9,27 @@ import {
   StatusBar,
   Animated,
   Switch,
-  Alert,
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { privacySettingsService, PrivacySettings } from '../services/privacySettingsService';
+import { useToast } from '../components/ToastProvider';
 
 export default function PrivacySettingsScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { showError } = useToast();
   const [settings, setSettings] = useState<PrivacySettings | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     loadPrivacySettings();
-    
+
     // Animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -46,13 +47,13 @@ export default function PrivacySettingsScreen() {
 
   const loadPrivacySettings = async () => {
     if (!user?.id) return;
-    
+
     try {
       const privacySettings = await privacySettingsService.getOrCreatePrivacySettings(user.id);
       setSettings(privacySettings);
     } catch (error) {
       console.error('Error loading privacy settings:', error);
-      Alert.alert('Error', 'Failed to load privacy settings');
+      showError('Failed to load privacy settings', 'Error');
     } finally {
       setLoading(false);
     }
@@ -66,11 +67,11 @@ export default function PrivacySettingsScreen() {
       if (success) {
         setSettings(prev => prev ? { ...prev, [key]: value } : null);
       } else {
-        Alert.alert('Error', 'Failed to update setting');
+        showError('Failed to update setting', 'Error');
       }
     } catch (error) {
       console.error('Error updating setting:', error);
-      Alert.alert('Error', 'Failed to update setting');
+      showError('Failed to update setting', 'Error');
     }
   };
 
@@ -90,11 +91,11 @@ export default function PrivacySettingsScreen() {
           }
         } : null);
       } else {
-        Alert.alert('Error', 'Failed to update data sharing setting');
+        showError('Failed to update data sharing setting', 'Error');
       }
     } catch (error) {
       console.error('Error updating data sharing setting:', error);
-      Alert.alert('Error', 'Failed to update data sharing setting');
+      showError('Failed to update data sharing setting', 'Error');
     }
   };
 
@@ -114,11 +115,11 @@ export default function PrivacySettingsScreen() {
           }
         } : null);
       } else {
-        Alert.alert('Error', 'Failed to update search visibility setting');
+        showError('Failed to update search visibility setting', 'Error');
       }
     } catch (error) {
       console.error('Error updating search visibility setting:', error);
-      Alert.alert('Error', 'Failed to update search visibility setting');
+      showError('Failed to update search visibility setting', 'Error');
     }
   };
 
@@ -138,11 +139,11 @@ export default function PrivacySettingsScreen() {
           }
         } : null);
       } else {
-        Alert.alert('Error', 'Failed to update activity privacy setting');
+        showError('Failed to update activity privacy setting', 'Error');
       }
     } catch (error) {
       console.error('Error updating activity privacy setting:', error);
-      Alert.alert('Error', 'Failed to update activity privacy setting');
+      showError('Failed to update activity privacy setting', 'Error');
     }
   };
 
@@ -222,18 +223,18 @@ export default function PrivacySettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Privacy Settings</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <Animated.ScrollView 
-        style={styles.scrollView} 
+      <Animated.ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           opacity: fadeAnim,
@@ -241,7 +242,7 @@ export default function PrivacySettingsScreen() {
         }}
       >
         <View style={styles.content}>
-          
+
           {/* Profile Visibility */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Profile Visibility</Text>

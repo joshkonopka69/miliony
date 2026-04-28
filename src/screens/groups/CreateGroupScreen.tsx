@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   StatusBar,
   TextInput,
-  Alert,
   ActivityIndicator,
   Animated,
   Modal,
@@ -16,12 +15,13 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../../navigation';
 import { useGroupManager } from '../../hooks/useGroups';
 import { CreateGroupData } from '../../services/groupService';
 import { SMLogo } from '../../components';
 import { useTranslation } from '../../contexts/TranslationContext';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 
 
 
@@ -42,6 +42,8 @@ const SPORTS_KEYS = [
 export default function CreateGroupScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const { createGroupWithValidation, isLoading, error, clearError } = useGroupManager();
 
 
@@ -174,12 +176,12 @@ export default function CreateGroupScreen() {
     try {
       // Validate required fields
       if (!formData.name.trim()) {
-        Alert.alert(t.createGroup.error, t.createGroup.fillFields);
+        showError(t.createGroup.fillFields, t.createGroup.error);
         return;
       }
 
       if (!formData.sport) {
-        Alert.alert(t.createGroup.error, t.createGroup.selectSport);
+        showError(t.createGroup.selectSport, t.createGroup.error);
         return;
       }
 
@@ -193,21 +195,22 @@ export default function CreateGroupScreen() {
 
       const group = await createGroupWithValidation(groupData);
       if (group) {
-        Alert.alert(
-          t.createGroup.success,
-          t.createGroup.groupCreated,
-          [
+        showConfirmation({
+          title: t.createGroup.success,
+          message: t.createGroup.groupCreated,
+          icon: '??',
+          buttons: [
             {
               text: t.common.ok,
               onPress: () => navigation.navigate('GroupDetails', { groupId: group.id }),
             },
           ]
-        );
+        });
       }
 
 
     } catch (error: any) {
-      Alert.alert(t.createGroup.error, error.message || t.createGroup.fillFields);
+      showError(error.message || t.createGroup.fillFields, t.createGroup.error);
     }
 
 
@@ -256,7 +259,7 @@ export default function CreateGroupScreen() {
             onPress={handleBack}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color="#000000" />
+            <Text style={{fontSize: 22, color: '#000000'}}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t.createGroup.title}</Text>
           <SMLogo size={40} />
@@ -273,10 +276,10 @@ export default function CreateGroupScreen() {
           {/* Error Display */}
           {error && (
             <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={20} color="#991B1B" />
+              <Text style={{fontSize: 18, color: '#991B1B'}}>•</Text>
               <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity onPress={clearError}>
-                <Ionicons name="close" size={20} color="#991B1B" />
+                <Text style={{fontSize: 18, color: '#991B1B'}}>✕</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -293,7 +296,7 @@ export default function CreateGroupScreen() {
             {/* Basic Information Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="information-circle-outline" size={20} color="#1F2937" />
+                <Text style={{fontSize: 18, color: '#1F2937'}}>•</Text>
                 <Text style={styles.sectionTitle}>{t.createGroup.basicInformation}</Text>
               </View>
 
@@ -324,7 +327,7 @@ export default function CreateGroupScreen() {
                     <Text style={[styles.pickerButtonText, !formData.sport && styles.placeholderText]}>
                       {getSportLabel(formData.sport)}
                     </Text>
-                    <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                    <Text style={{fontSize: 18, color: '#6B7280'}}>▼</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -352,7 +355,7 @@ export default function CreateGroupScreen() {
             {/* Privacy & Settings Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="settings-outline" size={20} color="#1F2937" />
+                <Text style={{fontSize: 18, color: '#1F2937'}}>⚙</Text>
                 <Text style={styles.sectionTitle}>{t.createGroup.privacySettings}</Text>
               </View>
 
@@ -369,7 +372,7 @@ export default function CreateGroupScreen() {
                     <Text style={styles.pickerButtonText}>
                       {getPrivacyLabel(formData.privacy)}
                     </Text>
-                    <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                    <Text style={{fontSize: 18, color: '#6B7280'}}>▼</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -393,7 +396,7 @@ export default function CreateGroupScreen() {
             <View style={styles.section}>
 
               <View style={styles.sectionHeader}>
-                <Ionicons name="people-outline" size={20} color="#1F2937" />
+                <Text style={{fontSize: 18, color: '#1F2937'}}>👥</Text>
                 <Text style={styles.sectionTitle}>{t.createGroup.memberRequirements}</Text>
               </View>
 
@@ -437,7 +440,7 @@ export default function CreateGroupScreen() {
                     <Text style={styles.smallPickerText}>
                       {getSkillLabel(formData.requirements?.skill_level || '')}
                     </Text>
-                    <Ionicons name="chevron-down" size={16} color="#6B7280" />
+                    <Text style={{fontSize: 14, color: '#6B7280'}}>▼</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -447,7 +450,7 @@ export default function CreateGroupScreen() {
             {/* Rules & Tags (Combined) */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="list-outline" size={20} color="#1F2937" />
+                <Text style={{fontSize: 18, color: '#1F2937'}}>•</Text>
                 <Text style={styles.sectionTitle}>{t.createGroup.details}</Text>
               </View>
 
@@ -464,7 +467,7 @@ export default function CreateGroupScreen() {
                         style={styles.tagRemove}
                         onPress={() => handleRemoveTag(tag)}
                       >
-                        <Ionicons name="close" size={12} color="#FFFFFF" />
+                        <Text style={{fontSize: 11, color: '#FFFFFF'}}>✕</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -472,7 +475,7 @@ export default function CreateGroupScreen() {
                     style={styles.addTagButton}
                     onPress={() => setShowTagInput(true)}
                   >
-                    <Ionicons name="add" size={16} color="#FFD700" />
+                    <Text style={{fontSize: 14, color: '#FFD700'}}>•</Text>
                     <Text style={styles.addTagText}>{t.createGroup.addTag}</Text>
                   </TouchableOpacity>
 
@@ -504,10 +507,10 @@ export default function CreateGroupScreen() {
 
                 {formData.rules?.map((rule, index) => (
                   <View key={index} style={styles.ruleRow}>
-                    <Ionicons name="ellipse" size={6} color="#FFD700" style={{ marginTop: 7 }} />
+                    <Text style={{fontSize: 5, color: '#FFD700'}}>•</Text>
                     <Text style={styles.ruleText}>{rule}</Text>
                     <TouchableOpacity onPress={() => handleRemoveRule(rule)}>
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                      <Text style={{fontSize: 14, color: '#EF4444'}}>•</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -517,7 +520,7 @@ export default function CreateGroupScreen() {
                     style={styles.addRuleButton}
                     onPress={() => setShowRulesInput(true)}
                   >
-                    <Ionicons name="add-circle-outline" size={20} color="#FFD700" />
+                    <Text style={{fontSize: 18, color: '#FFD700'}}>•</Text>
                     <Text style={styles.addRuleText}>{t.createGroup.addRule}</Text>
                   </TouchableOpacity>
 
@@ -559,7 +562,7 @@ export default function CreateGroupScreen() {
               <ActivityIndicator color="#000000" />
             ) : (
               <>
-                <Ionicons name="checkmark-circle-outline" size={20} color="#000000" style={{ marginRight: 8 }} />
+                <Text style={{fontSize: 18, color: '#000000'}}>•</Text>
                 <Text style={styles.createButtonText}>{t.createGroup.create}</Text>
               </>
             )}
@@ -586,7 +589,7 @@ export default function CreateGroupScreen() {
                   }}
                 >
                   <Text style={styles.pickerItemText}>{getSportLabel(item)}</Text>
-                  {formData.sport === item && <Ionicons name="checkmark" size={20} color="#FFD700" />}
+                  {formData.sport === item && <Text style={{fontSize: 18, color: '#FFD700'}}>✓</Text>}
                 </TouchableOpacity>
 
               )}
@@ -621,7 +624,7 @@ export default function CreateGroupScreen() {
                   <Text style={styles.pickerItemText}>{option.label}</Text>
                   <Text style={styles.pickerItemDescription}>{option.description}</Text>
                 </View>
-                {formData.privacy === option.value && <Ionicons name="checkmark" size={20} color="#FFD700" />}
+                {formData.privacy === option.value && <Text style={{fontSize: 18, color: '#FFD700'}}>✓</Text>}
               </TouchableOpacity>
             ))}
             <TouchableOpacity
@@ -650,7 +653,7 @@ export default function CreateGroupScreen() {
                 }}
               >
                 <Text style={styles.pickerItemText}>{option.label}</Text>
-                {formData.requirements?.skill_level === option.value && <Ionicons name="checkmark" size={20} color="#FFD700" />}
+                {formData.requirements?.skill_level === option.value && <Text style={{fontSize: 18, color: '#FFD700'}}>✓</Text>}
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={styles.pickerCancelButton} onPress={() => setShowSkillPicker(false)}>

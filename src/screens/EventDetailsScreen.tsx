@@ -1,11 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Image,
   Share,
   ActivityIndicator,
@@ -13,8 +12,7 @@ import {
   Platform,
 } from 'react-native';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppNavigation, useAppRoute } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
 import { MyEvent, SPORT_COLORS } from '../types/event';
@@ -31,35 +29,37 @@ import { notificationService } from '../services/notificationService';
 import ProfilePreviewModal, { ProfilePreviewUser } from '../components/ProfilePreviewModal';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import placesApiService from '../services/placesApi';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 // Sport emoji mapping
 const SPORT_EMOJI_MAP: Record<string, string> = {
-  basketball: '🏀',
-  football: '⚽',
-  soccer: '⚽',
-  tennis: '🎾',
-  running: '🏃‍♂️',
-  cycling: '🚴‍♂️',
-  swimming: '🏊‍♂️',
-  gym: '💪',
-  volleyball: '🏐',
-  judo: '🥋',
-  wrestling: '🤼‍♂️',
-  'muay thai': '🥊',
-  kickboxing: '🥊',
-  rollerblading: '🛼',
-  'ice skating': '⛸️',
-  skating: '🛹',
-  padel: '🎾',
-  squash: '🎾',
-  bouldering: '🧗‍♂️',
-  climbing: '🧗‍♂️',
-  'table tennis': '🏓',
-  yoga: '🧘',
-  pilates: '🧘',
-  crossfit: '🏋️‍♂️',
-  badminton: '🏸',
-  default: '🏅',
+  basketball: '??',
+  football: '?',
+  soccer: '?',
+  tennis: '??',
+  running: '???>?',
+  cycling: '???>?',
+  swimming: '???>?',
+  gym: '??',
+  volleyball: '??',
+  judo: '??',
+  wrestling: '???>?',
+  'muay thai': '??',
+  kickboxing: '??',
+  rollerblading: '??',
+  'ice skating': '??',
+  skating: '??',
+  padel: '??',
+  squash: '??',
+  bouldering: '???>?',
+  climbing: '???>?',
+  'table tennis': '??',
+  yoga: '??',
+  pilates: '??',
+  crossfit: '????>?',
+  badminton: '??',
+  default: '??',
 };
 
 const getSportEmoji = (sportType: string): string => {
@@ -83,6 +83,8 @@ export default function EventDetailsScreen() {
   const [event, setEvent] = useState<MyEvent | null>(initialEvent || null);
   const { t, language } = useTranslation();
   const { getUserId, user: currentUser } = useAuth();
+  const { showSuccess, showError, showInfo } = useToast();
+  const { showConfirmation } = useConfirmation();
   const userId = getUserId();
   const loginRequiredMessage = t.friends?.loginRequired || 'Please sign in to continue.';
   const locale = LOCALE_MAP[language] ?? 'en-US';
@@ -227,15 +229,15 @@ export default function EventDetailsScreen() {
   const sendJoinRequest = async () => {
     if (!event) return;
     if (!userId) {
-      Alert.alert(t.common.error, loginRequiredMessage);
+      showError(loginRequiredMessage, t.common.error);
       return;
     }
     if (requestPending) {
-      Alert.alert(t.eventDetails.requestAccess, t.eventDetails.requestPending);
+      showInfo(t.eventDetails.requestPending, t.eventDetails.requestAccess);
       return;
     }
     if (!event.createdBy?.id) {
-      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+      showError(t.eventDetails.errorMessage, t.common.error);
       return;
     }
 
@@ -252,10 +254,10 @@ export default function EventDetailsScreen() {
         },
       });
       setRequestPending(true);
-      Alert.alert(t.common.success, t.eventDetails.requestSent);
+      showSuccess(t.eventDetails.requestSent, t.common.success);
     } catch (error) {
       console.error('Failed to send join request:', error);
-      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+      showError(t.eventDetails.errorMessage, t.common.error);
     } finally {
       setIsProcessing(false);
     }
@@ -264,12 +266,12 @@ export default function EventDetailsScreen() {
   const performJoin = async () => {
     if (!event) return;
     if (!userId) {
-      Alert.alert(t.common.error, loginRequiredMessage);
+      showError(loginRequiredMessage, t.common.error);
       return;
     }
 
     if (participantsInfo && participantsInfo.max > 0 && participantsInfo.current >= participantsInfo.max) {
-      Alert.alert(t.common.error, t.eventDetails.eventFull);
+      showError(t.eventDetails.eventFull, t.common.error);
       return;
     }
 
@@ -283,13 +285,13 @@ export default function EventDetailsScreen() {
             ? { ...prev, current: Math.min(prev.current + 1, prev.max) }
             : prev
         );
-        Alert.alert(t.common.success, t.eventDetails.joinSuccess);
+        showSuccess(t.eventDetails.joinSuccess, t.common.success);
       } else {
-        Alert.alert(t.common.error, t.eventDetails.errorMessage);
+        showError(t.eventDetails.errorMessage, t.common.error);
       }
     } catch (error) {
       console.error('Failed to join event:', error);
-      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+      showError(t.eventDetails.errorMessage, t.common.error);
     } finally {
       setIsProcessing(false);
     }
@@ -298,7 +300,7 @@ export default function EventDetailsScreen() {
   const performLeave = async () => {
     if (!event || !eventIdFromParams) return;
     if (!userId) {
-      Alert.alert(t.common.error, loginRequiredMessage);
+      showError(loginRequiredMessage, t.common.error);
       return;
     }
     try {
@@ -311,15 +313,14 @@ export default function EventDetailsScreen() {
             ? { ...prev, current: Math.max(prev.current - 1, 0) }
             : prev
         );
-        Alert.alert(t.common.success, t.myEvents.leaveEventSuccess);
-        // Refresh event data to ensure consistency
+        showSuccess(t.myEvents.leaveEventSuccess, t.common.success);
         loadEventById(eventIdFromParams);
       } else {
-        Alert.alert(t.common.error, result.error || t.eventDetails.errorMessage);
+        showError(result.error || t.eventDetails.errorMessage, t.common.error);
       }
     } catch (error) {
       console.error('Failed to leave event:', error);
-      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+      showError(t.eventDetails.errorMessage, t.common.error);
     } finally {
       setIsProcessing(false);
     }
@@ -332,45 +333,39 @@ export default function EventDetailsScreen() {
       return;
     }
 
-    Alert.alert(
-      t.eventDetails.joinGame,
-      t.eventDetails.joinPrompt.replace('{name}', event?.name ?? ''),
-      [
+    showConfirmation({
+      title: t.eventDetails.joinGame,
+      message: t.eventDetails.joinPrompt.replace('{name}', event?.name ?? ''),
+      icon: '?',
+      buttons: [
         { text: t.common.cancel, style: 'cancel' },
         {
           text: t.common.confirm,
           onPress: performJoin,
         },
       ]
-    );
+    });
   };
 
   const handleLeaveEvent = () => {
     const leaveTxt = t.myEvents.leaveEventConfirm || 'Leave';
-    const cancelTxt = t.common?.cancel || 'Cancel';
 
-    console.log('DEBUG: handleLeaveEvent alert shown');
-    console.log('DEBUG: Leave Label:', leaveTxt);
-    console.log('DEBUG: Cancel Label:', cancelTxt);
-
-    Alert.alert(
-      '[DEBUG] ' + (t.eventDetails.leaveGame || 'Leave Game'),
-      (t.myEvents.leaveEventMessage || 'Do you want to leave "{name}"?').replace('{name}', event?.name ?? ''),
-      [
+    showConfirmation({
+      title: t.eventDetails.leaveGame || 'Leave Game',
+      message: (t.myEvents.leaveEventMessage || 'Do you want to leave "{name}"?').replace('{name}', event?.name ?? ''),
+      icon: '??',
+      buttons: [
         {
-          text: cancelTxt,
+          text: t.common?.cancel || 'Cancel',
           style: 'cancel',
         },
         {
           text: leaveTxt,
           style: 'destructive',
-          onPress: () => {
-            console.log('DEBUG: Leave button pressed');
-            performLeave();
-          },
+          onPress: performLeave,
         },
       ]
-    );
+    });
   };
 
   const handleChatPress = () => {
@@ -392,15 +387,15 @@ export default function EventDetailsScreen() {
         message,
       });
       if (result.action === Share.sharedAction) {
-        Alert.alert(t.common.success, t.eventDetails.shareSuccess);
+        showSuccess(t.eventDetails.shareSuccess, t.common.success);
       }
     } catch (error) {
-      Alert.alert(t.common.error, t.eventDetails.shareError);
+      showError(t.eventDetails.shareError, t.common.error);
     }
   };
 
   const handleViewLocation = () => {
-    Alert.alert(t.eventDetails.viewLocationTitle, t.eventDetails.viewLocationMessage);
+    showInfo(t.eventDetails.viewLocationMessage, t.eventDetails.viewLocationTitle);
   };
 
   const handleViewParticipants = async () => {
@@ -431,54 +426,26 @@ export default function EventDetailsScreen() {
   };
 
   const handleManageEvent = () => {
-    if (Platform.OS === 'android') {
-      // Android only supports 3 buttons. We split into two steps or use a different approach.
-      Alert.alert(
-        t.eventDetails.manageEvent,
-        t.eventDetails.manageOptions,
-        [
-          {
-            text: t.eventDetails.rescheduleEvent,
-            onPress: () => setShowReschedulePicker(true),
-          },
-          {
-            text: t.eventDetails.deleteEvent,
-            onPress: handleDeleteEvent,
-            style: 'destructive',
-          },
-          {
-            text: t.common?.cancel || 'Cancel',
-            style: 'cancel',
-          },
-        ]
-      );
-    } else {
-      // iOS supports more buttons
-      Alert.alert(
-        t.eventDetails.manageEvent,
-        t.eventDetails.manageOptions,
-        [
-          {
-            text: t.eventDetails.rescheduleEvent,
-            onPress: () => setShowReschedulePicker(true),
-          },
-          {
-            text: t.eventDetails.cancelEvent,
-            onPress: handleCancelEvent,
-            style: 'destructive',
-          },
-          {
-            text: t.eventDetails.deleteEvent,
-            onPress: handleDeleteEvent,
-            style: 'destructive',
-          },
-          {
-            text: t.common?.cancel || 'Cancel',
-            style: 'cancel',
-          },
-        ]
-      );
-    }
+    showConfirmation({
+      title: t.eventDetails.manageEvent,
+      message: t.eventDetails.manageOptions,
+      icon: '??',
+      buttons: [
+        {
+          text: t.eventDetails.rescheduleEvent,
+          onPress: () => setShowReschedulePicker(true),
+        },
+        {
+          text: t.eventDetails.deleteEvent,
+          style: 'destructive',
+          onPress: handleDeleteEvent,
+        },
+        {
+          text: t.common?.cancel || 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    });
   };
 
   const handleReschedule = async (event: any, selectedDate?: Date) => {
@@ -486,10 +453,11 @@ export default function EventDetailsScreen() {
     if (selectedDate && eventIdFromParams) {
       setNewStartTime(selectedDate);
 
-      Alert.alert(
-        t.eventDetails.rescheduleEvent,
-        t.eventDetails.confirmReschedule,
-        [
+      showConfirmation({
+        title: t.eventDetails.rescheduleEvent,
+        message: t.eventDetails.confirmReschedule,
+        icon: '??',
+        buttons: [
           { text: t.common?.cancel || 'Cancel', style: 'cancel' },
           {
             text: t.common?.confirm || 'OK',
@@ -501,49 +469,52 @@ export default function EventDetailsScreen() {
               setIsProcessing(false);
 
               if (result.success) {
-                Alert.alert(t.common?.success || 'Success', 'Event rescheduled successfully');
+                showSuccess('Event rescheduled successfully', t.common?.success || 'Success');
                 loadEventById(eventIdFromParams);
               } else {
-                Alert.alert(t.common?.error || 'Error', result.error || 'Failed to reschedule event');
+                showError(result.error || 'Failed to reschedule event', t.common?.error || 'Error');
               }
             }
           }
         ]
-      );
+      });
     }
   };
 
   const handleCancelEvent = () => {
-    Alert.alert(
-      t.eventDetails.cancelEvent,
-      t.eventDetails.confirmCancel,
-      [
+    showConfirmation({
+      title: t.eventDetails.cancelEvent,
+      message: t.eventDetails.confirmCancel,
+      icon: '?',
+      buttons: [
         { text: t.common?.cancel || 'Cancel', style: 'cancel' },
         {
           text: t.common?.confirm || 'OK',
+          style: 'destructive',
           onPress: async () => {
             if (eventIdFromParams) {
               setIsProcessing(true);
               const result = await enhancedEventService.cancelEvent(eventIdFromParams);
               setIsProcessing(false);
               if (result.success) {
-                Alert.alert(t.common?.success || 'Success', 'Event cancelled');
+                showSuccess('Event cancelled', t.common?.success || 'Success');
                 navigation.goBack();
               } else {
-                Alert.alert(t.common?.error || 'Error', result.error || 'Failed to cancel event');
+                showError(result.error || 'Failed to cancel event', t.common?.error || 'Error');
               }
             }
           }
         }
       ]
-    );
+    });
   };
 
   const handleDeleteEvent = () => {
-    Alert.alert(
-      t.eventDetails.deleteEvent,
-      t.eventDetails.confirmDelete,
-      [
+    showConfirmation({
+      title: t.eventDetails.deleteEvent,
+      message: t.eventDetails.confirmDelete,
+      icon: '???',
+      buttons: [
         { text: t.common?.cancel || 'Cancel', style: 'cancel' },
         {
           text: t.eventDetails.deleteEvent,
@@ -554,16 +525,16 @@ export default function EventDetailsScreen() {
               const result = await enhancedEventService.deleteEvent(eventIdFromParams);
               setIsProcessing(false);
               if (result.success) {
-                Alert.alert(t.common?.success || 'Success', 'Event deleted permanently');
+                showSuccess('Event deleted permanently', t.common?.success || 'Success');
                 navigation.goBack();
               } else {
-                Alert.alert(t.common?.error || 'Error', result.error || 'Failed to delete event');
+                showError(result.error || 'Failed to delete event', t.common?.error || 'Error');
               }
             }
           }
         }
       ]
-    );
+    });
   };
 
   if (isLoadingEvent) {
@@ -581,7 +552,7 @@ export default function EventDetailsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color="#D1D5DB" />
+          <Text style={{fontSize: 58, color: '#D1D5DB'}}>•</Text>
           <Text style={styles.errorTitle}>{t.eventDetails.errorTitle}</Text>
           <Text style={styles.errorMessage}>
             {t.eventDetails.errorMessage}
@@ -611,7 +582,7 @@ export default function EventDetailsScreen() {
             onPress={handleBack}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color="#000000" />
+            <Text style={{fontSize: 22, color: '#000000'}}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t.eventDetails.title}</Text>
           <TouchableOpacity
@@ -619,7 +590,7 @@ export default function EventDetailsScreen() {
             onPress={handleShareEvent}
             activeOpacity={0.7}
           >
-            <Ionicons name="share-outline" size={24} color="#000000" />
+            <Text style={{fontSize: 22, color: '#000000'}}>•</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -636,7 +607,7 @@ export default function EventDetailsScreen() {
           ) : (
             <View style={[styles.bannerPlaceholder, { backgroundColor: sportColor + '10' }]}>
               <Ionicons
-                name={getSportEmoji(event.activity) === '🏀' ? 'basketball' : 'fitness'}
+                name={getSportEmoji(event.activity) === '??' ? 'basketball' : 'fitness'}
                 size={64}
                 color={sportColor}
                 style={{ opacity: 0.3 }}
@@ -646,7 +617,7 @@ export default function EventDetailsScreen() {
 
           {/* Sport Icon Overlay */}
           <View style={[styles.sportIconBadge, { backgroundColor: sportColor }]}>
-            <Text style={styles.sportEmojiOverlay}>{getSportEmoji(event.activity)}</Text>
+            <Text style={{fontSize: 22, color: '#FFD700'}}>{getSportEmoji(event.activity)}</Text>
           </View>
         </View>
 
@@ -657,14 +628,14 @@ export default function EventDetailsScreen() {
 
           {/* Time Until Event */}
           <View style={styles.timeUntilBadge}>
-            <Ionicons name="time-outline" size={16} color="#6B7280" />
+            <Text style={{fontSize: 14, color: '#6B7280'}}>•</Text>
             <Text style={styles.timeUntilText}>{relativeStart}</Text>
           </View>
 
           {/* Creator Badge */}
           {isCreator && (
             <View style={styles.creatorBadge}>
-              <Ionicons name="star" size={14} color="#FFD700" />
+              <Text style={{fontSize: 13, color: '#FFD700'}}>•</Text>
               <Text style={styles.creatorBadgeText}>{t.eventDetails.creatorBadge}</Text>
             </View>
           )}
@@ -673,7 +644,7 @@ export default function EventDetailsScreen() {
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
-            <Ionicons name="people" size={24} color="#FFD700" />
+            <Text style={{fontSize: 22, color: '#FFD700'}}>👥</Text>
             <Text style={styles.statValue}>
               {participantsInfo?.current ?? 0}/{participantsInfo?.max ?? 0}
             </Text>
@@ -681,13 +652,13 @@ export default function EventDetailsScreen() {
           </View>
 
           <View style={styles.statBox}>
-            <Ionicons name="location" size={24} color="#FFD700" />
-            <Text style={styles.statValue}>{event.location.distance?.toFixed(1) || '—'} km</Text>
+            <Text style={{fontSize: 22, color: '#FFD700'}}>📍</Text>
+            <Text style={styles.statValue}>{event.location.distance?.toFixed(1) || '-'} km</Text>
             <Text style={styles.statLabel}>{t.eventDetails.distanceLabel}</Text>
           </View>
 
           <View style={styles.statBox}>
-            <Ionicons name="trophy" size={24} color="#FFD700" />
+            <Text style={{fontSize: 22, color: '#FFD700'}}>🏆</Text>
             <Text style={styles.statValue}>{t.eventDetails.skillLevelAll}</Text>
             <Text style={styles.statLabel}>{t.eventDetails.skillLevel}</Text>
           </View>
@@ -696,7 +667,7 @@ export default function EventDetailsScreen() {
         {/* Date & Time Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="calendar-outline" size={20} color="#1F2937" />
+            <Text style={{fontSize: 18, color: '#1F2937'}}>📅</Text>
             <Text style={styles.sectionTitle}>{t.eventDetails.gameInformation}</Text>
           </View>
           <View style={styles.sectionContent}>
@@ -723,7 +694,7 @@ export default function EventDetailsScreen() {
         {/* Location Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="location-outline" size={20} color="#1F2937" />
+            <Text style={{fontSize: 18, color: '#1F2937'}}>•</Text>
             <Text style={styles.sectionTitle}>{t.eventDetails.location}</Text>
           </View>
           <View style={styles.sectionContent}>
@@ -734,7 +705,7 @@ export default function EventDetailsScreen() {
               onPress={handleViewLocation}
               activeOpacity={0.7}
             >
-              <Ionicons name="map" size={16} color="#FFD700" />
+              <Text style={{fontSize: 14, color: '#FFD700'}}>•</Text>
               <Text style={styles.viewMapText}>{t.eventDetails.viewOnMap}</Text>
             </TouchableOpacity>
           </View>
@@ -743,7 +714,7 @@ export default function EventDetailsScreen() {
         {/* Participants Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="people-outline" size={20} color="#1F2937" />
+            <Text style={{fontSize: 18, color: '#1F2937'}}>👥</Text>
             <Text style={styles.sectionTitle}>{t.eventDetails.participantsSection}</Text>
           </View>
           <View style={styles.sectionContent}>
@@ -800,7 +771,7 @@ export default function EventDetailsScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.viewParticipantsText}>{t.eventDetails.viewParticipants}</Text>
-              <Ionicons name="chevron-forward" size={16} color="#6B7280" />
+              <Text style={{fontSize: 14, color: '#6B7280'}}>›</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -809,7 +780,7 @@ export default function EventDetailsScreen() {
         {event.description && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="document-text-outline" size={20} color="#1F2937" />
+              <Text style={{fontSize: 18, color: '#1F2937'}}>•</Text>
               <Text style={styles.sectionTitle}>{t.eventDetails.description}</Text>
             </View>
             <View style={styles.sectionContent}>
@@ -821,7 +792,7 @@ export default function EventDetailsScreen() {
         {/* Organizer Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="person-outline" size={20} color="#1F2937" />
+            <Text style={{fontSize: 18, color: '#1F2937'}}>•</Text>
             <Text style={styles.sectionTitle}>{t.eventDetails.organizer}</Text>
           </View>
           <View style={styles.sectionContent}>
@@ -865,7 +836,7 @@ export default function EventDetailsScreen() {
               onPress={handleChatPress}
               activeOpacity={0.7}
             >
-              <Ionicons name="chatbubble-outline" size={20} color="#1F2937" />
+              <Text style={{fontSize: 18, color: '#1F2937'}}>•</Text>
               <Text style={styles.chatButtonText}>{t.eventDetails.chat}</Text>
             </TouchableOpacity>
           )}
@@ -876,7 +847,7 @@ export default function EventDetailsScreen() {
               onPress={handleManageEvent}
               activeOpacity={0.7}
             >
-              <Ionicons name="settings-outline" size={20} color="#000000" />
+              <Text style={{fontSize: 18, color: '#000000'}}>⚙</Text>
               <Text style={styles.manageButtonText}>{t.eventDetails.manageEvent}</Text>
             </TouchableOpacity>
           ) : hasJoined ? (
@@ -885,7 +856,7 @@ export default function EventDetailsScreen() {
               onPress={handleLeaveEvent}
               activeOpacity={0.7}
             >
-              <Ionicons name="exit-outline" size={20} color="#FFFFFF" />
+              <Text style={{fontSize: 18, color: '#FFFFFF'}}>•</Text>
               <Text style={styles.leaveButtonText}>{t.eventDetails.leaveGame}</Text>
             </TouchableOpacity>
           ) : (
@@ -903,7 +874,7 @@ export default function EventDetailsScreen() {
                 (isPrivateEvent && requestPending)
               }
             >
-              <Ionicons name="add-circle-outline" size={20} color="#000000" />
+              <Text style={{fontSize: 18, color: '#000000'}}>•</Text>
               <Text style={styles.joinButtonText}>
                 {isPrivateEvent
                   ? requestPending
@@ -935,7 +906,7 @@ export default function EventDetailsScreen() {
                 onPress={() => setShowParticipantsModal(false)}
                 style={styles.participantsModalClose}
               >
-                <Ionicons name="close" size={24} color="#1F2937" />
+                <Text style={{fontSize: 22, color: '#1F2937'}}>✕</Text>
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.participantsListContainer}>
@@ -956,7 +927,7 @@ export default function EventDetailsScreen() {
                     </View>
                   )}
                   <Text style={styles.participantName}>{user.display_name}</Text>
-                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                  <Text style={{fontSize: 16, color: '#9CA3AF'}}>›</Text>
                 </TouchableOpacity>
               ))}
               {participantsList.length === 0 && (

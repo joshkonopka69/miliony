@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 
 interface StatisticsCardProps {
@@ -27,7 +26,7 @@ export default function StatisticsCard({
       activeOpacity={onPress ? 0.7 : 1}
     >
       <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-        <Ionicons name={icon} size={24} color={color} />
+        <Text style={{fontSize: 22, color: color}}>{icon}</Text>
       </View>
       <Text style={styles.value}>{value}</Text>
       <Text style={styles.label}>{label}</Text>

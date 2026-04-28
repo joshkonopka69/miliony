@@ -9,7 +9,7 @@ import {
   ScrollView,
   FlatList,
   Image,
-} from 'react-native';
+} from 'react-native';
 import { Place, placesApiService } from '../services/placesApi';
 
 interface PlaceSearchModalProps {
@@ -120,7 +120,7 @@ export default function PlaceSearchModal({
         handleSearch(search);
       }}
     >
-      <Text style={styles.recentSearchText}>🔍 {search}</Text>
+      <Text style={styles.recentSearchText}><Text style={{fontSize: 13, color: '#374151'}}>🔍</Text> {search}</Text>
     </TouchableOpacity>
   );
 
@@ -130,7 +130,7 @@ export default function PlaceSearchModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>✕</Text>
+            <Text style={{fontSize: 18, color: '#6b7280'}}>✕</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Search Places</Text>
           <View style={styles.placeholder} />
@@ -150,7 +150,7 @@ export default function PlaceSearchModal({
             style={styles.searchButton}
             onPress={() => handleSearch(searchQuery)}
           >
-            <Text style={styles.searchButtonText}>🔍</Text>
+            <Text style={{fontSize: 16, color: '#ffffff'}}>🔍</Text>
           </TouchableOpacity>
         </View>
 

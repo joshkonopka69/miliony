@@ -290,7 +290,7 @@ class NotificationService {
       // Get push token
       if (Device.isDevice) {
         this.expoPushToken = (await Notifications.getExpoPushTokenAsync({
-          projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'sportmap-cc906'
+          projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'SportsMap-cc906'
         })).data;
         console.log('Expo push token:', this.expoPushToken);
 

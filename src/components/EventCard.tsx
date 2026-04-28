@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MyEvent, SPORT_COLORS } from '../types/event';
 import { formatEventDate, formatEventTime, formatDistance, getStatusBadge, isEventLive, getTimeUntilEvent } from '../utils/eventGrouping';
 import { useTranslation, Language } from '../contexts/TranslationContext';
@@ -131,14 +130,14 @@ export default function EventCard({
         </View>
 
         <View style={styles.timeUntilContainer}>
-          <Ionicons name="time-outline" size={14} color="#6B7280" />
+          <Text style={{fontSize: 13, color: '#6B7280'}}>•</Text>
           <Text style={styles.timeUntilText}>{relativeStart}</Text>
         </View>
 
         {/* Participants Progress */}
         <View style={styles.participantsSection}>
           <View style={styles.participantsRow}>
-            <Ionicons name="people" size={16} color="#6B7280" />
+            <Text style={{fontSize: 14, color: '#6B7280'}}>👥</Text>
             <Text style={styles.participantsText}>
               {event.participants.current}/{event.participants.max} {t.myEvents.participantsShort}
             </Text>
@@ -164,7 +163,7 @@ export default function EventCard({
 
         {/* Location */}
         <View style={styles.infoRow}>
-          <Ionicons name="location" size={16} color="#6B7280" />
+          <Text style={{fontSize: 14, color: '#6B7280'}}>📍</Text>
           <Text style={styles.infoText} numberOfLines={1}>
             {event.location.name}
             {event.location.distance && ` (${formatDistance(event.location.distance)})`}
@@ -173,7 +172,7 @@ export default function EventCard({
 
         {/* Time */}
         <View style={styles.infoRow}>
-          <Ionicons name="time" size={16} color="#6B7280" />
+          <Text style={{fontSize: 14, color: '#6B7280'}}>🕒</Text>
           <Text style={styles.infoText}>
             {formatEventDate(event.startTime, locale, {
               today: t.myEvents.groupLabels.TODAY,
@@ -203,7 +202,7 @@ export default function EventCard({
               onPress={onChatPress}
               activeOpacity={0.7}
             >
-              <Ionicons name="chatbubble" size={18} color="#000000" />
+              <Text style={{fontSize: 16, color: '#000000'}}>💬</Text>
             </TouchableOpacity>
           )}
 
@@ -214,7 +213,7 @@ export default function EventCard({
               onPress={onLeavePress}
               activeOpacity={0.7}
             >
-              <Ionicons name="exit-outline" size={18} color="#EF4444" />
+              <Text style={{fontSize: 16, color: '#EF4444'}}>•</Text>
             </TouchableOpacity>
           )}
         </View>

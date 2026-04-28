@@ -7,18 +7,17 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Platform,
   ActivityIndicator,
   KeyboardAvoidingView,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../styles/theme';
 import { formatEventDate, formatEventTime } from '../utils/eventGrouping';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useToast } from './ToastProvider';
 
 interface Location {
   name: string;
@@ -46,29 +45,29 @@ interface CreateEventModalProps {
 }
 
 const SPORT_TYPES = [
-  { value: 'basketball', label: 'Basketball', emoji: '🏀', icon: 'basketball-outline' },
-  { value: 'football', label: 'Football', emoji: '⚽', icon: 'football-outline' },
-  { value: 'running', label: 'Running', emoji: '🏃‍♂️', icon: 'walk-outline' },
-  { value: 'tennis', label: 'Tennis', emoji: '🎾', icon: 'tennisball-outline' },
-  { value: 'volleyball', label: 'Volleyball', emoji: '🏐', icon: 'american-football-outline' },
-  { value: 'cycling', label: 'Cycling', emoji: '🚴‍♂️', icon: 'bicycle-outline' },
-  { value: 'swimming', label: 'Swimming', emoji: '🏊‍♂️', icon: 'water-outline' },
-  { value: 'gym', label: 'Gym/Fitness', emoji: '💪', icon: 'barbell-outline' },
-  { value: 'judo', label: 'Judo', emoji: '🥋', icon: 'fitness-outline' },
-  { value: 'wrestling', label: 'Wrestling', emoji: '🤼‍♂️', icon: 'fitness-outline' },
-  { value: 'muay thai', label: 'Muay Thai', emoji: '🥊', icon: 'fitness-outline' },
-  { value: 'kickboxing', label: 'Kickboxing', emoji: '🥊', icon: 'fitness-outline' },
-  { value: 'padel', label: 'Padel', emoji: '🎾', icon: 'tennisball-outline' },
-  { value: 'squash', label: 'Squash', emoji: '🎾', icon: 'tennisball-outline' },
-  { value: 'badminton', label: 'Badminton', emoji: '🏸', icon: 'tennisball-outline' },
-  { value: 'table tennis', label: 'Table Tennis', emoji: '🏓', icon: 'tennisball-outline' },
-  { value: 'rollerblading', label: 'Rollerblading', emoji: '🛼', icon: 'bicycle-outline' },
-  { value: 'ice skating', label: 'Ice Skating', emoji: '⛸️', icon: 'snow-outline' },
-  { value: 'skating', label: 'Skating', emoji: '🛹', icon: 'bicycle-outline' },
-  { value: 'climbing', label: 'Bouldering/Climbing', emoji: '🧗‍♂️', icon: 'bonfire-outline' },
-  { value: 'yoga', label: 'Yoga', emoji: '🧘', icon: 'body-outline' },
-  { value: 'pilates', label: 'Pilates', emoji: '🧘', icon: 'body-outline' },
-  { value: 'crossfit', label: 'Crossfit', emoji: '🏋️‍♂️', icon: 'barbell-outline' },
+  { value: 'basketball', label: 'Basketball', icon: 'basketball-outline', emoji: '🏀' },
+  { value: 'football', label: 'Football', icon: 'football-outline', emoji: '⚽' },
+  { value: 'running', label: 'Running', icon: 'walk-outline', emoji: '🏃' },
+  { value: 'tennis', label: 'Tennis', icon: 'tennisball-outline', emoji: '🎾' },
+  { value: 'volleyball', label: 'Volleyball', icon: 'baseball-outline', emoji: '🏐' },
+  { value: 'cycling', label: 'Cycling', icon: 'bicycle-outline', emoji: '🚴' },
+  { value: 'swimming', label: 'Swimming', icon: 'water-outline', emoji: '🏊' },
+  { value: 'gym', label: 'Gym/Fitness', icon: 'barbell-outline', emoji: '💪' },
+  { value: 'judo', label: 'Judo', icon: 'fitness-outline', emoji: '🥊' },
+  { value: 'wrestling', label: 'Wrestling', icon: 'fitness-outline', emoji: '🥊' },
+  { value: 'muay thai', label: 'Muay Thai', icon: 'fitness-outline', emoji: '🥊' },
+  { value: 'kickboxing', label: 'Kickboxing', icon: 'fitness-outline', emoji: '🥊' },
+  { value: 'padel', label: 'Padel', icon: 'tennisball-outline', emoji: '🎾' },
+  { value: 'squash', label: 'Squash', icon: 'tennisball-outline', emoji: '🎾' },
+  { value: 'badminton', label: 'Badminton', icon: 'tennisball-outline', emoji: '🎾' },
+  { value: 'table tennis', label: 'Table Tennis', icon: 'tennisball-outline', emoji: '🎾' },
+  { value: 'rollerblading', label: 'Rollerblading', icon: 'bicycle-outline', emoji: '🚴' },
+  { value: 'ice skating', label: 'Ice Skating', icon: 'snow-outline', emoji: '⛸' },
+  { value: 'skating', label: 'Skating', icon: 'bicycle-outline', emoji: '🚴' },
+  { value: 'climbing', label: 'Bouldering/Climbing', icon: 'trending-up-outline', emoji: '🧗' },
+  { value: 'yoga', label: 'Yoga', icon: 'body-outline', emoji: '🧘' },
+  { value: 'pilates', label: 'Pilates', icon: 'body-outline', emoji: '🧘' },
+  { value: 'crossfit', label: 'Crossfit', icon: 'barbell-outline', emoji: '💪' },
 ];
 
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
@@ -78,6 +77,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onEventCreated,
 }) => {
   const { t, language } = useTranslation();
+  const { showSuccess, showError } = useToast();
   const { getUserId } = useAuth();
 
   // Form state
@@ -112,22 +112,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleCreate = async () => {
     if (!title.trim()) {
-      Alert.alert(t.common.error, t.createEvent?.missingTitle || 'Please enter an event title');
+      showError(t.createEvent?.missingTitle || 'Please enter an event title', t.common.error);
       return;
     }
 
     if (dateTime <= new Date()) {
-      Alert.alert(t.common.error, t.createEvent?.invalidDate || 'Event must be scheduled for a future time');
+      showError(t.createEvent?.invalidDate || 'Event must be scheduled for a future time', t.common.error);
       return;
     }
 
     if (minParticipants > maxParticipants) {
-      Alert.alert(t.common.error, t.createEvent?.invalidParticipants || 'Minimum participants cannot exceed maximum');
+      showError(t.createEvent?.invalidParticipants || 'Minimum participants cannot exceed maximum', t.common.error);
       return;
     }
 
     if (!location) {
-      Alert.alert(t.common.error, t.createEvent?.missingLocation || 'Location information is missing');
+      showError(t.createEvent?.missingLocation || 'Location information is missing', t.common.error);
       return;
     }
 
@@ -167,13 +167,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         joined_at: new Date().toISOString(),
       });
 
-      Alert.alert('Success! 🎉', 'Your event has been created');
+      showSuccess('Your event has been created!', 'Event Created');
       resetForm();
       onEventCreated(event);
       onClose();
     } catch (error: any) {
       console.error('❌ Error creating event:', error);
-      Alert.alert('Error', error.message || 'Failed to create event. Please try again.');
+      showError(error.message || 'Failed to create event. Please try again.');
     } finally {
       setIsCreating(false);
     }
@@ -200,7 +200,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleClose} style={styles.backButton} disabled={isCreating}>
-            <Ionicons name="arrow-back" size={24} color="#000" />
+            <Text style={{fontSize: 22, color: '#000'}}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t.createEvent?.title || 'Create Event'}</Text>
           <View style={styles.headerSpacer} />
@@ -210,7 +210,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {/* Location Card */}
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="location" size={20} color={theme.colors.accent} />
+              <Text style={{fontSize: 18, color: theme.colors.accent}}>📍</Text>
               <Text style={styles.sectionTitle}>{t.eventDetails?.location || 'Location'}</Text>
             </View>
             <Text style={styles.locationName}>{location?.name}</Text>
@@ -220,7 +220,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {/* Title Input */}
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="pencil" size={20} color={theme.colors.accent} />
+              <Text style={{fontSize: 18, color: theme.colors.accent}}>✏</Text>
               <Text style={styles.sectionTitle}>{t.createEvent?.eventTitle || 'Event Title'}</Text>
             </View>
             <TextInput
@@ -237,7 +237,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {/* Sport Selection */}
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="trophy" size={20} color={theme.colors.accent} />
+              <Text style={{fontSize: 18, color: theme.colors.accent}}>🏆</Text>
               <Text style={styles.sectionTitle}>{t.createEvent?.sportType || 'Sport Type'}</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sportScroll}>
@@ -247,7 +247,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   style={[styles.sportChip, selectedSport === sport.value && styles.sportChipActive]}
                   onPress={() => setSelectedSport(sport.value)}
                 >
-                  <Text style={styles.sportEmoji}>{sport.emoji}</Text>
+                  <Text style={{fontSize: 18, color: selectedSport === sport.value ? '#000' : '#666'}}>{sport.icon as any}</Text>
                   <Text style={[styles.sportLabel, selectedSport === sport.value && styles.sportLabelActive]}>
                     {sport.label}
                   </Text>
@@ -259,16 +259,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {/* Date & Time */}
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="calendar" size={20} color={theme.colors.accent} />
+              <Text style={{fontSize: 18, color: theme.colors.accent}}>📅</Text>
               <Text style={styles.sectionTitle}>{t.createEvent?.dateTime || 'Date & Time'}</Text>
             </View>
             <View style={styles.row}>
               <TouchableOpacity style={styles.pickerButton} onPress={() => setShowDatePicker(true)}>
-                <Ionicons name="calendar-outline" size={20} color={theme.colors.accent} />
+                <Text style={{fontSize: 18, color: theme.colors.accent}}>📅</Text>
                 <Text style={styles.pickerText}>{formatEventDate(dateTime, language)}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.pickerButton} onPress={() => setShowTimePicker(true)}>
-                <Ionicons name="time-outline" size={20} color={theme.colors.accent} />
+                <Text style={{fontSize: 18, color: theme.colors.accent}}>•</Text>
                 <Text style={styles.pickerText}>{formatEventTime(dateTime, language)}</Text>
               </TouchableOpacity>
             </View>
@@ -332,7 +332,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {/* Participants */}
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="people" size={20} color={theme.colors.accent} />
+              <Text style={{fontSize: 18, color: theme.colors.accent}}>👥</Text>
               <Text style={styles.sectionTitle}>{t.eventDetails?.players || 'Players'}</Text>
             </View>
             <View style={styles.counterRow}>
@@ -364,7 +364,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {/* Description */}
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="document-text" size={20} color={theme.colors.accent} />
+              <Text style={{fontSize: 18, color: theme.colors.accent}}>•</Text>
               <Text style={styles.sectionTitle}>{t.eventDetails?.description || 'Description'}</Text>
             </View>
             <TextInput
@@ -393,7 +393,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               <ActivityIndicator color="#000" />
             ) : (
               <>
-                <Ionicons name="add-circle-outline" size={22} color="#000" />
+                <Text style={{fontSize: 20, color: '#000'}}>•</Text>
                 <Text style={styles.createBtnText}>Create Event</Text>
               </>
             )}

@@ -7,7 +7,6 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 import Button from './ui/Button';
 
@@ -136,7 +135,7 @@ export default function LiveEventStatus({
       {/* Participants Count */}
       <View style={styles.participantsContainer}>
         <View style={styles.participantsInfo}>
-          <Ionicons name="people" size={16} color={theme.colors.textPrimary} />
+          <Text style={{fontSize: 14, color: theme.colors.textPrimary}}>👥</Text>
           <Text style={styles.participantsText}>
             {event.participants_count}/{event.max_participants}
           </Text>
@@ -147,7 +146,7 @@ export default function LiveEventStatus({
           onPress={onViewParticipants}
         >
           <Text style={styles.participantsButtonText}>View</Text>
-          <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+          <Text style={{fontSize: 14, color: theme.colors.primary}}>›</Text>
         </TouchableOpacity>
       </View>
 
@@ -196,14 +195,14 @@ export default function LiveEventStatus({
       {/* Quick Stats */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <Ionicons name="time" size={14} color={theme.colors.textSecondary} />
+          <Text style={{fontSize: 13, color: theme.colors.textSecondary}}>🕒</Text>
           <Text style={styles.statText}>
             {new Date(event.created_at).toLocaleTimeString()}
           </Text>
         </View>
         
         <View style={styles.statItem}>
-          <Ionicons name="location" size={14} color={theme.colors.textSecondary} />
+          <Text style={{fontSize: 13, color: theme.colors.textSecondary}}>📍</Text>
           <Text style={styles.statText}>Nearby</Text>
         </View>
       </View>

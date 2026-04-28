@@ -1,148 +1,99 @@
-# Supabase Email Templates for SportMap
+# Supabase Email Templates for SportsMap
 
-This document contains all email templates ready to paste into your Supabase Dashboard.
-
-**Go to:** `Supabase Dashboard > Authentication > Email Templates`
+Copy the HTML from each section and paste into Supabase Dashboard > Authentication > Email Templates.
 
 ---
 
 ## 1. Confirm Signup
 
-**Subject:** `Confirm your SportMap account | Potwierdź swoje konto SportMap`
+**Subject:** `Confirm your SportsMap account | Potwierdź swoje konto SportsMap`
 
 **Message Body:**
 ```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirm Your Account - SportMap</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            line-height: 1.6;
-            color: #1F2937;
-            margin: 0;
-            padding: 0;
-            background-color: #F9FAFB;
-        }
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background: #ffffff;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        }
-        .header {
-            background-color: #1F2937;
-            padding: 50px 20px;
-            text-align: center;
-        }
-        .logo-box {
-            width: 80px;
-            height: 80px;
-            background-color: #FDB924;
-            border-radius: 20px;
-            display: inline-block;
-            margin-bottom: 15px;
-            line-height: 80px;
-            font-size: 38px;
-            font-weight: 800;
-            color: #000000;
-            text-align: center;
-        }
-        .app-name {
-            color: #FDB924;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-        .content {
-            padding: 40px 30px;
-            text-align: center;
-        }
-        h1 {
-            color: #111827;
-            font-size: 26px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            letter-spacing: -0.5px;
-        }
-        p {
-            font-size: 16px;
-            color: #4B5563;
-            margin-bottom: 24px;
-        }
-        .button {
-            display: inline-block;
-            padding: 18px 40px;
-            background-color: #FDB924;
-            color: #000000 !important;
-            text-decoration: none;
-            border-radius: 16px;
-            font-weight: 700;
-            font-size: 17px;
-            margin: 20px 0 30px;
-            box-shadow: 0 4px 12px rgba(253, 185, 36, 0.3);
-        }
-        .divider {
-            height: 1px;
-            background-color: #E5E7EB;
-            margin: 30px 0;
-        }
-        .polish-section {
-            background-color: #F3F4F6;
-            padding: 24px;
-            border-radius: 16px;
-            margin-top: 10px;
-        }
-        .footer {
-            padding: 30px;
-            text-align: center;
-            font-size: 13px;
-            color: #9CA3AF;
-            background-color: #F9FAFB;
-        }
-    </style>
+    <title>Confirm Your Account - SportsMap</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="logo-box">Sm</div>
-            <div class="app-name">SportMap</div>
-        </div>
-        <div class="content">
-            <h1>Welcome to the Community!</h1>
-            <p>
-                Thanks for joining <strong>SportMap</strong>. 
-                Discover nearby sports events, join games, and meet other athletes in your area.
-            </p>
-            <p>Please click the button below to verify your email address and activate your account:</p>
-            
-            <a href="{{ .ConfirmationURL }}" class="button">Confirm Account</a>
-            
-            <div class="divider"></div>
-            
-            <div class="polish-section">
-                <h2 style="font-size: 18px; color: #111827; margin-bottom: 8px;">Witamy w społeczności!</h2>
-                <p style="font-size: 14px; margin-bottom: 12px;">
-                    Dziękujemy za dołączenie do <strong>SportMap</strong>. 
-                    Odkrywaj wydarzenia sportowe w Twojej okolicy i poznawaj innych sportowców.
-                </p>
-                <a href="{{ .ConfirmationURL }}" style="color: #FDB924; font-weight: 700; text-decoration: none; font-size: 14px;">Potwierdź konto &rarr;</a>
-            </div>
-
-            <p style="font-size: 13px; color: #9CA3AF; margin-top: 30px;">
-                If you didn't create an account, you can safely ignore this email.
-            </p>
-        </div>
-        <div class="footer">
-            &copy; 2026 SportMap. All rights reserved.<br>
-            The best way to find your next game.
-        </div>
-    </div>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #F5F5F0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F5F5F0;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background: #FEFEFE; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.08); border: 2px solid #FDB924;">
+                    <!-- Gold top bar -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Header with logos -->
+                    <tr>
+                        <td align="center" style="background-color: #FEFDFB; padding: 45px 20px 35px 20px; border-bottom: 2px solid #FDB924;">
+                            <img src="https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/logo.png" alt="SM" width="100" height="100" style="display: block; border: 0; border-radius: 20px; box-shadow: 0 6px 16px rgba(0,0,0,0.12);">
+                            <img src="https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/logo_text.png" alt="SportsMap" width="200" style="display: block; border: 0; margin-top: 0;">
+                        </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 35px 40px 40px 40px; text-align: center; background-color: #ffffff;">
+                            <h1 style="color: #111827; font-size: 28px; font-weight: 800; margin: 0 0 16px 0; letter-spacing: -0.5px;">Welcome to the Community!</h1>
+                            <p style="font-size: 16px; color: #4B5563; margin: 0 0 24px 0; line-height: 1.6;">
+                                Thanks for joining <strong style="color: #111827;">SportsMap</strong>. 
+                                Discover nearby sports events, join games, and meet other athletes in your area.
+                            </p>
+                            <p style="font-size: 16px; color: #4B5563; margin: 0 0 28px 0;">Please click the button below to verify your email:</p>
+                            
+                            <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 18px 42px; background-color: #FDB924; color: #000000; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 17px; box-shadow: 0 4px 14px rgba(253, 185, 36, 0.4); border: 2px solid #E5A520;">Confirm Account</a>
+                        </td>
+                    </tr>
+                    <!-- Gold separator -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 3px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Polish section -->
+                    <tr>
+                        <td style="padding: 28px 40px; background-color: #FFFBF0;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 12px; border: 2px solid #FDB924;">
+                                <tr>
+                                    <td style="padding: 22px 26px;">
+                                        <h2 style="font-size: 18px; color: #111827; margin: 0 0 10px 0; font-weight: 700;">Witamy w społeczności!</h2>
+                                        <p style="font-size: 14px; color: #4B5563; margin: 0 0 12px 0; line-height: 1.5;">
+                                            Dziękujemy za dołączenie do <strong>SportsMap</strong>. 
+                                            Odkrywaj wydarzenia sportowe w Twojej okolicy.
+                                        </p>
+                                        <a href="{{ .ConfirmationURL }}" style="color: #D4960F; font-weight: 700; text-decoration: none; font-size: 14px;">Potwierdź konto →</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <!-- Note -->
+                    <tr>
+                        <td style="padding: 0 40px 28px 40px; background-color: #FFFBF0;">
+                            <p style="font-size: 13px; color: #9CA3AF; margin: 0; text-align: center;">
+                                If you didn't create an account, you can safely ignore this email.
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Gold separator -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 2px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 40px; text-align: center; font-size: 13px; color: #6B7280; background-color: #FEFDFB;">
+                            <span style="color: #FDB924; font-size: 16px;">●</span> © 2026 SportsMap. All rights reserved.<br>
+                            The best way to find your next game.
+                        </td>
+                    </tr>
+                    <!-- Gold bottom bar -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
 ```
@@ -151,141 +102,92 @@ This document contains all email templates ready to paste into your Supabase Das
 
 ## 2. Reset Password
 
-**Subject:** `Reset your SportMap password | Zresetuj hasło SportMap`
+**Subject:** `Reset your SportsMap password | Zresetuj hasło SportsMap`
 
 **Message Body:**
 ```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Your Password - SportMap</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            line-height: 1.6;
-            color: #1F2937;
-            margin: 0;
-            padding: 0;
-            background-color: #F9FAFB;
-        }
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background: #ffffff;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        }
-        .header {
-            background-color: #1F2937;
-            padding: 50px 20px;
-            text-align: center;
-        }
-        .logo-box {
-            width: 80px;
-            height: 80px;
-            background-color: #FDB924;
-            border-radius: 20px;
-            display: inline-block;
-            margin-bottom: 15px;
-            line-height: 80px;
-            font-size: 38px;
-            font-weight: 800;
-            color: #000000;
-            text-align: center;
-        }
-        .app-name {
-            color: #FDB924;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-        .content {
-            padding: 40px 30px;
-            text-align: center;
-        }
-        h1 {
-            color: #111827;
-            font-size: 26px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            letter-spacing: -0.5px;
-        }
-        p {
-            font-size: 16px;
-            color: #4B5563;
-            margin-bottom: 24px;
-        }
-        .button {
-            display: inline-block;
-            padding: 18px 40px;
-            background-color: #FDB924;
-            color: #000000 !important;
-            text-decoration: none;
-            border-radius: 16px;
-            font-weight: 700;
-            font-size: 17px;
-            margin: 20px 0 30px;
-            box-shadow: 0 4px 12px rgba(253, 185, 36, 0.3);
-        }
-        .divider {
-            height: 1px;
-            background-color: #E5E7EB;
-            margin: 30px 0;
-        }
-        .polish-section {
-            background-color: #F3F4F6;
-            padding: 24px;
-            border-radius: 16px;
-            margin-top: 10px;
-        }
-        .footer {
-            padding: 30px;
-            text-align: center;
-            font-size: 13px;
-            color: #9CA3AF;
-            background-color: #F9FAFB;
-        }
-    </style>
+    <title>Reset Your Password - SportsMap</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="logo-box">Sm</div>
-            <div class="app-name">SportMap</div>
-        </div>
-        <div class="content">
-            <h1>Reset Your Password</h1>
-            <p>
-                We received a request to reset the password for your <strong>SportMap</strong> account. 
-                If you didn't request this, you can safely ignore this email.
-            </p>
-            <p>To set a new password, please click the button below:</p>
-            
-            <a href="{{ .ConfirmationURL }}" class="button">Reset Password</a>
-            
-            <div class="divider"></div>
-            
-            <div class="polish-section">
-                <h2 style="font-size: 18px; color: #111827; margin-bottom: 8px;">Zresetuj swoje hasło</h2>
-                <p style="font-size: 14px; margin-bottom: 12px;">
-                    Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta <strong>SportMap</strong>. 
-                    Jeśli to nie Ty, możesz bezpiecznie zignorować tę wiadomość.
-                </p>
-                <a href="{{ .ConfirmationURL }}" style="color: #FDB924; font-weight: 700; text-decoration: none; font-size: 14px;">Zresetuj hasło &rarr;</a>
-            </div>
-
-            <p style="font-size: 13px; color: #9CA3AF; margin-top: 30px;">
-                The link will expire shortly for security reasons.
-            </p>
-        </div>
-        <div class="footer">
-            &copy; 2026 SportMap. All rights reserved.<br>
-            The best way to find your next game.
-        </div>
-    </div>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #F5F5F0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F5F5F0;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background: #FEFEFE; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.08); border: 2px solid #FDB924;">
+                    <!-- Gold top bar -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Header with logos -->
+                    <tr>
+                        <td align="center" style="background-color: #FEFDFB; padding: 45px 20px 35px 20px; border-bottom: 2px solid #FDB924;">
+                            <img src="https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/logo.png" alt="SM" width="100" height="100" style="display: block; border: 0; border-radius: 20px; box-shadow: 0 6px 16px rgba(0,0,0,0.12);">
+                            <img src="https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/logo_text.png" alt="SportsMap" width="200" style="display: block; border: 0; margin-top: 0;">
+                        </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 35px 40px 40px 40px; text-align: center; background-color: #ffffff;">
+                            <h1 style="color: #111827; font-size: 28px; font-weight: 800; margin: 0 0 16px 0; letter-spacing: -0.5px;">Reset Your Password</h1>
+                            <p style="font-size: 16px; color: #4B5563; margin: 0 0 24px 0; line-height: 1.6;">
+                                We received a request to reset the password for your <strong style="color: #111827;">SportsMap</strong> account. 
+                                If you didn't request this, you can safely ignore this email.
+                            </p>
+                            
+                            <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 18px 42px; background-color: #FDB924; color: #000000; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 17px; box-shadow: 0 4px 14px rgba(253, 185, 36, 0.4); border: 2px solid #E5A520;">Reset Password</a>
+                        </td>
+                    </tr>
+                    <!-- Gold separator -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 3px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Polish section -->
+                    <tr>
+                        <td style="padding: 28px 40px; background-color: #FFFBF0;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 12px; border: 2px solid #FDB924;">
+                                <tr>
+                                    <td style="padding: 22px 26px;">
+                                        <h2 style="font-size: 18px; color: #111827; margin: 0 0 10px 0; font-weight: 700;">Zresetuj swoje hasło</h2>
+                                        <p style="font-size: 14px; color: #4B5563; margin: 0 0 12px 0; line-height: 1.5;">
+                                            Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta <strong>SportsMap</strong>.
+                                        </p>
+                                        <a href="{{ .ConfirmationURL }}" style="color: #D4960F; font-weight: 700; text-decoration: none; font-size: 14px;">Zresetuj hasło →</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <!-- Note -->
+                    <tr>
+                        <td style="padding: 0 40px 28px 40px; background-color: #FFFBF0;">
+                            <p style="font-size: 13px; color: #9CA3AF; margin: 0; text-align: center;">
+                                The link will expire shortly for security reasons.
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Gold separator -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 2px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 40px; text-align: center; font-size: 13px; color: #6B7280; background-color: #FEFDFB;">
+                            <span style="color: #FDB924; font-size: 16px;">●</span> © 2026 SportsMap. All rights reserved.<br>
+                            The best way to find your next game.
+                        </td>
+                    </tr>
+                    <!-- Gold bottom bar -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
 ```
@@ -294,139 +196,91 @@ This document contains all email templates ready to paste into your Supabase Das
 
 ## 3. Magic Link
 
-**Subject:** `Your SportMap login link | Twój link do logowania SportMap`
+**Subject:** `Your SportsMap login link | Twój link do logowania SportsMap`
 
 **Message Body:**
 ```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In - SportMap</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            line-height: 1.6;
-            color: #1F2937;
-            margin: 0;
-            padding: 0;
-            background-color: #F9FAFB;
-        }
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background: #ffffff;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        }
-        .header {
-            background-color: #1F2937;
-            padding: 50px 20px;
-            text-align: center;
-        }
-        .logo-box {
-            width: 80px;
-            height: 80px;
-            background-color: #FDB924;
-            border-radius: 20px;
-            display: inline-block;
-            margin-bottom: 15px;
-            line-height: 80px;
-            font-size: 38px;
-            font-weight: 800;
-            color: #000000;
-            text-align: center;
-        }
-        .app-name {
-            color: #FDB924;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-        .content {
-            padding: 40px 30px;
-            text-align: center;
-        }
-        h1 {
-            color: #111827;
-            font-size: 26px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            letter-spacing: -0.5px;
-        }
-        p {
-            font-size: 16px;
-            color: #4B5563;
-            margin-bottom: 24px;
-        }
-        .button {
-            display: inline-block;
-            padding: 18px 40px;
-            background-color: #FDB924;
-            color: #000000 !important;
-            text-decoration: none;
-            border-radius: 16px;
-            font-weight: 700;
-            font-size: 17px;
-            margin: 20px 0 30px;
-            box-shadow: 0 4px 12px rgba(253, 185, 36, 0.3);
-        }
-        .divider {
-            height: 1px;
-            background-color: #E5E7EB;
-            margin: 30px 0;
-        }
-        .polish-section {
-            background-color: #F3F4F6;
-            padding: 24px;
-            border-radius: 16px;
-            margin-top: 10px;
-        }
-        .footer {
-            padding: 30px;
-            text-align: center;
-            font-size: 13px;
-            color: #9CA3AF;
-            background-color: #F9FAFB;
-        }
-    </style>
+    <title>Sign In - SportsMap</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="logo-box">Sm</div>
-            <div class="app-name">SportMap</div>
-        </div>
-        <div class="content">
-            <h1>Sign In to SportMap</h1>
-            <p>
-                Click the button below to securely sign in to your <strong>SportMap</strong> account. 
-                No password needed!
-            </p>
-            
-            <a href="{{ .ConfirmationURL }}" class="button">Sign In</a>
-            
-            <div class="divider"></div>
-            
-            <div class="polish-section">
-                <h2 style="font-size: 18px; color: #111827; margin-bottom: 8px;">Zaloguj się do SportMap</h2>
-                <p style="font-size: 14px; margin-bottom: 12px;">
-                    Kliknij poniższy przycisk, aby bezpiecznie zalogować się do swojego konta <strong>SportMap</strong>.
-                </p>
-                <a href="{{ .ConfirmationURL }}" style="color: #FDB924; font-weight: 700; text-decoration: none; font-size: 14px;">Zaloguj się &rarr;</a>
-            </div>
-
-            <p style="font-size: 13px; color: #9CA3AF; margin-top: 30px;">
-                This link will expire in 24 hours. If you didn't request this, ignore this email.
-            </p>
-        </div>
-        <div class="footer">
-            &copy; 2026 SportMap. All rights reserved.<br>
-            The best way to find your next game.
-        </div>
-    </div>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #F5F5F0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F5F5F0;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background: #FEFEFE; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.08); border: 2px solid #FDB924;">
+                    <!-- Gold top bar -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Header with logos -->
+                    <tr>
+                        <td align="center" style="background-color: #FEFDFB; padding: 45px 20px 35px 20px; border-bottom: 2px solid #FDB924;">
+                            <img src="https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/logo.png" alt="SM" width="100" height="100" style="display: block; border: 0; border-radius: 20px; box-shadow: 0 6px 16px rgba(0,0,0,0.12);">
+                            <img src="https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/logo_text.png" alt="SportsMap" width="200" style="display: block; border: 0; margin-top: 0;">
+                        </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 35px 40px 40px 40px; text-align: center; background-color: #ffffff;">
+                            <h1 style="color: #111827; font-size: 28px; font-weight: 800; margin: 0 0 16px 0; letter-spacing: -0.5px;">Sign In to SportsMap</h1>
+                            <p style="font-size: 16px; color: #4B5563; margin: 0 0 24px 0; line-height: 1.6;">
+                                Click the button below to securely sign in to your <strong style="color: #111827;">SportsMap</strong> account. No password needed!
+                            </p>
+                            
+                            <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 18px 42px; background-color: #FDB924; color: #000000; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 17px; box-shadow: 0 4px 14px rgba(253, 185, 36, 0.4); border: 2px solid #E5A520;">Sign In</a>
+                        </td>
+                    </tr>
+                    <!-- Gold separator -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 3px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Polish section -->
+                    <tr>
+                        <td style="padding: 28px 40px; background-color: #FFFBF0;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 12px; border: 2px solid #FDB924;">
+                                <tr>
+                                    <td style="padding: 22px 26px;">
+                                        <h2 style="font-size: 18px; color: #111827; margin: 0 0 10px 0; font-weight: 700;">Zaloguj się do SportsMap</h2>
+                                        <p style="font-size: 14px; color: #4B5563; margin: 0 0 12px 0; line-height: 1.5;">
+                                            Kliknij poniższy przycisk, aby bezpiecznie zalogować się do swojego konta.
+                                        </p>
+                                        <a href="{{ .ConfirmationURL }}" style="color: #D4960F; font-weight: 700; text-decoration: none; font-size: 14px;">Zaloguj się →</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <!-- Note -->
+                    <tr>
+                        <td style="padding: 0 40px 28px 40px; background-color: #FFFBF0;">
+                            <p style="font-size: 13px; color: #9CA3AF; margin: 0; text-align: center;">
+                                This link will expire in 24 hours.
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Gold separator -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 2px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 40px; text-align: center; font-size: 13px; color: #6B7280; background-color: #FEFDFB;">
+                            <span style="color: #FDB924; font-size: 16px;">●</span> © 2026 SportsMap. All rights reserved.<br>
+                            The best way to find your next game.
+                        </td>
+                    </tr>
+                    <!-- Gold bottom bar -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
 ```
@@ -440,134 +294,86 @@ This document contains all email templates ready to paste into your Supabase Das
 **Message Body:**
 ```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirm Email Change - SportMap</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            line-height: 1.6;
-            color: #1F2937;
-            margin: 0;
-            padding: 0;
-            background-color: #F9FAFB;
-        }
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background: #ffffff;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        }
-        .header {
-            background-color: #1F2937;
-            padding: 50px 20px;
-            text-align: center;
-        }
-        .logo-box {
-            width: 80px;
-            height: 80px;
-            background-color: #FDB924;
-            border-radius: 20px;
-            display: inline-block;
-            margin-bottom: 15px;
-            line-height: 80px;
-            font-size: 38px;
-            font-weight: 800;
-            color: #000000;
-            text-align: center;
-        }
-        .app-name {
-            color: #FDB924;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-        .content {
-            padding: 40px 30px;
-            text-align: center;
-        }
-        h1 {
-            color: #111827;
-            font-size: 26px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            letter-spacing: -0.5px;
-        }
-        p {
-            font-size: 16px;
-            color: #4B5563;
-            margin-bottom: 24px;
-        }
-        .button {
-            display: inline-block;
-            padding: 18px 40px;
-            background-color: #FDB924;
-            color: #000000 !important;
-            text-decoration: none;
-            border-radius: 16px;
-            font-weight: 700;
-            font-size: 17px;
-            margin: 20px 0 30px;
-            box-shadow: 0 4px 12px rgba(253, 185, 36, 0.3);
-        }
-        .divider {
-            height: 1px;
-            background-color: #E5E7EB;
-            margin: 30px 0;
-        }
-        .polish-section {
-            background-color: #F3F4F6;
-            padding: 24px;
-            border-radius: 16px;
-            margin-top: 10px;
-        }
-        .footer {
-            padding: 30px;
-            text-align: center;
-            font-size: 13px;
-            color: #9CA3AF;
-            background-color: #F9FAFB;
-        }
-    </style>
+    <title>Confirm Email Change - SportsMap</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="logo-box">Sm</div>
-            <div class="app-name">SportMap</div>
-        </div>
-        <div class="content">
-            <h1>Confirm New Email</h1>
-            <p>
-                You requested to change the email address for your <strong>SportMap</strong> account.
-            </p>
-            <p>Please click the button below to confirm your new email address:</p>
-            
-            <a href="{{ .ConfirmationURL }}" class="button">Confirm New Email</a>
-            
-            <div class="divider"></div>
-            
-            <div class="polish-section">
-                <h2 style="font-size: 18px; color: #111827; margin-bottom: 8px;">Potwierdź nowy adres e-mail</h2>
-                <p style="font-size: 14px; margin-bottom: 12px;">
-                    Poprosiłeś o zmianę adresu e-mail dla Twojego konta <strong>SportMap</strong>.
-                </p>
-                <a href="{{ .ConfirmationURL }}" style="color: #FDB924; font-weight: 700; text-decoration: none; font-size: 14px;">Potwierdź zmianę &rarr;</a>
-            </div>
-
-            <p style="font-size: 13px; color: #9CA3AF; margin-top: 30px;">
-                If you didn't request this change, please ignore this email.
-            </p>
-        </div>
-        <div class="footer">
-            &copy; 2026 SportMap. All rights reserved.<br>
-            The best way to find your next game.
-        </div>
-    </div>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #F5F5F0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F5F5F0;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background: #FEFEFE; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.08); border: 2px solid #FDB924;">
+                    <!-- Gold top bar -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Header with logos -->
+                    <tr>
+                        <td align="center" style="background-color: #FEFDFB; padding: 45px 20px 35px 20px; border-bottom: 2px solid #FDB924;">
+                            <img src="https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/logo.png" alt="SM" width="100" height="100" style="display: block; border: 0; border-radius: 20px; box-shadow: 0 6px 16px rgba(0,0,0,0.12);">
+                            <img src="https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/logo_text.png" alt="SportsMap" width="200" style="display: block; border: 0; margin-top: 0;">
+                        </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 35px 40px 40px 40px; text-align: center; background-color: #ffffff;">
+                            <h1 style="color: #111827; font-size: 28px; font-weight: 800; margin: 0 0 16px 0; letter-spacing: -0.5px;">Confirm New Email</h1>
+                            <p style="font-size: 16px; color: #4B5563; margin: 0 0 24px 0; line-height: 1.6;">
+                                You requested to change the email address for your <strong style="color: #111827;">SportsMap</strong> account.
+                            </p>
+                            
+                            <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 18px 42px; background-color: #FDB924; color: #000000; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 17px; box-shadow: 0 4px 14px rgba(253, 185, 36, 0.4); border: 2px solid #E5A520;">Confirm New Email</a>
+                        </td>
+                    </tr>
+                    <!-- Gold separator -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 3px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Polish section -->
+                    <tr>
+                        <td style="padding: 28px 40px; background-color: #FFFBF0;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 12px; border: 2px solid #FDB924;">
+                                <tr>
+                                    <td style="padding: 22px 26px;">
+                                        <h2 style="font-size: 18px; color: #111827; margin: 0 0 10px 0; font-weight: 700;">Potwierdź nowy adres e-mail</h2>
+                                        <p style="font-size: 14px; color: #4B5563; margin: 0 0 12px 0; line-height: 1.5;">
+                                            Poprosiłeś o zmianę adresu e-mail dla Twojego konta <strong>SportsMap</strong>.
+                                        </p>
+                                        <a href="{{ .ConfirmationURL }}" style="color: #D4960F; font-weight: 700; text-decoration: none; font-size: 14px;">Potwierdź zmianę →</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <!-- Note -->
+                    <tr>
+                        <td style="padding: 0 40px 28px 40px; background-color: #FFFBF0;">
+                            <p style="font-size: 13px; color: #9CA3AF; margin: 0; text-align: center;">
+                                If you didn't request this change, please ignore this email.
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Gold separator -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 2px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 40px; text-align: center; font-size: 13px; color: #6B7280; background-color: #FEFDFB;">
+                            <span style="color: #FDB924; font-size: 16px;">●</span> © 2026 SportsMap. All rights reserved.<br>
+                            The best way to find your next game.
+                        </td>
+                    </tr>
+                    <!-- Gold bottom bar -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
 ```
@@ -576,153 +382,91 @@ This document contains all email templates ready to paste into your Supabase Das
 
 ## 5. Invite User
 
-**Subject:** `You're invited to join SportMap! | Zaproszenie do SportMap!`
+**Subject:** `You're invited to join SportsMap! | Zaproszenie do SportsMap!`
 
 **Message Body:**
 ```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>You're Invited - SportMap</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            line-height: 1.6;
-            color: #1F2937;
-            margin: 0;
-            padding: 0;
-            background-color: #F9FAFB;
-        }
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background: #ffffff;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        }
-        .header {
-            background-color: #1F2937;
-            padding: 50px 20px;
-            text-align: center;
-        }
-        .logo-box {
-            width: 80px;
-            height: 80px;
-            background-color: #FDB924;
-            border-radius: 20px;
-            display: inline-block;
-            margin-bottom: 15px;
-            line-height: 80px;
-            font-size: 38px;
-            font-weight: 800;
-            color: #000000;
-            text-align: center;
-        }
-        .app-name {
-            color: #FDB924;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-        .content {
-            padding: 40px 30px;
-            text-align: center;
-        }
-        h1 {
-            color: #111827;
-            font-size: 26px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            letter-spacing: -0.5px;
-        }
-        p {
-            font-size: 16px;
-            color: #4B5563;
-            margin-bottom: 24px;
-        }
-        .button {
-            display: inline-block;
-            padding: 18px 40px;
-            background-color: #FDB924;
-            color: #000000 !important;
-            text-decoration: none;
-            border-radius: 16px;
-            font-weight: 700;
-            font-size: 17px;
-            margin: 20px 0 30px;
-            box-shadow: 0 4px 12px rgba(253, 185, 36, 0.3);
-        }
-        .divider {
-            height: 1px;
-            background-color: #E5E7EB;
-            margin: 30px 0;
-        }
-        .polish-section {
-            background-color: #F3F4F6;
-            padding: 24px;
-            border-radius: 16px;
-            margin-top: 10px;
-        }
-        .footer {
-            padding: 30px;
-            text-align: center;
-            font-size: 13px;
-            color: #9CA3AF;
-            background-color: #F9FAFB;
-        }
-    </style>
+    <title>You're Invited - SportsMap</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="logo-box">Sm</div>
-            <div class="app-name">SportMap</div>
-        </div>
-        <div class="content">
-            <h1>You're Invited!</h1>
-            <p>
-                Someone invited you to join <strong>SportMap</strong> – the best way to find sports events and teammates near you.
-            </p>
-            <p>Click below to accept the invitation and create your account:</p>
-            
-            <a href="{{ .ConfirmationURL }}" class="button">Accept Invitation</a>
-            
-            <div class="divider"></div>
-            
-            <div class="polish-section">
-                <h2 style="font-size: 18px; color: #111827; margin-bottom: 8px;">Masz zaproszenie!</h2>
-                <p style="font-size: 14px; margin-bottom: 12px;">
-                    Ktoś zaprosił Cię do <strong>SportMap</strong> – najlepszego sposobu na znalezienie wydarzeń sportowych i współzawodników w Twojej okolicy.
-                </p>
-                <a href="{{ .ConfirmationURL }}" style="color: #FDB924; font-weight: 700; text-decoration: none; font-size: 14px;">Dołącz teraz &rarr;</a>
-            </div>
-
-            <p style="font-size: 13px; color: #9CA3AF; margin-top: 30px;">
-                If you weren't expecting this invitation, you can ignore this email.
-            </p>
-        </div>
-        <div class="footer">
-            &copy; 2026 SportMap. All rights reserved.<br>
-            The best way to find your next game.
-        </div>
-    </div>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #F5F5F0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #F5F5F0;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background: #FEFEFE; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.08); border: 2px solid #FDB924;">
+                    <!-- Gold top bar -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Header with logos -->
+                    <tr>
+                        <td align="center" style="background-color: #FEFDFB; padding: 45px 20px 35px 20px; border-bottom: 2px solid #FDB924;">
+                            <img src="https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/logo.png" alt="SM" width="100" height="100" style="display: block; border: 0; border-radius: 20px; box-shadow: 0 6px 16px rgba(0,0,0,0.12);">
+                            <img src="https://ujfeqshqhlplmolfrlvc.supabase.co/storage/v1/object/public/public-assets/5f294203-9369-442d-a91d-cec972253d10/logo_text.png" alt="SportsMap" width="200" style="display: block; border: 0; margin-top: 0;">
+                        </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 35px 40px 40px 40px; text-align: center; background-color: #ffffff;">
+                            <h1 style="color: #111827; font-size: 28px; font-weight: 800; margin: 0 0 16px 0; letter-spacing: -0.5px;">You're Invited!</h1>
+                            <p style="font-size: 16px; color: #4B5563; margin: 0 0 24px 0; line-height: 1.6;">
+                                Someone invited you to join <strong style="color: #111827;">SportsMap</strong> – the best way to find sports events and teammates near you.
+                            </p>
+                            
+                            <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 18px 42px; background-color: #FDB924; color: #000000; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 17px; box-shadow: 0 4px 14px rgba(253, 185, 36, 0.4); border: 2px solid #E5A520;">Accept Invitation</a>
+                        </td>
+                    </tr>
+                    <!-- Gold separator -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 3px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Polish section -->
+                    <tr>
+                        <td style="padding: 28px 40px; background-color: #FFFBF0;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 12px; border: 2px solid #FDB924;">
+                                <tr>
+                                    <td style="padding: 22px 26px;">
+                                        <h2 style="font-size: 18px; color: #111827; margin: 0 0 10px 0; font-weight: 700;">Masz zaproszenie!</h2>
+                                        <p style="font-size: 14px; color: #4B5563; margin: 0 0 12px 0; line-height: 1.5;">
+                                            Ktoś zaprosił Cię do <strong>SportsMap</strong> – najlepszego sposobu na znalezienie wydarzeń sportowych.
+                                        </p>
+                                        <a href="{{ .ConfirmationURL }}" style="color: #D4960F; font-weight: 700; text-decoration: none; font-size: 14px;">Dołącz teraz →</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <!-- Note -->
+                    <tr>
+                        <td style="padding: 0 40px 28px 40px; background-color: #FFFBF0;">
+                            <p style="font-size: 13px; color: #9CA3AF; margin: 0; text-align: center;">
+                                If you weren't expecting this invitation, you can ignore this email.
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Gold separator -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 2px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 40px; text-align: center; font-size: 13px; color: #6B7280; background-color: #FEFDFB;">
+                            <span style="color: #FDB924; font-size: 16px;">●</span> © 2026 SportsMap. All rights reserved.<br>
+                            The best way to find your next game.
+                        </td>
+                    </tr>
+                    <!-- Gold bottom bar -->
+                    <tr>
+                        <td style="background-color: #FDB924; height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
 ```
-
----
-
-## How to Apply These Templates
-
-1. **Go to your Supabase Dashboard**
-2. Navigate to **Authentication** → **Email Templates**
-3. For each template type:
-   - Copy the **Subject** line
-   - Copy the **Message Body** HTML (everything inside the code block)
-   - Paste into the corresponding template in Supabase
-4. **Save Changes**
-
-> **Important:** The `{{ .ConfirmationURL }}` variable is automatically replaced by Supabase with the correct link for each email type.

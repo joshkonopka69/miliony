@@ -101,7 +101,7 @@ export class PerformanceOptimizer {
       if (width) params.set('maxwidth', width.toString());
       if (height) params.set('maxheight', height.toString());
       params.set('photo_reference', url.split('photo_reference=')[1] || '');
-      
+
       return `https://maps.googleapis.com/maps/api/place/photo?${params.toString()}`;
     }
 
@@ -120,7 +120,7 @@ export class PerformanceOptimizer {
       }
 
       const result = await loader();
-      
+
       if (cacheKey) {
         this.setCache(cacheKey, result);
       }
@@ -136,7 +136,7 @@ export class PerformanceOptimizer {
     batchSize: number = 10
   ): Promise<R[]> {
     const results: R[] = [];
-    
+
     const processBatch = async (batch: T[]): Promise<R[]> => {
       const batchResults = await Promise.all(
         batch.map(item => processor(item))
@@ -161,12 +161,24 @@ export class PerformanceOptimizer {
     if (markers.length <= maxMarkers) return markers;
 
     // Sort by importance/priority and take top markers
+    // PRIORITY: nearby places with higher ratings
     return markers
       .sort((a, b) => {
-        // Prioritize by rating, then by distance
-        const aScore = (a.rating || 0) * 0.7 + (a.distance || 0) * 0.3;
-        const bScore = (b.rating || 0) * 0.7 + (b.distance || 0) * 0.3;
-        return bScore - aScore;
+        // Calculate scores - higher score = higher priority
+        // Rating contributes positively (higher rating = better)
+        // Distance contributes negatively (lower distance = better)
+        // We invert distance contribution: use negative distance so closer = higher score
+        const aRating = a.rating || 0;
+        const bRating = b.rating || 0;
+        const aDistance = a.distance || 0;
+        const bDistance = b.distance || 0;
+
+        // Score: prioritize rating (70%) and proximity (30%)
+        // For proximity, we subtract distance so nearer places score higher
+        const aScore = (aRating * 0.7) - (aDistance * 0.0003); // Small negative weight for distance
+        const bScore = (bRating * 0.7) - (bDistance * 0.0003);
+
+        return bScore - aScore; // Higher score first
       })
       .slice(0, maxMarkers);
   }

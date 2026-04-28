@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,30 +10,31 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppNavigation } from '../navigation/hooks';
 import { ROUTES } from '../navigation/types';
 import { BottomNavBar, SMLogo } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/TranslationContext';
 import { groupService, Group } from '../services/groupService';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 // Sport emoji mapping
 const SPORT_EMOJI_MAP: Record<string, string> = {
-  basketball: 'đźŹ€',
-  football: 'âš˝',
-  soccer: 'âš˝',
-  tennis: 'đźŽľ',
-  running: 'đźŹâ€Ťâ™‚ď¸Ź',
-  cycling: 'đźš´â€Ťâ™‚ď¸Ź',
-  swimming: 'đźŹŠâ€Ťâ™‚ď¸Ź',
-  gym: 'đź’Ş',
-  volleyball: 'đźŹ',
-  baseball: 'âšľ',
-  golf: 'â›ł',
-  hockey: 'đźŹ’',
-  default: 'đźŹ…',
+  basketball: '🏀',
+  football: '⚽',
+  soccer: '⚽',
+  tennis: '🎾',
+  running: 'walk-outline‍♂️',
+  cycling: 'bicycle-outline‍♂️',
+  swimming: 'water-outline‍♂️',
+  gym: '💪',
+  volleyball: '🏐',
+  baseball: '⚾',
+  golf: 'golf-outline',
+  hockey: '🏒',
+  default: '🏆',
 };
 
 const getSportEmoji = (sportType: string): string => {
@@ -48,6 +49,8 @@ export default function MyGroupsScreen() {
   const navigation = useAppNavigation();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { showSuccess, showError, showInfo } = useToast();
+  const { showConfirmation } = useConfirmation();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -146,7 +149,7 @@ export default function MyGroupsScreen() {
       setGroups(groupsWithRoles);
     } catch (error) {
       console.error('Error loading groups:', error);
-      Alert.alert('Error', 'Failed to load groups');
+      showError('Failed to load groups', 'Error');
     } finally {
       setLoading(false);
     }
@@ -170,18 +173,15 @@ export default function MyGroupsScreen() {
 
   const handleLeaveGroup = (group: GroupWithRole) => {
     if (group.userRole === 'admin') {
-      Alert.alert(
-        'Cannot Leave Group',
-        'You are the admin of this group. Please transfer ownership or delete the group first.',
-        [{ text: 'OK' }]
-      );
+      showInfo('You are the admin of this group. Please transfer ownership or delete the group first.', 'Cannot Leave Group');
       return;
     }
 
-    Alert.alert(
-      'Leave Group',
-      `Are you sure you want to leave "${group.name}"?`,
-      [
+    showConfirmation({
+      title: 'Leave Group',
+      message: `Are you sure you want to leave "${group.name}"?`,
+      icon: '??',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Leave',
@@ -192,23 +192,23 @@ export default function MyGroupsScreen() {
                 const success = await groupService.removeMember(group.id, user.id);
                 if (success) {
                   setGroups(prev => prev.filter(g => g.id !== group.id));
-                  Alert.alert('Success', 'You have left the group');
+                  showSuccess('You have left the group', 'Success');
                 } else {
-                  Alert.alert('Error', 'Failed to leave group');
+                  showError('Failed to leave group', 'Error');
                 }
               } else {
                 // Mock behavior
                 setGroups(prev => prev.filter(g => g.id !== group.id));
-                Alert.alert('Success', 'You have left the group');
+                showSuccess('You have left the group', 'Success');
               }
             } catch (error) {
               console.error('Error leaving group:', error);
-              Alert.alert('Error', 'Failed to leave group');
+              showError('Failed to leave group', 'Error');
             }
           },
         },
       ]
-    );
+    });
   };
 
   // Filter groups
@@ -231,7 +231,7 @@ export default function MyGroupsScreen() {
     >
       {/* Group Icon */}
       <View style={styles.groupIconContainer}>
-        <Text style={styles.groupIcon}>{getSportEmoji(group.sport)}</Text>
+        <Text style={{fontSize: 18, color: '#FFD700'}}>{getSportEmoji(group.sport)}</Text>
       </View>
 
       {/* Group Info */}
@@ -255,16 +255,12 @@ export default function MyGroupsScreen() {
 
         <View style={styles.groupMeta}>
           <View style={styles.memberCount}>
-            <Ionicons name="people" size={14} color="#6B7280" />
+            <Text style={{fontSize: 13, color: '#6B7280'}}>👥</Text>
             <Text style={styles.memberCountText}>{group.member_count} {t.myGroups.members}</Text>
           </View>
 
           <View style={styles.privacyBadge}>
-            <Ionicons
-              name={group.privacy === 'public' ? 'globe-outline' : 'lock-closed-outline'}
-              size={12}
-              color="#6B7280"
-            />
+            <Text style={{fontSize: 11, color: '#6B7280'}}>{group.privacy === 'public' ? '🌐' : '•'}</Text>
             <Text style={styles.privacyText}>
               {group.privacy === 'public' ? t.myGroups.public :
                 group.privacy === 'private' ? t.myGroups.private : t.myGroups.inviteOnly}
@@ -282,7 +278,7 @@ export default function MyGroupsScreen() {
         }}
         activeOpacity={0.7}
       >
-        <Ionicons name="exit-outline" size={20} color="#EF4444" />
+        <Text style={{fontSize: 18, color: '#EF4444'}}>•</Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -301,7 +297,7 @@ export default function MyGroupsScreen() {
       return (
         <View style={styles.centerContainer}>
           <View style={styles.emptyState}>
-            <Ionicons name="people-circle-outline" size={80} color="#D1D5DB" />
+            <Text style={{fontSize: 72, color: '#D1D5DB'}}>•</Text>
             <Text style={styles.emptyTitle}>{t.myGroups.noGroupsTitle}</Text>
             <Text style={styles.emptyMessage}>
               {t.myGroups.noGroupsMessage}
@@ -311,7 +307,7 @@ export default function MyGroupsScreen() {
               onPress={handleCreateGroup}
               activeOpacity={0.8}
             >
-              <Ionicons name="add-circle" size={20} color="#000000" />
+              <Text style={{fontSize: 18, color: '#000000'}}>＋</Text>
               <Text style={styles.createGroupButtonText}>{t.myGroups.createFirstGroup}</Text>
             </TouchableOpacity>
           </View>
@@ -323,7 +319,7 @@ export default function MyGroupsScreen() {
       return (
         <View style={styles.centerContainer}>
           <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={60} color="#D1D5DB" />
+            <Text style={{fontSize: 54, color: '#D1D5DB'}}>🔍</Text>
             <Text style={styles.emptyTitle}>{t.myGroups.noGroupsFound}</Text>
             <Text style={styles.emptyMessage}>
               {t.myGroups.noGroupsFoundMessage.replace('{filter}', selectedFilter === 'admin' ? t.myGroups.admin : t.myGroups.member)}
@@ -430,7 +426,7 @@ export default function MyGroupsScreen() {
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color="#000000" />
+            <Text style={{fontSize: 22, color: '#000000'}}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t.myGroups.title}</Text>
           <TouchableOpacity
@@ -453,7 +449,7 @@ export default function MyGroupsScreen() {
           onPress={handleCreateGroup}
           activeOpacity={0.8}
         >
-          <Ionicons name="add" size={28} color="#000000" />
+          <Text style={{fontSize: 25, color: '#000000'}}>•</Text>
         </TouchableOpacity>
       )}
 

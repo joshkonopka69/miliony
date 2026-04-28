@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useAnalytics } from '../../hooks/useAnalytics';
 import { useTranslation } from '../../contexts/TranslationContext';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 import { MetricsCard } from '../../components/analytics/MetricsCard';
 import { AnalyticsChart } from '../../components/analytics/AnalyticsChart';
 import { DateRangePicker } from '../../components/analytics/DateRangePicker';
@@ -33,6 +35,9 @@ export default function AnalyticsDashboard() {
     refreshAnalytics,
     clearError,
   } = useAnalytics();
+
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
 
   const [selectedDateRange, setSelectedDateRange] = useState<{
     start_date: string;
@@ -87,9 +92,9 @@ export default function AnalyticsDashboard() {
   const handleExport = async (format: 'pdf' | 'csv' | 'excel' | 'json') => {
     try {
       // Implementation would export dashboard data
-      Alert.alert('Export', `Dashboard data exported as ${format.toUpperCase()}`);
+      showSuccess(`Dashboard data exported as ${format.toUpperCase()}`, 'Export');
     } catch (error) {
-      Alert.alert('Error', 'Failed to export dashboard data');
+      showError('Failed to export dashboard data', 'Error');
     }
   };
 
@@ -325,7 +330,7 @@ export default function AnalyticsDashboard() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.header}>
         <Text style={styles.title}>Analytics Dashboard</Text>
         <View style={styles.headerActions}>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useDialog } from '../contexts/DialogContext';
 import * as Location from 'expo-location';
 
 interface ExpoGoMapProps {
@@ -10,6 +11,7 @@ interface ExpoGoMapProps {
 export default function ExpoGoMap({ onLocationSelect, searchQuery }: ExpoGoMapProps) {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const dialog = useDialog();
 
   useEffect(() => {
     (async () => {
@@ -36,13 +38,10 @@ export default function ExpoGoMap({ onLocationSelect, searchQuery }: ExpoGoMapPr
   const openMapsApp = () => {
     if (location) {
       const url = `https://www.google.com/maps?q=${location.coords.latitude},${location.coords.longitude}`;
-      Alert.alert(
+      dialog.showConfirm(
         'Open in Maps',
         'This will open your device\'s default maps app',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open', onPress: () => console.log('Opening maps:', url) }
-        ]
+        () => console.log('Opening maps:', url)
       );
     }
   };
@@ -73,17 +72,17 @@ export default function ExpoGoMap({ onLocationSelect, searchQuery }: ExpoGoMapPr
         <Text style={styles.coordinates}>
           Lng: {location.coords.longitude.toFixed(6)}
         </Text>
-        
+
         {searchQuery && (
           <Text style={styles.searchText}>
             Searching for: {searchQuery}
           </Text>
         )}
-        
+
         <TouchableOpacity style={styles.button} onPress={handleLocationPress}>
           <Text style={styles.buttonText}>Use Current Location</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.button} onPress={openMapsApp}>
           <Text style={styles.buttonText}>Open in Maps App</Text>
         </TouchableOpacity>

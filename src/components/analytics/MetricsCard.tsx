@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 interface MetricsCardProps {
   title: string;
@@ -88,7 +87,7 @@ export function MetricsCard({
       <View style={styles.header}>
         {icon && (
           <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
-            <Ionicons name={icon} size={20} color={color} />
+            <Text style={{fontSize: 18, color: color}}>{icon}</Text>
           </View>
         )}
         <Text style={styles.title} numberOfLines={2}>
@@ -109,11 +108,7 @@ export function MetricsCard({
         
         {change !== 0 && (
           <View style={styles.changeContainer}>
-            <Ionicons
-              name={getTrendIcon()}
-              size={14}
-              color={getChangeColor()}
-            />
+            <Text style={{fontSize: 13, color: getChangeColor()}}>{getTrendIcon()}</Text>
             <Text style={[styles.changeText, { color: getChangeColor() }]}>
               {getChangeText()}
             </Text>

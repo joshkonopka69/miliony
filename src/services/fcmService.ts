@@ -67,7 +67,7 @@ class FCMService {
       if (Device.isDevice) {
         try {
           const tokenData = await Notifications.getExpoPushTokenAsync({
-            projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'sportmap-cc906',
+            projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'SportsMap-cc906',
           });
           this.token = tokenData.data;
           console.log('[FCMService] Push token obtained:', this.token?.substring(0, 20) + '...');

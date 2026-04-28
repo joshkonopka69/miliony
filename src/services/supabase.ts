@@ -765,25 +765,31 @@ class SupabaseService {
 
   /**
    * Search for users by display name
+   * Queries users table directly for speed
    */
   async searchUsers(query: string, currentUserId: string): Promise<any[]> {
     try {
       console.log('🔍 Searching for users:', query);
 
+      // Try users table directly first (RLS allows reading own row, 
+      // but we need a SELECT policy or use public_profiles)
       const { data, error } = await supabase
-        .from('users')
-        .select('id, display_name, avatar_url, created_at')
+        .from('public_profiles')
+        .select('id, display_name, avatar_url')
         .ilike('display_name', `%${query}%`)
-        .neq('id', currentUserId) // Exclude current user
-        .limit(20);
+        .neq('id', currentUserId)
+        .limit(15);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Search error:', error);
+        return [];
+      }
 
-      console.log(`✅ Found ${data.length} users`);
+      console.log(`✅ Found ${data?.length || 0} users`);
       return data || [];
     } catch (error) {
       console.error('❌ Error searching users:', error);
-      throw error;
+      return [];
     }
   }
 

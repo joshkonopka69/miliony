@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,11 +16,12 @@ import {
 } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useUserProfile } from '../hooks/useUserProfile';
-import { useTranslation } from '../contexts/TranslationContext';
+import { useTranslation, translations, Language } from '../contexts/TranslationContext';
 import { useAlert } from '../hooks/useAlert';
 import * as ImagePicker from 'expo-image-picker';
 
 import { SMLogo } from '../components';
+
 
 export default function EditProfileScreen() {
   const navigation = useAppNavigation();
@@ -38,12 +39,46 @@ export default function EditProfileScreen() {
   } = useUserProfile();
   const alert = useAlert();
 
+  // Sanitize and migrate favorite sports from localized strings to keys
+  const sanitizedFavoriteSports = useMemo(() => {
+    const raw = profile?.favorite_sports || [];
+    const sanitized = new Set<string>();
+
+    // Valid keys we want to keep
+    const validKeys = [
+      'boxing', 'calisthenics', 'gym', 'basketball', 'rollerSkating',
+      'football', 'volleyball', 'bjj', 'chess', 'pingPong',
+      'tennis', 'badminton', 'squash', 'mma', 'judo'
+    ];
+
+    raw.forEach(item => {
+      // 1. If it's already a valid key, keep it
+      if (validKeys.includes(item)) {
+        sanitized.add(item);
+        return;
+      }
+
+      // 2. If it's a localized string, try to find its key
+      for (const lang of Object.keys(translations) as Language[]) {
+        const langSports = translations[lang].sports;
+        for (const key of validKeys) {
+          if (langSports[key as keyof typeof langSports] === item) {
+            sanitized.add(key);
+            return;
+          }
+        }
+      }
+    });
+
+    return Array.from(sanitized);
+  }, [profile?.favorite_sports]);
+
   const [formData, setFormData] = useState({
     display_name: profile?.display_name || '',
     bio: profile?.bio || '',
     age: profile?.age?.toString() || '',
     gender: profile?.gender || '',
-    favorite_sports: profile?.favorite_sports || [],
+    favorite_sports: sanitizedFavoriteSports,
   });
 
 
@@ -53,6 +88,19 @@ export default function EditProfileScreen() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+
+  // Update form data when profile is loaded
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        display_name: profile.display_name || '',
+        bio: profile.bio || '',
+        age: profile.age?.toString() || '',
+        gender: profile.gender || '',
+        favorite_sports: sanitizedFavoriteSports,
+      });
+    }
+  }, [profile, sanitizedFavoriteSports]);
 
   useEffect(() => {
     Animated.parallel([
@@ -69,12 +117,14 @@ export default function EditProfileScreen() {
     ]).start();
   }, []);
 
-  // Sports options
-  const sports = [
-    t.sports.boxing, t.sports.calisthenics, t.sports.gym, t.sports.basketball, t.sports.rollerSkating,
-    t.sports.football, t.sports.volleyball, t.sports.bjj, t.sports.chess, t.sports.pingPong,
-    t.sports.tennis, t.sports.badminton, t.sports.squash, t.sports.mma, t.sports.judo
-  ];
+  // Sports options - Use keys for internal storage to avoid duplicates across languages
+  const sportsKeys = [
+    'boxing', 'calisthenics', 'gym', 'basketball', 'rollerSkating',
+    'football', 'volleyball', 'bjj', 'chess', 'pingPong',
+    'tennis', 'badminton', 'squash', 'mma', 'judo'
+  ] as const;
+
+  type SportKey = typeof sportsKeys[number];
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -83,11 +133,13 @@ export default function EditProfileScreen() {
     }
   };
 
-  const handleSportToggle = (sport: string) => {
+  const handleSportToggle = (sportKey: string) => {
     const currentSports = formData.favorite_sports;
-    const newSports = currentSports.includes(sport)
-      ? currentSports.filter(s => s !== sport)
-      : [...currentSports, sport];
+    const isSelected = currentSports.includes(sportKey);
+
+    const newSports = isSelected
+      ? currentSports.filter(s => s !== sportKey)
+      : [...currentSports, sportKey];
 
     setFormData(prev => ({ ...prev, favorite_sports: newSports }));
   };
@@ -237,7 +289,7 @@ export default function EditProfileScreen() {
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
-          <Image source={require('../../assets/logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
+          <Image source={require('../../assets/logo/sm-icon-logo.png')} style={{ width: 30, height: 30 }} resizeMode="contain" />
         </View>
 
         <ScrollView
@@ -273,7 +325,7 @@ export default function EditProfileScreen() {
                   {isUploadingImage ? (
                     <ActivityIndicator color="#ffffff" size="small" />
                   ) : (
-                    <Text style={styles.cameraIcon}>📷</Text>
+                    <Text style={styles.cameraIcon}>??</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -313,7 +365,7 @@ export default function EditProfileScreen() {
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{error}</Text>
                 <TouchableOpacity onPress={clearError}>
-                  <Text style={styles.errorDismiss}>×</Text>
+                  <Text style={styles.errorDismiss}>�</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -393,36 +445,39 @@ export default function EditProfileScreen() {
                   style={styles.sportsSelector}
                   onPress={() => setShowSportsSelector(!showSportsSelector)}
                 >
-                  <Text style={styles.sportsSelectorText}>
+                  <Text style={styles.sportsSelectorText} numberOfLines={1}>
                     {formData.favorite_sports.length > 0
-                      ? `${formData.favorite_sports.length} sports selected`
+                      ? formData.favorite_sports
+                        .map(key => t.sports[key as keyof typeof t.sports] || key)
+                        .join(', ')
                       : 'Select your favorite sports'
                     }
                   </Text>
                   <Text style={styles.sportsSelectorIcon}>
-                    {showSportsSelector ? '▲' : '▼'}
+                    {showSportsSelector ? '^' : '�'}
                   </Text>
                 </TouchableOpacity>
 
                 {showSportsSelector && (
                   <View style={styles.sportsContainer}>
-                    {sports.map((sport) => {
-                      const isSelected = formData.favorite_sports.includes(sport);
+                    {sportsKeys.map((key) => {
+                      const isSelected = formData.favorite_sports.includes(key);
+                      const translatedSport = t.sports[key as keyof typeof t.sports] || key;
                       return (
                         <TouchableOpacity
-                          key={sport}
+                          key={key}
                           style={[
                             styles.sportChip,
                             isSelected && styles.sportChipSelected
                           ]}
-                          onPress={() => handleSportToggle(sport)}
+                          onPress={() => handleSportToggle(key)}
                           activeOpacity={0.7}
                         >
                           <Text style={[
                             styles.sportChipText,
                             isSelected && styles.sportChipTextSelected
                           ]}>
-                            {sport}
+                            {translatedSport}
                           </Text>
                         </TouchableOpacity>
                       );
@@ -774,3 +829,4 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
 });
+

@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { useAnalytics } from '../../hooks/useAnalytics';
 import { useTranslation } from '../../contexts/TranslationContext';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 import { MetricsCard } from '../../components/analytics/MetricsCard';
 import { AnalyticsChart } from '../../components/analytics/AnalyticsChart';
 import { DateRangePicker } from '../../components/analytics/DateRangePicker';
@@ -31,6 +33,9 @@ export default function UserAnalytics() {
     refreshAnalytics,
     clearError,
   } = useAnalytics();
+
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
 
   const [selectedDateRange, setSelectedDateRange] = useState<{
     start_date: string;
@@ -55,7 +60,7 @@ export default function UserAnalytics() {
 
   const loadUserAnalytics = async () => {
     if (!userId) return;
-    
+
     try {
       await getUserAnalytics(userId, selectedFilters);
     } catch (error) {
@@ -93,13 +98,13 @@ export default function UserAnalytics() {
   const handleExport = async (format: 'pdf' | 'csv' | 'excel' | 'json') => {
     try {
       if (!userId) {
-        Alert.alert('Error', 'Please enter a user ID');
+        showError('Please enter a user ID', 'Error');
         return;
       }
       // Implementation would export user analytics data
-      Alert.alert('Export', `User analytics exported as ${format.toUpperCase()}`);
+      showSuccess(`User analytics exported as ${format.toUpperCase()}`, 'Export');
     } catch (error) {
-      Alert.alert('Error', 'Failed to export user analytics');
+      showError('Failed to export user analytics', 'Error');
     }
   };
 
@@ -379,7 +384,7 @@ export default function UserAnalytics() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.header}>
         <Text style={styles.title}>User Analytics</Text>
         <ExportButton onExport={handleExport} />

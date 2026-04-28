@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 import { getSportIcon, getSportColor } from '../utils/eventGrouping';
 import type { SportActivity } from '../types/event';
@@ -33,7 +32,7 @@ export default function FavoriteSports({ sports }: FavoriteSportsProps) {
           return (
             <View key={index} style={[styles.sportChip, { borderColor: color }]}>
               <View style={[styles.sportIconContainer, { backgroundColor: color }]}>
-                <Ionicons name={icon as any} size={16} color={theme.colors.textOnPrimary} />
+                <Text style={{fontSize: 14, color: theme.colors.textOnPrimary}}>{icon as any}</Text>
               </View>
               <Text style={[styles.sportText, { color }]}>{sport}</Text>
             </View>

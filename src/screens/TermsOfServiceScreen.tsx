@@ -74,7 +74,7 @@ export default function TermsOfServiceScreen() {
             <SMLogo size={50} style={{ marginBottom: 16 }} />
             <Text style={styles.title}>Terms of Service</Text>
             <Text style={styles.subtitle}>
-              Please read these terms carefully before using SportMap
+              Please read these terms carefully before using SportsMap
             </Text>
           </View>
 
@@ -82,16 +82,16 @@ export default function TermsOfServiceScreen() {
           <View style={styles.contentSection}>
             <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
             <Text style={styles.text}>
-              By accessing and using SportMap, you accept and agree to be bound by the terms and provision of this agreement.
+              By accessing and using SportsMap, you accept and agree to be bound by the terms and provision of this agreement.
             </Text>
 
             <Text style={styles.sectionTitle}>2. Use License</Text>
             <Text style={styles.text}>
-              Permission is granted to temporarily download one copy of SportMap per device for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
+              Permission is granted to temporarily download one copy of SportsMap per device for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
             </Text>
             <Text style={styles.bulletPoint}>• Modify or copy the materials</Text>
             <Text style={styles.bulletPoint}>• Use the materials for any commercial purpose or for any public display</Text>
-            <Text style={styles.bulletPoint}>• Attempt to reverse engineer any software contained in SportMap</Text>
+            <Text style={styles.bulletPoint}>• Attempt to reverse engineer any software contained in SportsMap</Text>
             <Text style={styles.bulletPoint}>• Remove any copyright or other proprietary notations from the materials</Text>
 
             <Text style={styles.sectionTitle}>3. User Accounts</Text>
@@ -130,7 +130,7 @@ export default function TermsOfServiceScreen() {
 
             <Text style={styles.sectionTitle}>9. Governing Law</Text>
             <Text style={styles.text}>
-              These Terms shall be interpreted and governed by the laws of the jurisdiction in which SportMap operates, without regard to its conflict of law provisions.
+              These Terms shall be interpreted and governed by the laws of the jurisdiction in which SportsMap operates, without regard to its conflict of law provisions.
             </Text>
 
             <Text style={styles.sectionTitle}>10. Changes</Text>
@@ -139,7 +139,7 @@ export default function TermsOfServiceScreen() {
             </Text>
 
             <Text style={styles.contactText}>
-              If you have any questions about these Terms of Service, please contact us at support@sportmap.com
+              If you have any questions about these Terms of Service, please contact us at support@SportsMap.com
             </Text>
           </View>
         </Animated.View>

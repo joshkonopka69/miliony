@@ -7,10 +7,9 @@ import {
   Modal,
   SafeAreaView,
   StatusBar,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useToast } from '../ToastProvider';
 
 interface ExportButtonProps {
   onExport: (format: 'pdf' | 'csv' | 'excel' | 'json') => Promise<void>;
@@ -30,6 +29,7 @@ export function ExportButton({
   const [showModal, setShowModal] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<'pdf' | 'csv' | 'excel' | 'json'>('pdf');
+  const toast = useToast();
 
   const formatOptions = [
     { key: 'pdf', label: 'PDF', icon: 'document-text', description: 'Formatted report with charts' },
@@ -40,13 +40,13 @@ export function ExportButton({
 
   const handleExport = async () => {
     if (exporting) return;
-    
+
     setExporting(true);
     try {
       await onExport(selectedFormat);
       setShowModal(false);
     } catch (error) {
-      Alert.alert('Export Error', 'Failed to export data. Please try again.');
+      toast.showError('Export Error', 'Failed to export data. Please try again.');
     } finally {
       setExporting(false);
     }
@@ -58,7 +58,7 @@ export function ExportButton({
 
   const renderFormatOption = (option: typeof formatOptions[0]) => {
     const isSelected = selectedFormat === option.key;
-    
+
     return (
       <TouchableOpacity
         key={option.key}
@@ -76,7 +76,7 @@ export function ExportButton({
               {option.label}
             </Text>
             {isSelected && (
-              <Ionicons name="checkmark-circle" size={20} color="#2196F3" />
+              <Text style={{fontSize: 18, color: '#2196F3'}}>✓</Text>
             )}
           </View>
           <Text style={styles.formatOptionDescription}>
@@ -97,23 +97,23 @@ export function ExportButton({
       >
         <SafeAreaView style={styles.modalContainer}>
           <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-          
+
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Export Data</Text>
             <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Ionicons name="close" size={24} color="#666666" />
+              <Text style={{fontSize: 22, color: '#666666'}}>✕</Text>
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.modalContent}>
             <Text style={styles.modalDescription}>
               Choose the format for exporting your analytics data:
             </Text>
-            
+
             <View style={styles.formatOptions}>
               {formatOptions.map(renderFormatOption)}
             </View>
-            
+
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelButton}
@@ -121,7 +121,7 @@ export function ExportButton({
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.exportButton, (exporting || loading) && styles.exportButtonDisabled]}
                 onPress={handleExport}
@@ -131,7 +131,7 @@ export function ExportButton({
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
                   <>
-                    <Ionicons name="download" size={16} color="#ffffff" />
+                    <Text style={{fontSize: 14, color: '#ffffff'}}>•</Text>
                     <Text style={styles.exportButtonText}>Export</Text>
                   </>
                 )}
@@ -154,12 +154,12 @@ export function ExportButton({
           <ActivityIndicator size="small" color="#2196F3" />
         ) : (
           <>
-            <Ionicons name="download" size={16} color="#2196F3" />
+            <Text style={{fontSize: 14, color: '#2196F3'}}>•</Text>
             <Text style={styles.buttonText}>Export</Text>
           </>
         )}
       </TouchableOpacity>
-      
+
       {renderExportModal()}
     </>
   );

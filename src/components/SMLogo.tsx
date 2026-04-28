@@ -10,7 +10,7 @@ interface SMLogoProps {
 const SMLogo: React.FC<SMLogoProps> = ({ size = 70, style, imageStyle }) => (
     <View style={[styles.container, { width: size, height: size }, style]}>
         <Image
-            source={require('../../assets/logo.png')}
+            source={require('../../assets/logo/sm-icon-logo.png')}
             style={[styles.logo, { width: size, height: size }, imageStyle]}
             resizeMode="contain"
         />

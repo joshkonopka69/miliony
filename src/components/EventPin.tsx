@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../styles/theme';
 
 interface EventPinProps {
@@ -64,11 +63,7 @@ export default function EventPin({ event, onPress, isSelected }: EventPinProps) 
       activeOpacity={0.8}
     >
       <View style={styles.pinContent}>
-        <Ionicons 
-          name={getActivityIcon(event.activity) as any} 
-          size={16} 
-          color="white" 
-        />
+        <Text style={{fontSize: 14, color: 'white'}}>{getActivityIcon(event.activity)}</Text>
         <Text style={styles.participantCount}>
           {event.participants_count}/{event.max_participants}
         </Text>

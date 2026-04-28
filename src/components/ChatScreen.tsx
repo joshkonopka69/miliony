@@ -7,9 +7,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useToast } from './ToastProvider';
 import { theme } from '../styles/theme';
 import Button from './ui/Button';
 import Input from './ui/Input';
@@ -35,6 +34,7 @@ export default function ChatScreen({
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const toast = useToast();
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -46,17 +46,17 @@ export default function ChatScreen({
     setLoading(true);
     try {
       let messages: Message[] = [];
-      
+
       if (eventId) {
         messages = await MessageService.getEventMessages(eventId);
       } else if (groupId) {
         messages = await MessageService.getGroupMessages(groupId);
       }
-      
+
       setMessages(messages);
     } catch (error) {
       console.error('Error loading messages:', error);
-      Alert.alert('Error', 'Failed to load messages');
+      toast.showError('Error', 'Failed to load messages');
     } finally {
       setLoading(false);
     }
@@ -101,11 +101,11 @@ export default function ChatScreen({
         setNewMessage('');
         scrollToBottom();
       } else {
-        Alert.alert('Error', 'Failed to send message');
+        toast.showError('Error', 'Failed to send message');
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
+      toast.showError('Error', 'Failed to send message');
     } finally {
       setSending(false);
     }
@@ -149,7 +149,7 @@ export default function ChatScreen({
             <Text style={styles.dateText}>{formatDate(message.created_at)}</Text>
           </View>
         )}
-        
+
         <View style={[styles.messageContainer, isOwn ? styles.ownMessage : styles.otherMessage]}>
           {showAvatar && (
             <View style={styles.avatarContainer}>
@@ -160,10 +160,10 @@ export default function ChatScreen({
               </View>
             </View>
           )}
-          
+
           <View style={[styles.messageBubble, isOwn ? styles.ownBubble : styles.otherBubble]}>
             {!isOwn && (
-              <Text style={styles.senderName}>{message.sender_name}</Text>
+              <Text style={styles.senderName as any}>{message.sender_name}</Text>
             )}
             <Text style={[styles.messageText, isOwn ? styles.ownText : styles.otherText]}>
               {message.content}
@@ -178,7 +178,7 @@ export default function ChatScreen({
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
@@ -195,8 +195,8 @@ export default function ChatScreen({
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="chatbubbles-outline" size={48} color={theme.colors.textSecondary} />
-            <Text style={styles.emptyText}>No messages yet</Text>
+            <Text style={{fontSize: 43, color: theme.colors.textSecondary}}>💬</Text>
+            <Text style={styles.emptyText as any}>No messages yet</Text>
             <Text style={styles.emptySubtext}>Start the conversation!</Text>
           </View>
         ) : (
@@ -223,11 +223,7 @@ export default function ChatScreen({
                   (!newMessage.trim() || sending) && styles.sendButtonDisabled,
                 ]}
               >
-                <Ionicons
-                  name="send"
-                  size={20}
-                  color={(!newMessage.trim() || sending) ? theme.colors.textDisabled : theme.colors.primary}
-                />
+                <Text style={{fontSize: 18, color: (!newMessage.trim() || sending) ? theme.colors.textDisabled : theme.colors.primary}}>📤</Text>
               </TouchableOpacity>
             }
           />
@@ -264,7 +260,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: theme.typography.fontWeight.medium as any,
     color: theme.colors.textPrimary,
     marginTop: theme.spacing.md,
   },
@@ -310,7 +306,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: theme.typography.fontWeight.bold as any,
     color: theme.colors.textOnPrimary,
   },
   messageBubble: {
@@ -330,7 +326,7 @@ const styles = StyleSheet.create({
   },
   senderName: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: theme.typography.fontWeight.medium as any,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
   },

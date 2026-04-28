@@ -5,9 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Alert,
   Image,
-} from 'react-native';
+} from 'react-native';
+import { useDialog } from '../../contexts/DialogContext';
 import { NotificationData } from '../../services/notificationService';
 
 interface NotificationItemProps {
@@ -42,6 +42,7 @@ export default function NotificationItem({
   compact = false,
 }: NotificationItemProps) {
   const [showActionMenu, setShowActionMenu] = useState(false);
+  const dialog = useDialog();
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -76,22 +77,15 @@ export default function NotificationItem({
   };
 
   const handleDelete = () => {
-    Alert.alert(
+    dialog.showConfirm(
       'Delete Notification',
       'Are you sure you want to delete this notification?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            if (onDelete) {
-              onDelete();
-            }
-            setShowActionMenu(false);
-          },
-        },
-      ]
+      () => {
+        if (onDelete) {
+          onDelete();
+        }
+        setShowActionMenu(false);
+      }
     );
   };
 
@@ -210,7 +204,7 @@ export default function NotificationItem({
             <View style={styles.notificationIconContainer}>
               <View style={[styles.notificationIcon, { backgroundColor: getNotificationColor() }]}>
                 <Text style={styles.notificationIconText}>
-                  {getNotificationIcon()}
+                  <Text style={{fontSize: 18, color: '#ffffff'}}>{getNotificationIcon()}</Text>
                 </Text>
               </View>
               {!notification.read && <View style={styles.unreadIndicator} />}
@@ -221,7 +215,7 @@ export default function NotificationItem({
                 styles.notificationTitle,
                 !notification.read && styles.notificationTitleUnread
               ]} numberOfLines={compact ? 1 : 2}>
-                {notification.title}
+                {notification.title || ''}
               </Text>
               <Text style={styles.notificationTime}>
                 {formatNotificationTime(notification.created_at)}
@@ -234,7 +228,7 @@ export default function NotificationItem({
                 onPress={() => onSelectionToggle?.()}
               >
                 {isSelected && (
-                  <Text style={styles.selectionCheckmark}>✓</Text>
+                  <Text style={{fontSize: 13, color: '#000000'}}>✓</Text>
                 )}
               </TouchableOpacity>
             )}
@@ -244,7 +238,7 @@ export default function NotificationItem({
                 style={styles.actionMenuButton}
                 onPress={handleActionMenuToggle}
               >
-                <Text style={styles.actionMenuIcon}>⋯</Text>
+                <Text style={{fontSize: 14, color: '#666666'}}>•</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -289,7 +283,7 @@ export default function NotificationItem({
             onPress={handleMarkAsRead}
             disabled={notification.read}
           >
-            <Text style={styles.actionMenuIcon}>✓</Text>
+            <Text style={{fontSize: 14, color: '#666666'}}>✓</Text>
             <Text style={[styles.actionMenuText, notification.read && styles.actionMenuTextDisabled]}>
               {notification.read ? 'Already Read' : 'Mark as Read'}
             </Text>
@@ -299,7 +293,7 @@ export default function NotificationItem({
             style={styles.actionMenuItem}
             onPress={handleDelete}
           >
-            <Text style={[styles.actionMenuIcon, styles.deleteIcon]}>🗑️</Text>
+            <Text style={{fontSize: 14, color: '#F44336'}}>•</Text>
             <Text style={[styles.actionMenuText, styles.deleteText]}>Delete</Text>
           </TouchableOpacity>
         </Animated.View>

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { 
+import {
   moderationService,
   ContentReport,
   ModerationAction,
@@ -10,7 +10,7 @@ import {
   AppealRequest,
   ModerationFilters
 } from '../services/moderationService';
-import { 
+import {
   reportingService,
   ReportCategory,
   ReportTemplate,
@@ -18,13 +18,14 @@ import {
   ReportAnalytics,
   ReportFilters
 } from '../services/reportingService';
-import { 
+import {
   securityService,
   SecurityThreat,
   SecurityEvent,
   SecurityAlert,
   SecurityAnalytics,
-  SecurityFilters
+  SecurityFilters,
+  SecurityConfig
 } from '../services/securityService';
 
 interface ModerationContextType {
@@ -34,32 +35,32 @@ interface ModerationContextType {
   moderationActions: ModerationAction[];
   userModerationStatus: UserModerationStatus | null;
   moderationAnalytics: ModerationAnalytics | null;
-  
+
   // Report State
   reportCategories: ReportCategory[];
   reportTemplates: ReportTemplate[];
   reportSubmissions: ReportSubmission[];
   reportAnalytics: ReportAnalytics | null;
-  
+
   // Security State
   securityThreats: SecurityThreat[];
   securityAlerts: SecurityAlert[];
   securityAnalytics: SecurityAnalytics | null;
-  
+
   // Appeal State
   appealRequests: AppealRequest[];
-  
+
   // Loading States
   isLoading: boolean;
   isModerating: boolean;
   isReporting: boolean;
   isSecurityProcessing: boolean;
-  
+
   // Error States
   error: string | null;
   reportError: string | null;
   securityError: string | null;
-  
+
   // Moderation Actions
   moderateContent: (content: any) => Promise<ContentModeration | null>;
   reportContent: (report: Omit<ContentReport, 'id' | 'created_at' | 'updated_at'>) => Promise<ContentReport | null>;
@@ -69,7 +70,7 @@ interface ModerationContextType {
   blockUser: (userId: string, reason: string, duration?: number) => Promise<boolean>;
   unblockUser: (userId: string, reason: string) => Promise<boolean>;
   getModerationAnalytics: (filters?: ModerationFilters) => Promise<ModerationAnalytics | null>;
-  
+
   // Report Actions
   getReportCategories: () => Promise<ReportCategory[]>;
   getReportTemplates: (categoryId?: string) => Promise<ReportTemplate[]>;
@@ -77,7 +78,7 @@ interface ModerationContextType {
   getReportSubmissions: (filters?: ReportFilters) => Promise<ReportSubmission[]>;
   updateReportStatus: (reportId: string, status: string, resolution?: string) => Promise<boolean>;
   getReportAnalytics: (filters?: ReportFilters) => Promise<ReportAnalytics | null>;
-  
+
   // Security Actions
   detectThreat: (event: SecurityEvent) => Promise<SecurityThreat | null>;
   getSecurityAlerts: (filters?: SecurityFilters) => Promise<SecurityAlert[]>;
@@ -87,17 +88,19 @@ interface ModerationContextType {
   blockIP: (ipAddress: string, reason: string, duration?: number) => Promise<boolean>;
   unblockIP: (ipAddress: string) => Promise<boolean>;
   getSecurityAnalytics: (filters?: SecurityFilters) => Promise<SecurityAnalytics | null>;
-  
+
   // Appeal Actions
   createAppealRequest: (appeal: Omit<AppealRequest, 'id' | 'created_at' | 'updated_at'>) => Promise<AppealRequest | null>;
   getAppealRequests: (filters?: { status?: string; user_id?: string }) => Promise<AppealRequest[]>;
   reviewAppeal: (appealId: string, decision: 'approved' | 'denied', moderatorNotes?: string) => Promise<boolean>;
-  
+
   // Utility Actions
   clearError: () => void;
   clearReportError: () => void;
   clearSecurityError: () => void;
   refreshModeration: (filters?: ModerationFilters) => Promise<void>;
+  getSecurityConfig: (category?: string) => Promise<SecurityConfig[]>;
+  updateSecurityConfig: (key: string, value: any) => Promise<boolean>;
   refreshReports: (filters?: ReportFilters) => Promise<void>;
   refreshSecurity: (filters?: SecurityFilters) => Promise<void>;
 }
@@ -115,27 +118,27 @@ export function ModerationProvider({ children }: ModerationProviderProps) {
   const [moderationActions, setModerationActions] = useState<ModerationAction[]>([]);
   const [userModerationStatus, setUserModerationStatus] = useState<UserModerationStatus | null>(null);
   const [moderationAnalytics, setModerationAnalytics] = useState<ModerationAnalytics | null>(null);
-  
+
   // Report State
   const [reportCategories, setReportCategories] = useState<ReportCategory[]>([]);
   const [reportTemplates, setReportTemplates] = useState<ReportTemplate[]>([]);
   const [reportSubmissions, setReportSubmissions] = useState<ReportSubmission[]>([]);
   const [reportAnalytics, setReportAnalytics] = useState<ReportAnalytics | null>(null);
-  
+
   // Security State
   const [securityThreats, setSecurityThreats] = useState<SecurityThreat[]>([]);
   const [securityAlerts, setSecurityAlerts] = useState<SecurityAlert[]>([]);
   const [securityAnalytics, setSecurityAnalytics] = useState<SecurityAnalytics | null>(null);
-  
+
   // Appeal State
   const [appealRequests, setAppealRequests] = useState<AppealRequest[]>([]);
-  
+
   // Loading States
   const [isLoading, setIsLoading] = useState(false);
   const [isModerating, setIsModerating] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
   const [isSecurityProcessing, setIsSecurityProcessing] = useState(false);
-  
+
   // Error States
   const [error, setError] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
@@ -627,18 +630,18 @@ export function ModerationProvider({ children }: ModerationProviderProps) {
     securityAlerts,
     securityAnalytics,
     appealRequests,
-    
+
     // Loading States
     isLoading,
     isModerating,
     isReporting,
     isSecurityProcessing,
-    
+
     // Error States
     error,
     reportError,
     securityError,
-    
+
     // Moderation Actions
     moderateContent,
     reportContent,
@@ -648,7 +651,7 @@ export function ModerationProvider({ children }: ModerationProviderProps) {
     blockUser,
     unblockUser,
     getModerationAnalytics,
-    
+
     // Report Actions
     getReportCategories,
     getReportTemplates,
@@ -656,7 +659,7 @@ export function ModerationProvider({ children }: ModerationProviderProps) {
     getReportSubmissions,
     updateReportStatus,
     getReportAnalytics,
-    
+
     // Security Actions
     detectThreat,
     getSecurityAlerts,
@@ -666,17 +669,19 @@ export function ModerationProvider({ children }: ModerationProviderProps) {
     blockIP,
     unblockIP,
     getSecurityAnalytics,
-    
+
     // Appeal Actions
     createAppealRequest,
     getAppealRequests,
     reviewAppeal,
-    
+
     // Utility Actions
     clearError,
     clearReportError,
     clearSecurityError,
     refreshModeration,
+    getSecurityConfig: securityService.getSecurityConfig.bind(securityService),
+    updateSecurityConfig: securityService.updateSecurityConfig.bind(securityService),
     refreshReports,
     refreshSecurity,
   };

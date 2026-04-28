@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   StatusBar,
   TextInput,
-  Alert,
   ActivityIndicator,
   Animated,
   Image
@@ -17,11 +16,15 @@ import { useAppNavigation } from '../navigation';
 import { useFriends } from '../hooks/useFriends';
 import { useTranslation } from '../contexts/TranslationContext';
 import { SMLogo } from '../components';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 
 export default function FriendsListScreen() {
   const navigation = useAppNavigation();
   const { t } = useTranslation();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const {
     friends,
     removeFriend,
@@ -86,10 +89,11 @@ export default function FriendsListScreen() {
   };
 
   const handleRemoveFriend = (friendId: string, friendName: string) => {
-    Alert.alert(
-      'Remove Friend',
-      `Are you sure you want to remove ${friendName} from your friends?`,
-      [
+    showConfirmation({
+      title: 'Remove Friend',
+      message: `Are you sure you want to remove ${friendName} from your friends?`,
+      icon: '???',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
@@ -97,21 +101,22 @@ export default function FriendsListScreen() {
           onPress: async () => {
             const success = await removeFriend(friendId);
             if (success) {
-              Alert.alert('Success', 'Friend removed successfully!');
+              showSuccess('Friend removed successfully!', 'Success');
             } else {
-              Alert.alert('Error', 'Failed to remove friend. Please try again.');
+              showError('Failed to remove friend. Please try again.', 'Error');
             }
           },
         },
       ]
-    );
+    });
   };
 
   const handleBlockUser = (friendId: string, friendName: string) => {
-    Alert.alert(
-      'Block User',
-      `Are you sure you want to block ${friendName}? They won't be able to see your profile or send you messages.`,
-      [
+    showConfirmation({
+      title: 'Block User',
+      message: `Are you sure you want to block ${friendName}? They won't be able to see your profile or send you messages.`,
+      icon: '??',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Block',
@@ -119,14 +124,14 @@ export default function FriendsListScreen() {
           onPress: async () => {
             const success = await blockUser(friendId);
             if (success) {
-              Alert.alert('Success', 'User blocked successfully!');
+              showSuccess('User blocked successfully!', 'Success');
             } else {
-              Alert.alert('Error', 'Failed to block user. Please try again.');
+              showError('Failed to block user. Please try again.', 'Error');
             }
           },
         },
       ]
-    );
+    });
   };
 
   const handleViewProfile = (friendId: string) => {
@@ -234,25 +239,25 @@ export default function FriendsListScreen() {
               style={styles.actionButton}
               onPress={() => handleViewProfile(friend.id)}
             >
-              <Text style={styles.actionButtonText}>👤</Text>
+              <Text style={{fontSize: 16, color: '#666'}}>?</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleSendMessage(friend.id)}
             >
-              <Text style={styles.actionButtonText}>💬</Text>
+              <Text style={{fontSize: 16, color: '#666'}}>?</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.removeButton]}
               onPress={() => handleRemoveFriend(friend.id, friend.display_name)}
             >
-              <Text style={[styles.actionButtonText, styles.removeButtonText]}>🗑️</Text>
+              <Text style={[styles.actionButtonText, styles.removeButtonText]}>???</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.blockButton]}
               onPress={() => handleBlockUser(friend.id, friend.display_name)}
             >
-              <Text style={[styles.actionButtonText, styles.blockButtonText]}>🚫</Text>
+              <Text style={{fontSize: 14, color: '#FF3B30'}}>🚫</Text>
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -267,11 +272,11 @@ export default function FriendsListScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Friends</Text>
         <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Text style={{fontSize: 16, color: '#8e8e93'}}>🔍</Text>
         </TouchableOpacity>
       </View>
 
@@ -293,7 +298,7 @@ export default function FriendsListScreen() {
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity onPress={clearError}>
-            <Text style={styles.errorDismiss}>×</Text>
+            <Text style={{fontSize: 14, color: '#FF6B6B'}}>✕</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -335,7 +340,7 @@ export default function FriendsListScreen() {
                 </View>
               ) : (
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyIcon}>👥</Text>
+                  <Text style={{fontSize: 43, color: '#ccc'}}>🔍</Text>
                   <Text style={styles.emptyTitle}>
                     {searchQuery ? 'No friends found' : 'No friends yet'}
                   </Text>

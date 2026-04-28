@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useAnalytics } from '../../hooks/useAnalytics';
 import { useTranslation } from '../../contexts/TranslationContext';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 import { MetricsCard } from '../../components/analytics/MetricsCard';
 import { AnalyticsChart } from '../../components/analytics/AnalyticsChart';
 import { DateRangePicker } from '../../components/analytics/DateRangePicker';
@@ -29,6 +31,9 @@ export default function PerformanceAnalytics() {
     refreshAnalytics,
     clearError,
   } = useAnalytics();
+
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
 
   const [selectedDateRange, setSelectedDateRange] = useState<{
     start_date: string;
@@ -78,9 +83,9 @@ export default function PerformanceAnalytics() {
   const handleExport = async (format: 'pdf' | 'csv' | 'excel' | 'json') => {
     try {
       // Implementation would export performance analytics data
-      Alert.alert('Export', `Performance analytics exported as ${format.toUpperCase()}`);
+      showSuccess(`Performance analytics exported as ${format.toUpperCase()}`, 'Export');
     } catch (error) {
-      Alert.alert('Error', 'Failed to export performance analytics');
+      showError('Failed to export performance analytics', 'Error');
     }
   };
 
@@ -300,7 +305,7 @@ export default function PerformanceAnalytics() {
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Device Analytics</Text>
-        
+
         {device_analytics.platform && device_analytics.platform.length > 0 && (
           <View style={styles.deviceSection}>
             <Text style={styles.deviceTitle}>Platform Distribution</Text>
@@ -459,31 +464,31 @@ export default function PerformanceAnalytics() {
     if (!appAnalytics) return null;
 
     const insights = [];
-    
+
     if (appAnalytics.user_retention.day_7 > 50) {
       insights.push('Good 7-day retention rate indicates strong user engagement');
     } else if (appAnalytics.user_retention.day_7 < 30) {
       insights.push('Low 7-day retention rate - consider improving onboarding');
     }
-    
+
     if (appAnalytics.performance_metrics.crash_rate < 2) {
       insights.push('Low crash rate indicates good app stability');
     } else if (appAnalytics.performance_metrics.crash_rate > 5) {
       insights.push('High crash rate - consider addressing stability issues');
     }
-    
+
     if (appAnalytics.performance_metrics.error_rate < 1) {
       insights.push('Low error rate indicates good API reliability');
     } else if (appAnalytics.performance_metrics.error_rate > 3) {
       insights.push('High error rate - consider improving API reliability');
     }
-    
+
     if (appAnalytics.performance_metrics.average_load_time < 1000) {
       insights.push('Fast load times indicate good performance');
     } else if (appAnalytics.performance_metrics.average_load_time > 3000) {
       insights.push('Slow load times - consider performance optimization');
     }
-    
+
     if (appAnalytics.app_usage.average_session_duration > 10) {
       insights.push('Long session duration indicates good user engagement');
     } else if (appAnalytics.app_usage.average_session_duration < 3) {
@@ -526,7 +531,7 @@ export default function PerformanceAnalytics() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.header}>
         <Text style={styles.title}>Performance Analytics</Text>
         <ExportButton onExport={handleExport} />

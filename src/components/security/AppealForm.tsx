@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
-  Image,
 } from 'react-native';
 import { useModeration } from '../../hooks/useModeration';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../ToastProvider';
+import { useDialog } from '../../contexts/DialogContext';
 import { AppealRequest } from '../../services/moderationService';
 
 interface AppealFormProps {
@@ -36,6 +36,8 @@ export default function AppealFormComponent({
     error,
     clearError,
   } = useModeration();
+  const toast = useToast();
+  const dialog = useDialog();
 
   const [appealReason, setAppealReason] = useState(initialReason || '');
   const [appealEvidence, setAppealEvidence] = useState<string[]>([]);
@@ -52,7 +54,7 @@ export default function AppealFormComponent({
     if (!validateForm()) return;
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to create an appeal');
+      dialog.showInfo('Login Required', 'You must be logged in to create an appeal');
       return;
     }
 
@@ -70,23 +72,18 @@ export default function AppealFormComponent({
       const result = await createAppealRequest(appeal);
 
       if (result) {
-        Alert.alert(
+        dialog.showSuccess(
           'Appeal Submitted',
           'Your appeal has been submitted successfully. We will review it and notify you of the decision.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                onAppealSubmitted?.(result);
-                resetForm();
-              },
-            },
-          ]
+          () => {
+            onAppealSubmitted?.(result);
+            resetForm();
+          }
         );
       }
     } catch (error) {
       console.error('Error creating appeal:', error);
-      Alert.alert('Error', 'Failed to create appeal. Please try again.');
+      toast.showError('Error', 'Failed to create appeal. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -120,23 +117,13 @@ export default function AppealFormComponent({
 
   const handleCancel = () => {
     if (appealReason.trim() && !isSubmitting) {
-      Alert.alert(
+      dialog.showConfirm(
         'Cancel Appeal',
         'Are you sure you want to cancel? Your changes will be lost.',
-        [
-          {
-            text: 'Keep Editing',
-            style: 'cancel',
-          },
-          {
-            text: 'Cancel',
-            style: 'destructive',
-            onPress: () => {
-              resetForm();
-              onCancel?.();
-            },
-          },
-        ]
+        () => {
+          resetForm();
+          onCancel?.();
+        }
       );
     } else {
       resetForm();
@@ -145,10 +132,9 @@ export default function AppealFormComponent({
   };
 
   const addEvidence = () => {
-    Alert.alert(
+    dialog.showInfo(
       'Add Evidence',
-      'Evidence can include screenshots, documents, or other supporting materials. This feature will be implemented in a future update.',
-      [{ text: 'OK' }]
+      'Evidence can include screenshots, documents, or other supporting materials. This feature will be implemented in a future update.'
     );
   };
 
@@ -240,13 +226,13 @@ export default function AppealFormComponent({
           <Text style={styles.fieldDescription}>
             Add any supporting evidence such as screenshots or documents
           </Text>
-          
+
           {appealEvidence.length > 0 && (
             <View style={styles.evidenceContainer}>
               {appealEvidence.map(renderEvidenceItem)}
             </View>
           )}
-          
+
           <TouchableOpacity
             style={styles.addEvidenceButton}
             onPress={addEvidence}
@@ -290,7 +276,7 @@ export default function AppealFormComponent({
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
         )}
-        
+
         <TouchableOpacity
           style={[
             styles.submitButton,

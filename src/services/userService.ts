@@ -179,6 +179,7 @@ class UserService {
 
   async getUserProfile(userId: string): Promise<UserProfile | null> {
     try {
+      // Query 'public_profiles' view which has all user profile data including favorite_sports
       const { data, error } = await supabase
         .from('public_profiles')
         .select('*')
@@ -186,7 +187,7 @@ class UserService {
         .single();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('Error fetching user profile from public_profiles:', error);
         return null;
       }
 

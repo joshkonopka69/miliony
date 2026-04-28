@@ -1,4 +1,4 @@
-// Content filtering utilities for SportMap moderation system
+// Content filtering utilities for SportsMap moderation system
 
 export interface ContentFilter {
   id: string;

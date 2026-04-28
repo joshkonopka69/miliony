@@ -8,7 +8,7 @@ import {
   StatusBar,
   ScrollView,
   Linking,
-} from 'react-native';
+} from 'react-native';
 
 interface VenueInfo {
   placeId: string;
@@ -94,7 +94,7 @@ export default function VenueInfoSheet({
         <View style={styles.header}>
           <View style={styles.dragHandle} />
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeText}>✕</Text>
+            <Text style={{fontSize: 16, color: '#6b7280'}}>✕</Text>
           </TouchableOpacity>
         </View>
 
@@ -119,7 +119,7 @@ export default function VenueInfoSheet({
 
           {/* Address */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📍 Address</Text>
+            <Text style={styles.sectionTitle}><Text style={{fontSize: 14, color: '#111827'}}>📍</Text> Address</Text>
             <Text style={styles.addressText}>{venue.address}</Text>
             <TouchableOpacity style={styles.directionsButton} onPress={handleDirections}>
               <Text style={styles.directionsText}>Get Directions</Text>
@@ -129,7 +129,7 @@ export default function VenueInfoSheet({
           {/* Contact Info */}
           {(venue.phoneNumber || venue.website) && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>📞 Contact</Text>
+              <Text style={styles.sectionTitle}><Text style={{fontSize: 14, color: '#111827'}}>📞</Text> Contact</Text>
               {venue.phoneNumber && (
                 <TouchableOpacity style={styles.contactItem} onPress={handleCall}>
                   <Text style={styles.contactText}>{venue.phoneNumber}</Text>
@@ -148,7 +148,7 @@ export default function VenueInfoSheet({
           {/* Opening Hours */}
           {venue.openingHours && venue.openingHours.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🕒 Hours</Text>
+              <Text style={styles.sectionTitle}><Text style={{fontSize: 14, color: '#111827'}}>🕒</Text> Hours</Text>
               <Text style={styles.hoursText}>{formatOpeningHours(venue.openingHours)}</Text>
             </View>
           )}
@@ -156,7 +156,7 @@ export default function VenueInfoSheet({
           {/* Photos Placeholder */}
           {venue.photos && venue.photos.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>📸 Photos</Text>
+              <Text style={styles.sectionTitle}><Text style={{fontSize: 14, color: '#111827'}}>📷</Text> Photos</Text>
               <View style={styles.photosContainer}>
                 <Text style={styles.photosText}>
                   {venue.photos.length} photo{venue.photos.length !== 1 ? 's' : ''} available

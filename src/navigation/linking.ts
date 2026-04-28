@@ -8,7 +8,8 @@ const prefix = Linking.createURL('/');
 export const linking = {
     prefixes: [
         prefix,
-        'sportmap://',
+        'SportsMap://',
+        'sportsmap://',
         'https://ujfeqshqhlplmolfrlvc.supabase.co',
     ],
     config: {

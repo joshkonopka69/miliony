@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, SafeAreaView, FlatList, Image, ActivityIndicator } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +7,8 @@ import { friendService } from '../services/friendService';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { SMLogo } from '../components';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 
 interface User {
@@ -23,6 +25,8 @@ export default function AddFriendScreen() {
   const navigation = useAppNavigation();
   const { getUserId } = useAuth();
   const { t } = useTranslation();
+  const { showSuccess, showError, showInfo } = useToast();
+  const { showConfirmation } = useConfirmation();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -52,11 +56,78 @@ export default function AddFriendScreen() {
   const handleBack = () => {
     navigation.goBack();
   };
-
-  // Debounce timer ref
+  // Debounce ref - prevents re-renders
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const handleSearch = async (query: string) => {
+  // Execute search function
+  const executeSearch = async (query?: string) => {
+    const searchTerm = query ?? searchQuery;
+
+    if (searchTerm.length < 3) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const userId = getUserId();
+    if (!userId) return;
+
+    console.log('[Search] Executing search for:', searchTerm);
+    setIsSearching(true);
+
+    try {
+      const users = await supabaseService.searchUsers(searchTerm.trim(), userId);
+      console.log('[Search] Results:', users.length);
+
+      if (users.length === 0) {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+
+      // Show results immediately
+      const quickResults: User[] = users.map((user: any) => ({
+        id: user.id,
+        display_name: user.display_name,
+        avatar_url: user.avatar_url,
+        isFriend: friends.has(user.id),
+        friendshipStatus: friends.has(user.id) ? 'accepted' : 'none',
+        isPendingSender: false,
+        mutualFriends: 0,
+      }));
+
+      setSearchResults(quickResults);
+      setIsSearching(false);
+
+      // Load friendship status in background
+      const userIds = users.map((u: any) => u.id);
+      friendService.getBatchFriendRequestStatus(userId, userIds)
+        .then(statusMap => {
+          setSearchResults(prev => prev.map(user => {
+            const status = statusMap.get(user.id);
+            if (status) {
+              const isPendingSender = status.sentRequestId !== null;
+              const isPendingReceiver = status.receivedRequestId !== null;
+              return {
+                ...user,
+                friendshipStatus: (isPendingSender || isPendingReceiver) ? 'pending' : user.friendshipStatus,
+                isPendingSender,
+              };
+            }
+            return user;
+          }));
+        })
+        .catch(err => console.log('[Search] Status fetch failed:', err));
+
+    } catch (error: any) {
+      console.error('[Search] Error:', error);
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  };
+
+  // Handle text change with debounced auto-search
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
 
     // Clear previous timeout
@@ -64,100 +135,45 @@ export default function AddFriendScreen() {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    if (query.length > 2) {
-      // Debounce search by 300ms
-      searchTimeoutRef.current = setTimeout(async () => {
-        const userId = getUserId();
-        if (!userId) {
-          Alert.alert(t.common.error, t.friends.loginRequired);
-          return;
-        }
-
-        setIsSearching(true);
-        try {
-          // Search for users
-          const users = await supabaseService.searchUsers(query, userId);
-
-          if (users.length === 0) {
-            setSearchResults([]);
-            setIsSearching(false);
-            return;
-          }
-
-          // Get user IDs for batch query
-          const userIds = users.map((user: any) => user.id);
-
-          // OPTIMIZED: Batch get friendship status and friend requests in parallel
-          // Only 2 API calls total instead of 4*N where N = number of users
-          const [friendRequestStatus] = await Promise.all([
-            friendService.getBatchFriendRequestStatus(userId, userIds),
-          ]);
-
-          // Map results - no individual API calls per user!
-          const usersWithStatus = users.map((user: any) => {
-            const requestStatus = friendRequestStatus.get(user.id) || { sentRequestId: null, receivedRequestId: null };
-
-            const isPendingSender = requestStatus.sentRequestId !== null;
-            const isPendingReceiver = requestStatus.receivedRequestId !== null;
-
-            // If there's a pending request, show pending status
-            // Otherwise check if already friends from the friends set
-            let effectiveStatus: 'none' | 'pending' | 'accepted' | 'blocked' = 'none';
-            if (isPendingSender || isPendingReceiver) {
-              effectiveStatus = 'pending';
-            } else if (friends.has(user.id)) {
-              effectiveStatus = 'accepted';
-            }
-
-            return {
-              id: user.id,
-              display_name: user.display_name,
-              avatar_url: user.avatar_url,
-              isFriend: friends.has(user.id),
-              friendshipStatus: effectiveStatus,
-              isPendingSender, // true = I sent, false = They sent (or no pending)
-              mutualFriends: 0, // Skip expensive mutual friends count for performance
-            };
-          });
-
-          setSearchResults(usersWithStatus);
-        } catch (error: any) {
-          console.error('Error searching users:', error);
-          Alert.alert(t.common.error, error.message || t.common.error);
-        } finally {
-          setIsSearching(false);
-        }
-      }, 300); // 300ms debounce
-    } else {
+    if (query.length < 3) {
       setSearchResults([]);
+      setIsSearching(false);
+      return;
     }
+
+    // Show loading indicator immediately
+    setIsSearching(true);
+
+    // Debounce - wait 200ms after user stops typing
+    searchTimeoutRef.current = setTimeout(() => {
+      executeSearch(query);
+    }, 200);
   };
 
   const handleAddFriend = async (friendId: string, userName: string) => {
     const userId = getUserId();
     if (!userId) {
-      Alert.alert(t.common.error, t.friends.loginRequired);
+      showError(t.friends.loginRequired, t.common.error);
       return;
     }
 
-    Alert.alert(
-      t.friends.addConfirmTitle,
-      t.friends.addConfirmMessage.replace('{name}', userName),
-      [
+    showConfirmation({
+      title: t.friends.addConfirmTitle,
+      message: t.friends.addConfirmMessage.replace('{name}', userName),
+      icon: '??',
+      buttons: [
         { text: t.common.cancel, style: 'cancel' },
         {
           text: t.friends.sendRequest,
           onPress: async () => {
             try {
-              // Use friendService which correctly inserts into friend_requests table
               const success = await friendService.sendFriendRequest(userId, friendId, `Hi ${userName}!`);
               if (!success) {
-                Alert.alert(t.common.error, 'Failed to send friend request.');
+                showError('Failed to send friend request.', t.common.error);
                 return;
               }
-              Alert.alert(t.common.success, t.friends.addSuccess.replace('{name}', userName));
+              showSuccess(t.friends.addSuccess.replace('{name}', userName), t.common.success);
 
-              // Update search results to show pending status AND mark as sender
               setSearchResults(prev =>
                 prev.map(user =>
                   user.id === friendId
@@ -167,148 +183,143 @@ export default function AddFriendScreen() {
               );
             } catch (error: any) {
               console.error('Error sending friend request:', error);
-              Alert.alert(t.common.error, error.message || t.common.error);
+              showError(error.message || t.common.error, t.common.error);
             }
           }
         }
       ]
-    );
+    });
   };
 
   const handleCancelRequest = async (receiverId: string, userName: string) => {
     const userId = getUserId();
     if (!userId) {
-      Alert.alert(t.common.error, t.friends.loginRequired);
+      showError(t.friends.loginRequired, t.common.error);
       return;
     }
 
-    Alert.alert(
-      'Cancel Request',
-      `Cancel friend request to ${userName}?`,
-      [
+    showConfirmation({
+      title: 'Cancel Request',
+      message: 'Are you sure you want to cancel this friend request?',
+      icon: '??',
+      buttons: [
         { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Cancel Request',
-          style: 'destructive',
+          text: t.common.confirm,
           onPress: async () => {
             try {
               const requestId = await friendService.getPendingRequestIdToUser(userId, receiverId);
-
               if (!requestId) {
-                Alert.alert(t.common.error, 'No pending request found.');
+                showError('No pending request found.', t.common.error);
+                return;
+              }
+              const success = await friendService.cancelFriendRequest(requestId);
+              if (!success) {
+                showError('Failed to cancel friend request.', t.common.error);
                 return;
               }
 
-              await friendService.cancelFriendRequest(requestId);
-              Alert.alert(t.common.success, 'Friend request cancelled.');
+              showSuccess('Friend request cancelled.', t.common.success);
 
-              setSearchResults(prev =>
-                prev.map(user =>
-                  user.id === receiverId
-                    ? { ...user, friendshipStatus: 'none' as const }
-                    : user
-                )
-              );
+              // Only refresh results
+              executeSearch();
             } catch (error: any) {
               console.error('Error cancelling friend request:', error);
-              Alert.alert(t.common.error, error.message || t.common.error);
+              showError(error.message || t.common.error, t.common.error);
             }
           }
         }
       ]
-    );
+    });
   };
 
   const handleAcceptRequest = async (senderId: string, senderName: string) => {
     const userId = getUserId();
     if (!userId) {
-      Alert.alert(t.common.error, t.friends.loginRequired);
+      showError(t.friends.loginRequired, t.common.error);
       return;
     }
 
     try {
       const requestId = await friendService.getReceivedRequestIdFromUser(userId, senderId);
       if (!requestId) {
-        Alert.alert(t.common.error, 'No pending request found.');
+        showError('No pending request found.', t.common.error);
         return;
       }
 
       const success = await friendService.acceptFriendRequest(requestId);
-      if (success) {
-        Alert.alert(t.common.success, `You are now friends with ${senderName}!`);
-        setSearchResults(prev =>
-          prev.map(user =>
-            user.id === senderId
-              ? { ...user, isFriend: true, friendshipStatus: 'accepted' as const }
-              : user
-          )
-        );
-      } else {
-        Alert.alert(t.common.error, 'Failed to accept friend request.');
+      if (!success) {
+        showError('Failed to accept friend request.', t.common.error);
+        return;
       }
+
+      showSuccess(`You are now friends with ${senderName}!`, t.common.success);
+
+      // Update local friends set
+      setFriends(prev => new Set([...prev, senderId]));
+
+      // Refresh results
+      executeSearch();
     } catch (error: any) {
       console.error('Error accepting friend request:', error);
-      Alert.alert(t.common.error, error.message || t.common.error);
+      showError(error.message || t.common.error, t.common.error);
     }
   };
 
   const handleDeclineRequest = async (senderId: string, senderName: string) => {
     const userId = getUserId();
     if (!userId) {
-      Alert.alert(t.common.error, t.friends.loginRequired);
+      showError(t.friends.loginRequired, t.common.error);
       return;
     }
 
-    Alert.alert(
-      'Decline Request',
-      `Decline friend request from ${senderName}?`,
-      [
+    showConfirmation({
+      title: 'Decline Request',
+      message: 'Reject this friend request?',
+      icon: '?',
+      buttons: [
         { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Decline',
-          style: 'destructive',
+          text: t.common.confirm,
           onPress: async () => {
             try {
               const requestId = await friendService.getReceivedRequestIdFromUser(userId, senderId);
               if (!requestId) {
-                Alert.alert(t.common.error, 'No pending request found.');
+                showError('No pending request found.', t.common.error);
+                return;
+              }
+              const success = await friendService.declineFriendRequest(requestId);
+              if (!success) {
+                showError('Failed to decline friend request.', t.common.error);
                 return;
               }
 
-              const success = await friendService.declineFriendRequest(requestId);
-              if (success) {
-                Alert.alert(t.common.success, 'Friend request declined.');
-                setSearchResults(prev =>
-                  prev.map(user =>
-                    user.id === senderId
-                      ? { ...user, friendshipStatus: 'none' as const }
-                      : user
-                  )
-                );
-              } else {
-                Alert.alert(t.common.error, 'Failed to decline friend request.');
-              }
+              showSuccess('Friend request declined.', t.common.success);
+
+              // Refresh results
+              executeSearch();
             } catch (error: any) {
               console.error('Error declining friend request:', error);
-              Alert.alert(t.common.error, error.message || t.common.error);
+              showError(error.message || t.common.error, t.common.error);
             }
           }
         }
       ]
-    );
+    });
   };
 
   const handleRemoveFriend = async (friendId: string, userName: string) => {
     const userId = getUserId();
     if (!userId) {
-      Alert.alert('Error', 'You must be logged in');
+      showError('You must be logged in', 'Error');
       return;
     }
 
-    Alert.alert(
-      t.friends.removeConfirmTitle,
-      t.friends.removeConfirmMessage.replace('{name}', userName),
-      [
+    showConfirmation({
+      title: t.friends.removeConfirmTitle,
+      message: t.friends.removeConfirmMessage.replace('{name}', userName),
+      icon: '???',
+      buttons: [
         { text: t.common.cancel, style: 'cancel' },
         {
           text: t.friends.removeConfirmButton,
@@ -316,29 +327,25 @@ export default function AddFriendScreen() {
           onPress: async () => {
             try {
               await supabaseService.removeFriend(userId, friendId);
-              Alert.alert(t.common.success, t.friends.removeSuccess.replace('{name}', userName));
+              showSuccess(t.friends.removeSuccess.replace('{name}', userName), t.common.success);
 
-              // Update search results and friends list
-              setSearchResults(prev =>
-                prev.map(user =>
-                  user.id === friendId
-                    ? { ...user, isFriend: false, friendshipStatus: 'none' as const }
-                    : user
-                )
-              );
+              // Update local friends set
               setFriends(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(friendId);
-                return newSet;
+                const next = new Set(prev);
+                next.delete(friendId);
+                return next;
               });
+
+              // Refresh results
+              executeSearch();
             } catch (error: any) {
               console.error('Error removing friend:', error);
-              Alert.alert(t.common.error, error.message || t.common.error);
+              showError(error.message || t.common.error, t.common.error);
             }
           }
         }
       ]
-    );
+    });
   };
 
   const renderUserItem = ({ item }: { item: User }) => {
@@ -406,13 +413,13 @@ export default function AddFriendScreen() {
               style={[styles.actionButton, styles.acceptButton]}
               onPress={() => handleAcceptRequest(item.id, item.display_name)}
             >
-              <Text style={[styles.actionButtonText, styles.acceptButtonText]}>Accept</Text>
+              <Text style={[styles.actionButtonText, styles.acceptButtonText]}>{t.placeDetails?.accept || 'Accept'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.declineButton]}
               onPress={() => handleDeclineRequest(item.id, item.display_name)}
             >
-              <Text style={[styles.actionButtonText, styles.declineButtonText]}>Decline</Text>
+              <Text style={[styles.actionButtonText, styles.declineButtonText]}>{t.placeDetails?.decline || 'Decline'}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -440,7 +447,7 @@ export default function AddFriendScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyStateIcon}>👥</Text>
+      <Text style={{fontSize: 43, color: '#ccc'}}>👥</Text>
       <Text style={styles.emptyStateTitle}>{t.friends.emptyResultsTitle}</Text>
       <Text style={styles.emptyStateText}>
         {t.friends.emptyResultsSubtitle}
@@ -453,7 +460,7 @@ export default function AddFriendScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t.profile.addFriends}</Text>
         <SMLogo />
@@ -468,12 +475,14 @@ export default function AddFriendScreen() {
           </Text>
 
           <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <Text style={{fontSize: 16, color: '#8e8e93'}}>🔍</Text>
             <TextInput
               style={styles.searchInput}
               placeholder={t.friends.searchPlaceholder}
               value={searchQuery}
               onChangeText={handleSearch}
+              onSubmitEditing={() => executeSearch()}
+              returnKeyType="search"
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -524,35 +533,35 @@ export default function AddFriendScreen() {
 
           <TouchableOpacity style={styles.quickActionItem}>
             <View style={styles.quickActionIcon}>
-              <Text style={styles.quickActionIconText}>📱</Text>
+              <Text style={{fontSize: 16, color: '#666'}}>📱</Text>
             </View>
             <View style={styles.quickActionInfo}>
               <Text style={styles.quickActionTitle}>{t.friends.quickActions.contactsTitle}</Text>
               <Text style={styles.quickActionSubtitle}>{t.friends.quickActions.contactsSubtitle}</Text>
             </View>
-            <Text style={styles.quickActionArrow}>›</Text>
+            <Text style={{fontSize: 14, color: '#999'}}>›</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickActionItem}>
             <View style={styles.quickActionIcon}>
-              <Text style={styles.quickActionIconText}>🔗</Text>
+              <Text style={{fontSize: 16, color: '#666'}}>🔗</Text>
             </View>
             <View style={styles.quickActionInfo}>
               <Text style={styles.quickActionTitle}>{t.friends.quickActions.inviteLinkTitle}</Text>
               <Text style={styles.quickActionSubtitle}>{t.friends.quickActions.inviteLinkSubtitle}</Text>
             </View>
-            <Text style={styles.quickActionArrow}>›</Text>
+            <Text style={{fontSize: 14, color: '#999'}}>›</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickActionItem}>
             <View style={styles.quickActionIcon}>
-              <Text style={styles.quickActionIconText}>👥</Text>
+              <Text style={{fontSize: 16, color: '#666'}}>📍</Text>
             </View>
             <View style={styles.quickActionInfo}>
               <Text style={styles.quickActionTitle}>{t.friends.quickActions.nearbyTitle}</Text>
               <Text style={styles.quickActionSubtitle}>{t.friends.quickActions.nearbySubtitle}</Text>
             </View>
-            <Text style={styles.quickActionArrow}>›</Text>
+            <Text style={{fontSize: 14, color: '#999'}}>›</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

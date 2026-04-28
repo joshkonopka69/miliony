@@ -9,18 +9,21 @@ import {
   Alert,
   SafeAreaView,
   Image,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from 'react-native';
 import { GameChatScreenProps } from '../navigation/types';
 import { useAuth } from '../contexts/AuthContext';
 import { supabaseService, EventMessage } from '../services/supabase';
 import ProfilePreviewModal, { ProfilePreviewUser } from '../components/ProfilePreviewModal';
 import { ROUTES } from '../navigation/types';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 
 export default function GameChatScreen({ navigation, route }: GameChatScreenProps) {
   const { game } = route.params || {};
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
 
   const [messages, setMessages] = useState<Array<{
     id: string;
@@ -132,7 +135,7 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
       setIsSending(true);
       const sent = await supabaseService.sendEventMessage(game.id, user.id, newMessage.trim());
       if (!sent) {
-        Alert.alert('Error', 'Failed to send message');
+        showError('Failed to send message', 'Error');
         return;
       }
 
@@ -159,7 +162,7 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
       setNewMessage('');
     } catch (error) {
       console.error('Error sending event message:', error);
-      Alert.alert('Error', 'Failed to send message');
+      showError('Failed to send message', 'Error');
     } finally {
       setIsSending(false);
     }
@@ -170,7 +173,7 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
       {/* Header - matching ProfileScreen design */}
       <View style={styles.header}>
         <Image
-          source={require('../../assets/logo.png')}
+          source={require('../../assets/logo/sm-icon-logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -180,7 +183,7 @@ export default function GameChatScreen({ navigation, route }: GameChatScreenProp
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="close" size={28} color="#000000" />
+          <Text style={{fontSize: 25, color: '#000000'}}>✕</Text>
         </TouchableOpacity>
       </View>
 

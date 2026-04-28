@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Animated,
   RefreshControl,
-} from 'react-native';
+} from 'react-native';
 import { NotificationData, NotificationType } from '../../services/notificationService';
 import NotificationItem from './NotificationItem';
 
@@ -124,9 +124,13 @@ export default function NotificationList({
       friend_request: '👤',
       friend_request_accepted: '✅',
       event_invitation: '📅',
+      event_invite: '📅',
+      event_created: '🎉',
       group_invite: '👥',
+      group_invite_accepted: '👥',
       event_cancelled: '❌',
       event_updated: '📝',
+      event_update: '📝',
       event_reminder: '⏰',
       chat_message: '💬',
       system_announcement: '📢',
@@ -136,6 +140,7 @@ export default function NotificationList({
       weather_alert: '🌤️',
       achievement_unlocked: '🏆',
       friend_activity: '🎯',
+      general: '🔔',
     };
     return icons[type] || '🔔';
   };
@@ -146,9 +151,13 @@ export default function NotificationList({
       friend_request: '#2196F3',
       friend_request_accepted: '#4CAF50',
       event_invitation: '#FF9800',
+      event_invite: '#FF9800',
+      event_created: '#4CAF50',
       group_invite: '#3B82F6',
+      group_invite_accepted: '#4CAF50',
       event_cancelled: '#F44336',
       event_updated: '#FF9800',
+      event_update: '#FF9800',
       event_reminder: '#9C27B0',
       chat_message: '#2196F3',
       system_announcement: '#607D8B',
@@ -158,6 +167,7 @@ export default function NotificationList({
       weather_alert: '#FFC107',
       achievement_unlocked: '#FFD700',
       friend_activity: '#E91E63',
+      general: '#666666',
     };
     return colors[type] || '#666666';
   };
@@ -256,7 +266,7 @@ export default function NotificationList({
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🔔</Text>
+              <Text style={{fontSize: 43, color: '#999'}}>🔔</Text>
               <Text style={styles.emptyTitle}>{emptyMessage}</Text>
               <Text style={styles.emptySubtitle}>{emptySubtitle}</Text>
             </View>

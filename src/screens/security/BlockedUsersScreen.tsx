@@ -19,6 +19,8 @@ import { useModeration } from '../../hooks/useModeration';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
 import { UserModerationStatus } from '../../services/moderationService';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 
 interface BlockedUsersScreenProps {
   navigation: any;
@@ -27,6 +29,8 @@ interface BlockedUsersScreenProps {
 export default function BlockedUsersScreen({ navigation }: BlockedUsersScreenProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const {
     getUserModerationStatus,
     blockUser,
@@ -80,12 +84,12 @@ export default function BlockedUsersScreen({ navigation }: BlockedUsersScreenPro
 
   const handleTakeAction = async () => {
     if (!selectedUser || !actionType || !actionReason) {
-      Alert.alert('Error', 'Please select an action and provide a reason');
+      showError('Please select an action and provide a reason', 'Error');
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to take moderation actions');
+      showError('You must be logged in to take moderation actions', 'Error');
       return;
     }
 
@@ -102,10 +106,11 @@ export default function BlockedUsersScreen({ navigation }: BlockedUsersScreenPro
       }
 
       if (success) {
-        Alert.alert(
-          'Action Taken',
-          `User ${actionType} action has been applied successfully.`,
-          [
+        showConfirmation({
+          title: 'Action Taken',
+          message: `User ${actionType} action has been applied successfully.`,
+          icon: '🛡️',
+          buttons: [
             {
               text: 'OK',
               onPress: () => {
@@ -118,11 +123,11 @@ export default function BlockedUsersScreen({ navigation }: BlockedUsersScreenPro
               },
             },
           ]
-        );
+        });
       }
     } catch (error) {
       console.error('Error taking moderation action:', error);
-      Alert.alert('Error', 'Failed to take moderation action. Please try again.');
+      showError('Failed to take moderation action. Please try again.', 'Error');
     } finally {
       setIsProcessing(false);
     }
@@ -230,7 +235,7 @@ export default function BlockedUsersScreen({ navigation }: BlockedUsersScreenPro
 
         <ScrollView style={styles.modalContent}>
           {selectedUser && (
-            <View style={styles.userDetails}>
+            <View style={styles.modalUserDetails}>
               <Text style={styles.detailTitle}>User Details</Text>
               <Text style={styles.detailText}>User ID: {selectedUser.user_id}</Text>
               <Text style={styles.detailText}>Status: {selectedUser.status}</Text>
@@ -324,7 +329,7 @@ export default function BlockedUsersScreen({ navigation }: BlockedUsersScreenPro
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -567,7 +572,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  userDetails: {
+  modalUserDetails: {
     backgroundColor: '#F8F9FA',
     padding: 16,
     borderRadius: 8,

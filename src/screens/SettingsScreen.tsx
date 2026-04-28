@@ -1,8 +1,10 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, SafeAreaView, StatusBar, Animated, Dimensions, Image } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, Animated, Dimensions, Image } from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { ROUTES } from '../navigation/types';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useConfirmation } from '../components/ConfirmationModal';
+import { useToast } from '../components/ToastProvider';
 
 const { width } = Dimensions.get('window');
 
@@ -11,6 +13,8 @@ import { SMLogo } from '../components';
 export default function SettingsScreen() {
   const navigation = useAppNavigation();
   const { t, language, setLanguage, availableLanguages } = useTranslation();
+  const { showConfirmation } = useConfirmation();
+  const { showSuccess } = useToast();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -41,10 +45,11 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      t.settings.logoutConfirm,
-      t.settings.logoutMessage,
-      [
+    showConfirmation({
+      title: t.settings.logoutConfirm,
+      message: t.settings.logoutMessage,
+      icon: '??',
+      buttons: [
         { text: t.common.cancel, style: 'cancel' },
         {
           text: t.settings.logout,
@@ -52,25 +57,26 @@ export default function SettingsScreen() {
           onPress: () => navigation.navigate('Welcome')
         }
       ]
-    );
+    });
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      t.settings.deleteConfirm,
-      t.settings.deleteMessage,
-      [
+    showConfirmation({
+      title: t.settings.deleteConfirm,
+      message: t.settings.deleteMessage,
+      icon: '??',
+      buttons: [
         { text: t.common.cancel, style: 'cancel' },
         {
           text: t.common.delete,
           style: 'destructive',
           onPress: () => {
-            Alert.alert(t.settings.deleteAccount, t.settings.deleteSuccess);
+            showSuccess('Account deleted successfully', 'Goodbye');
             navigation.navigate('Welcome');
           }
         }
       ]
-    );
+    });
   };
 
   const renderSettingItem = (
@@ -85,7 +91,7 @@ export default function SettingsScreen() {
       activeOpacity={0.7}
     >
       <Text style={styles.settingTitle}>{title}</Text>
-      {rightComponent || <Text style={styles.chevronIcon}>›</Text>}
+      {rightComponent || <Text style={{fontSize: 16, color: '#666'}}>?</Text>}
     </TouchableOpacity>
   );
 
@@ -104,7 +110,7 @@ export default function SettingsScreen() {
         ]}
       >
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <SMLogo />
         <Text style={styles.headerTitle}>{t.settings.title}</Text>
@@ -142,7 +148,7 @@ export default function SettingsScreen() {
                   <Text style={styles.languageText}>
                     {availableLanguages.find(lang => lang.code === language)?.name || 'English'}
                   </Text>
-                  <Text style={styles.chevronIcon}>›</Text>
+                  <Text style={{fontSize: 16, color: '#666'}}>?</Text>
                 </View>,
                 true
               )}
@@ -179,7 +185,7 @@ export default function SettingsScreen() {
               {renderSettingItem(
                 t.settings.backendTest,
                 () => navigation.navigate('BackendTest'),
-                <Text style={styles.chevronIcon}>›</Text>
+                <Text style={{fontSize: 16, color: '#666'}}>?</Text>
               )}
             </View>
           </View>
@@ -191,7 +197,7 @@ export default function SettingsScreen() {
               {renderSettingItem(
                 t.settings.deleteAccount,
                 handleDeleteAccount,
-                <Text style={styles.dangerChevron}>›</Text>,
+                <Text style={{fontSize: 14, color: '#FF3B30'}}>›</Text>,
                 false
               )}
             </View>

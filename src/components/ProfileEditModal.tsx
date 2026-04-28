@@ -7,11 +7,11 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
-  ActivityIndicator,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useToast } from './ToastProvider';
+import { useDialog } from '../contexts/DialogContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { theme } from '../styles/theme';
@@ -35,14 +35,14 @@ interface ProfileEditModalProps {
 }
 
 const AVAILABLE_SPORTS: SportActivity[] = [
-  'Football',
-  'Basketball',
-  'Tennis',
-  'Volleyball',
-  'Running',
-  'Cycling',
-  'Swimming',
-  'Gym',
+  'football',
+  'basketball',
+  'tennis',
+  'volleyball',
+  'running',
+  'cycling',
+  'swimming',
+  'gym',
 ];
 
 export default function ProfileEditModal({
@@ -51,9 +51,11 @@ export default function ProfileEditModal({
   profile,
   onSave,
 }: ProfileEditModalProps) {
+  const toast = useToast();
+  const dialog = useDialog();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  
+
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [bio, setBio] = useState(profile.bio || '');
   const [phone, setPhone] = useState(profile.phone || '');
@@ -80,7 +82,7 @@ export default function ProfileEditModal({
       setSelectedSports(selectedSports.filter((s) => s !== sport));
     } else {
       if (selectedSports.length >= 5) {
-        Alert.alert('Maximum Sports', 'You can select up to 5 favorite sports');
+        toast.showWarning('Maximum Sports', 'You can select up to 5 favorite sports');
         return;
       }
       setSelectedSports([...selectedSports, sport]);
@@ -91,7 +93,7 @@ export default function ProfileEditModal({
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need camera roll permissions to upload photos');
+        toast.showError('Permission Denied', 'We need camera roll permissions to upload photos');
         return;
       }
 
@@ -107,7 +109,7 @@ export default function ProfileEditModal({
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+      toast.showError('Error', 'Failed to pick image');
     }
   };
 
@@ -141,11 +143,11 @@ export default function ProfileEditModal({
 
       if (urlData?.publicUrl) {
         setAvatarUrl(urlData.publicUrl);
-        Alert.alert('Success', 'Photo uploaded successfully!');
+        toast.showSuccess('Success', 'Photo uploaded successfully!');
       }
     } catch (error: any) {
       console.error('Error uploading image:', error);
-      Alert.alert('Error', error.message || 'Failed to upload image');
+      toast.showError('Error', error.message || 'Failed to upload image');
     } finally {
       setUploading(false);
     }
@@ -154,22 +156,22 @@ export default function ProfileEditModal({
   const handleSave = async () => {
     // Validation
     if (!displayName.trim()) {
-      Alert.alert('Validation Error', 'Display name is required');
+      toast.showWarning('Validation Error', 'Display name is required');
       return;
     }
 
     if (displayName.length < 2) {
-      Alert.alert('Validation Error', 'Display name must be at least 2 characters');
+      toast.showWarning('Validation Error', 'Display name must be at least 2 characters');
       return;
     }
 
     if (displayName.length > 50) {
-      Alert.alert('Validation Error', 'Display name must be less than 50 characters');
+      toast.showWarning('Validation Error', 'Display name must be less than 50 characters');
       return;
     }
 
     if (bio.length > 500) {
-      Alert.alert('Validation Error', 'Bio must be less than 500 characters');
+      toast.showWarning('Validation Error', 'Bio must be less than 500 characters');
       return;
     }
 
@@ -192,12 +194,12 @@ export default function ProfileEditModal({
 
       if (error) throw error;
 
-      Alert.alert('Success', 'Profile updated successfully!');
+      toast.showSuccess('Success', 'Profile updated successfully!');
       onSave();
       onClose();
     } catch (error: any) {
       console.error('Error saving profile:', error);
-      Alert.alert('Error', error.message || 'Failed to update profile');
+      toast.showError('Error', error.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -223,14 +225,14 @@ export default function ProfileEditModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} disabled={loading}>
-            <Ionicons name="close" size={28} color={theme.colors.textPrimary} />
+            <Text style={{fontSize: 25, color: theme.colors.textPrimary}}>✕</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
           <TouchableOpacity onPress={handleSave} disabled={loading}>
             {loading ? (
               <ActivityIndicator color={theme.colors.primary} />
             ) : (
-              <Ionicons name="checkmark" size={28} color={theme.colors.primary} />
+              <Text style={{fontSize: 25, color: theme.colors.primary}}>✓</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -267,12 +269,12 @@ export default function ProfileEditModal({
                   )}
                 </View>
               </LinearGradient>
-              
+
               <View style={styles.cameraButton}>
-                <Ionicons name="camera" size={20} color={theme.colors.textOnPrimary} />
+                <Text style={{fontSize: 18, color: theme.colors.textOnPrimary}}>📷</Text>
               </View>
             </TouchableOpacity>
-            
+
             <Text style={styles.photoHint}>Tap to change photo</Text>
           </View>
 
@@ -280,7 +282,7 @@ export default function ProfileEditModal({
           <View style={styles.section}>
             <Text style={styles.label}>Display Name *</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={{fontSize: 18, color: theme.colors.textSecondary}}>👤</Text>
               <TextInput
                 style={styles.input}
                 value={displayName}
@@ -316,7 +318,7 @@ export default function ProfileEditModal({
           <View style={styles.section}>
             <Text style={styles.label}>Phone Number</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={{fontSize: 18, color: theme.colors.textSecondary}}>•</Text>
               <TextInput
                 style={styles.input}
                 value={phone}
@@ -332,7 +334,7 @@ export default function ProfileEditModal({
           <View style={styles.section}>
             <Text style={styles.label}>Location</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="location-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={{fontSize: 18, color: theme.colors.textSecondary}}>•</Text>
               <TextInput
                 style={styles.input}
                 value={location}
@@ -360,18 +362,14 @@ export default function ProfileEditModal({
                     onPress={() => toggleSport(sport)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons
-                      name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={20}
-                      color={isSelected ? theme.colors.primary : theme.colors.textSecondary}
-                    />
+                    <Text style={{fontSize: 18, color: isSelected ? theme.colors.primary : theme.colors.textSecondary}}>•</Text>
                     <Text
                       style={[
                         styles.sportChipText,
                         isSelected && styles.sportChipTextSelected,
                       ]}
                     >
-                      {sport}
+                      {sport.charAt(0).toUpperCase() + sport.slice(1)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -386,7 +384,7 @@ export default function ProfileEditModal({
           <View style={styles.section}>
             <Text style={styles.label}>Email</Text>
             <View style={[styles.inputContainer, styles.readOnlyInput]}>
-              <Ionicons name="mail-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={{fontSize: 18, color: theme.colors.textSecondary}}>✉</Text>
               <Text style={styles.readOnlyText}>{profile.email}</Text>
             </View>
             <Text style={styles.hint}>Email cannot be changed</Text>
@@ -409,7 +407,7 @@ export default function ProfileEditModal({
                 <ActivityIndicator color={theme.colors.textOnPrimary} />
               ) : (
                 <>
-                  <Ionicons name="checkmark-circle" size={24} color={theme.colors.textOnPrimary} />
+                  <Text style={{fontSize: 22, color: theme.colors.textOnPrimary}}>✓</Text>
                   <Text style={styles.saveButtonText}>Save Changes</Text>
                 </>
               )}
@@ -439,7 +437,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700',
     color: theme.colors.textPrimary,
   },
   content: {
@@ -476,7 +474,7 @@ const styles = StyleSheet.create({
   },
   photoPlaceholderText: {
     fontSize: 48,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700',
     color: theme.colors.textPrimary,
   },
   cameraButton: {
@@ -503,7 +501,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontWeight: '600',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
@@ -553,7 +551,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: theme.borderRadius.round,
     paddingVertical: theme.spacing.sm,
     paddingHorizontal: theme.spacing.md,
     gap: theme.spacing.xs,
@@ -566,12 +564,12 @@ const styles = StyleSheet.create({
   },
   sportChipText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: '500',
     color: theme.colors.textSecondary,
   },
   sportChipTextSelected: {
     color: theme.colors.primary,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700',
   },
   selectedCount: {
     fontSize: theme.typography.fontSize.sm,
@@ -606,7 +604,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700',
     color: theme.colors.textOnPrimary,
   },
 });

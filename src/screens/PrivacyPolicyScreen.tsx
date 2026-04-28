@@ -120,7 +120,7 @@ export default function PrivacyPolicyScreen() {
 
             <Text style={styles.sectionTitle}>5. Location Data</Text>
             <Text style={styles.text}>
-              SportMap uses location data to show you nearby sports facilities and events. You can control location sharing in your device settings. We only collect location data when you grant permission.
+              SportsMap uses location data to show you nearby sports facilities and events. You can control location sharing in your device settings. We only collect location data when you grant permission.
             </Text>
 
             <Text style={styles.sectionTitle}>6. Cookies and Tracking</Text>
@@ -164,7 +164,7 @@ export default function PrivacyPolicyScreen() {
             </Text>
 
             <Text style={styles.contactText}>
-              If you have any questions about this Privacy Policy, please contact us at privacy@sportmap.com
+              If you have any questions about this Privacy Policy, please contact us at privacy@SportsMap.com
             </Text>
           </View>
         </Animated.View>

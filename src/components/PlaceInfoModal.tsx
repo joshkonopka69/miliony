@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Linking,
-  Alert,
   ActivityIndicator,
   Dimensions,
   Platform,
-} from 'react-native';
+  Linking,
+} from 'react-native';
+import { useToast } from './ToastProvider';
+import { useDialog } from '../contexts/DialogContext';
 import { PlaceDetails } from '../services/placesApi';
 import { supabaseService } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -43,6 +44,8 @@ export default function PlaceInfoModal({
   console.log('🏢 PlaceInfoModal rendered:', { visible, loading, placeDetails: !!placeDetails });
   const { getUserId, user: authUser } = useAuth();
   const { t } = useTranslation();
+  const toast = useToast();
+  const dialog = useDialog();
   const userId = getUserId();
   const loginRequiredMessage = t.friends?.loginRequired || 'Please sign in to continue.';
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -77,12 +80,12 @@ export default function PlaceInfoModal({
       (eventRecord.max_participants ?? eventRecord.maxParticipants ?? 0);
 
     if (!userId) {
-      Alert.alert(t.common.error, loginRequiredMessage);
+      dialog.showInfo(t.common.error, loginRequiredMessage);
       return;
     }
 
     if (!isPrivate && isFull) {
-      Alert.alert(t.common.error, t.eventDetails.eventFull);
+      toast.showError(t.common.error, t.eventDetails.eventFull);
       return;
     }
 
@@ -93,12 +96,12 @@ export default function PlaceInfoModal({
 
       if (isPrivate) {
         if (requestStatus[eventRecord.id]) {
-          Alert.alert(t.eventDetails.requestAccess, t.eventDetails.requestPending);
+          toast.showWarning(t.eventDetails.requestAccess, t.eventDetails.requestPending);
           return;
         }
 
         if (!organizerId) {
-          Alert.alert(t.common.error, t.eventDetails.errorMessage);
+          toast.showError(t.common.error, t.eventDetails.errorMessage);
           return;
         }
 
@@ -117,21 +120,21 @@ export default function PlaceInfoModal({
         });
 
         setRequestStatus(prev => ({ ...prev, [eventRecord.id]: true }));
-        Alert.alert(t.common.success, t.eventDetails.requestSent);
+        toast.showSuccess(t.common.success, t.eventDetails.requestSent);
         return;
       }
 
       const joined = await supabaseService.joinEvent(eventRecord.id, userId);
 
       if (joined) {
-        Alert.alert(t.common.success, t.eventDetails.joinSuccess);
+        toast.showSuccess(t.common.success, t.eventDetails.joinSuccess);
         await fetchEventsAtLocation();
       } else {
-        Alert.alert(t.common.error, t.eventDetails.errorMessage);
+        toast.showError(t.common.error, t.eventDetails.errorMessage);
       }
     } catch (error) {
       console.error('Error joining event from place modal:', error);
-      Alert.alert(t.common.error, t.eventDetails.errorMessage);
+      toast.showError(t.common.error, t.eventDetails.errorMessage);
     } finally {
       setJoiningEventId(null);
     }
@@ -139,13 +142,13 @@ export default function PlaceInfoModal({
 
   const fetchEventsAtLocation = async () => {
     if (!placeDetails) return;
-    
+
     setIsLoadingEvents(true);
     try {
       // Handle different coordinate structures
-      const lat = placeDetails.coordinates?.lat || placeDetails.latitude;
-      const lng = placeDetails.coordinates?.lng || placeDetails.longitude;
-      
+      const lat = (placeDetails as any).coordinates?.lat || (placeDetails as any).latitude;
+      const lng = (placeDetails as any).coordinates?.lng || (placeDetails as any).longitude;
+
       if (!lat || !lng) {
         console.warn('⚠️ PlaceInfoModal: No valid coordinates found', placeDetails);
         setIsLoadingEvents(false);
@@ -171,14 +174,14 @@ export default function PlaceInfoModal({
         <View style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
+              <Text style={{fontSize: 16, color: '#333'}}>✕</Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Loading Place Details...</Text>
+            <Text style={styles.headerTitle}>{t.placeDetails?.loadingDetails || 'Loading Place Details...'}</Text>
             <View style={styles.placeholder} />
           </View>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#3b82f6" />
-            <Text style={styles.loadingText}>Fetching place information...</Text>
+            <Text style={styles.loadingText}>{t.placeDetails?.fetchingInfo || 'Fetching place information...'}</Text>
           </View>
         </View>
       </Modal>
@@ -191,32 +194,32 @@ export default function PlaceInfoModal({
     if (placeDetails.phoneNumber) {
       const phoneUrl = `tel:${placeDetails.phoneNumber}`;
       Linking.openURL(phoneUrl).catch(() => {
-        Alert.alert('Error', 'Unable to make phone call');
+        toast.showError('Error', 'Unable to make phone call');
       });
     } else {
-      Alert.alert('No Phone Number', 'Phone number not available for this place');
+      toast.showInfo('No Phone Number', 'Phone number not available for this place');
     }
   };
 
   const handleWebsite = () => {
     if (placeDetails.website) {
       Linking.openURL(placeDetails.website).catch(() => {
-        Alert.alert('Error', 'Unable to open website');
+        toast.showError('Error', 'Unable to open website');
       });
     } else {
-      Alert.alert('No Website', 'Website not available for this place');
+      toast.showInfo('No Website', 'Website not available for this place');
     }
   };
 
   const handleDirections = () => {
-    const lat = placeDetails.coordinates?.lat || placeDetails.latitude;
-    const lng = placeDetails.coordinates?.lng || placeDetails.longitude;
-    
+    const lat = (placeDetails as any).coordinates?.lat || (placeDetails as any).latitude;
+    const lng = (placeDetails as any).coordinates?.lng || (placeDetails as any).longitude;
+
     if (!lat || !lng) {
-      Alert.alert('Error', 'Location coordinates not available');
+      toast.showError('Error', 'Location coordinates not available');
       return;
     }
-    
+
     const label = encodeURIComponent(placeDetails.name);
     const url = Platform.select({
       ios: `maps:0,0?q=${lat},${lng}(${label})`,
@@ -265,7 +268,7 @@ export default function PlaceInfoModal({
     if (!placeDetails.photos || placeDetails.photos.length === 0) {
       return (
         <View style={styles.photoPlaceholder}>
-          <Text style={styles.photoPlaceholderText}>📷 No photos available</Text>
+          <Text style={styles.photoPlaceholderText}><Text style={{fontSize: 16, color: '#666'}}>•</Text> No photos available</Text>
         </View>
       );
     }
@@ -309,7 +312,7 @@ export default function PlaceInfoModal({
 
     return (
       <View style={styles.reviewsSection}>
-        <Text style={styles.sectionTitle}>Reviews</Text>
+        <Text style={styles.sectionTitle}>{t.placeDetails?.reviews || 'Reviews'}</Text>
         {placeDetails.reviews.slice(0, 3).map((review, index) => (
           <View key={index} style={styles.reviewItem}>
             <View style={styles.reviewHeader}>
@@ -332,7 +335,7 @@ export default function PlaceInfoModal({
 
     return (
       <View style={styles.hoursSection}>
-        <Text style={styles.sectionTitle}>Hours</Text>
+        <Text style={styles.sectionTitle}>{t.placeDetails?.hours || 'Hours'}</Text>
         <View style={styles.hoursContainer}>
           <Text style={[
             styles.openStatus,
@@ -367,7 +370,7 @@ export default function PlaceInfoModal({
 
     return (
       <View style={styles.typesSection}>
-        <Text style={styles.sectionTitle}>Categories</Text>
+        <Text style={styles.sectionTitle}>{t.placeDetails?.categories || 'Categories'}</Text>
         <View style={styles.typesContainer}>
           {placeDetails.types.slice(0, 5).map((type, index) => (
             <View key={index} style={styles.typeChip}>
@@ -386,7 +389,7 @@ export default function PlaceInfoModal({
 
   const renderFacilityInfo = () => {
     const facilities = [];
-    
+
     if (placeDetails.phoneNumber) facilities.push('📞 Phone Available');
     if (placeDetails.website) facilities.push('🌐 Website Available');
     if (placeDetails.openingHours) facilities.push('🕒 Hours Listed');
@@ -398,7 +401,7 @@ export default function PlaceInfoModal({
 
     return (
       <View style={styles.facilitiesSection}>
-        <Text style={styles.sectionTitle}>Facilities & Services</Text>
+        <Text style={styles.sectionTitle}>{t.placeDetails?.facilities || 'Facilities & Services'}</Text>
         <View style={styles.facilitiesContainer}>
           {facilities.map((facility, index) => (
             <Text key={index} style={styles.facilityItem}>{facility}</Text>
@@ -412,13 +415,13 @@ export default function PlaceInfoModal({
     const R = 6371; // Earth's radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c;
-    
+
     if (distance < 1) {
       return `${Math.round(distance * 1000)}m`;
     }
@@ -454,23 +457,23 @@ export default function PlaceInfoModal({
     const emojiMap: { [key: string]: string } = {
       basketball: '🏀',
       football: '⚽',
-      running: '🏃‍♂️',
+      running: 'walk-outline‍♂️',
       tennis: '🎾',
-      cycling: '🚴‍♂️',
-      swimming: '🏊‍♂️',
+      cycling: 'bicycle-outline‍♂️',
+      swimming: 'water-outline‍♂️',
       gym: '💪',
       volleyball: '🏐',
-      climbing: '🧗‍♂️',
+      climbing: 'trending-up-outline‍♂️',
       boxing: '🥊',
     };
-    return emojiMap[sportType] || '🏅';
+    return emojiMap[sportType] || '🏆';
   };
 
   const renderEventsSection = () => {
     return (
       <View style={styles.eventsSection}>
         <View style={styles.eventsSectionHeader}>
-          <Text style={styles.sectionTitle}>Upcoming Events</Text>
+          <Text style={styles.sectionTitle}>{t.placeDetails?.upcomingEvents || 'Upcoming Events'}</Text>
           <Text style={styles.eventsCount}>
             {events.length} {events.length === 1 ? 'event' : 'events'}
           </Text>
@@ -479,7 +482,7 @@ export default function PlaceInfoModal({
         {isLoadingEvents ? (
           <View style={styles.eventsLoadingContainer}>
             <ActivityIndicator size="small" color="#3b82f6" />
-            <Text style={styles.loadingText}>Loading events...</Text>
+            <Text style={styles.loadingText}>{t.placeDetails?.loadingEvents || 'Loading events...'}</Text>
           </View>
         ) : events.length > 0 ? (
           events.map((event) => {
@@ -497,76 +500,76 @@ export default function PlaceInfoModal({
                 onPress={() => onEventPress?.(event)}
                 activeOpacity={0.7}
               >
-              <View style={styles.eventHeader}>
-                <Text style={styles.eventEmoji}>{getSportEmoji(event.activity)}</Text>
-                <View style={styles.eventTitleContainer}>
-                  <Text style={styles.eventTitle} numberOfLines={1}>
-                    {event.name}
-                  </Text>
-                  <Text style={styles.eventCreator} numberOfLines={1}>
-                    by {event.creator?.display_name || 'Unknown'}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.eventDateTime}>
-                📅 {formatEventDateTime(event.scheduled_datetime)}
-              </Text>
-
-              <View style={styles.participantsRow}>
-                <Text style={styles.participantsText}>
-                  👥 {event.currentParticipants}/{event.max_participants} players
-                </Text>
-                <View style={styles.progressBarContainer}>
-                  <View
-                    style={[
-                      styles.progressBar,
-                      {
-                        width: `${(event.currentParticipants / event.max_participants) * 100}%`,
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-
-              {event.description && (
-                <Text style={styles.eventDescription} numberOfLines={2}>
-                  {event.description}
-                </Text>
-              )}
-              <View style={styles.eventActions}>
-                {isPrivate && (
-                  <View style={styles.privateTag}>
-                    <Text style={styles.privateTagText}>{t.eventDetails.requestAccess}</Text>
+                <View style={styles.eventHeader}>
+                  <Text style={{fontSize: 22, color: '#FFD700'}}>{getSportEmoji(event.activity)}</Text>
+                  <View style={styles.eventTitleContainer}>
+                    <Text style={styles.eventTitle} numberOfLines={1}>
+                      {event.name}
+                    </Text>
+                    <Text style={styles.eventCreator} numberOfLines={1}>
+                      by {event.creator?.display_name || 'Unknown'}
+                    </Text>
                   </View>
-                )}
-                <TouchableOpacity
-                  style={[
-                    styles.joinEventButton,
-                    (isFull && !isPrivate) && styles.joinEventButtonDisabled,
-                  ]}
-                  onPress={() => handleJoinEvent(event)}
-                  activeOpacity={0.8}
-                  disabled={isJoining || (isFull && !isPrivate) || (isPrivate && requestPending)}
-                >
-                  <Text style={styles.joinEventButtonText}>
-                    {isPrivate
-                      ? requestPending
-                        ? t.eventDetails.requestPending
-                        : t.eventDetails.requestAccess
-                      : isFull
-                        ? t.eventDetails.eventFull
-                        : t.eventDetails.joinGame}
+                </View>
+
+                <Text style={styles.eventDateTime}>
+                  📅 {formatEventDateTime(event.scheduled_datetime)}
+                </Text>
+
+                <View style={styles.participantsRow}>
+                  <Text style={styles.participantsText}>
+                    👥 {event.currentParticipants}/{event.max_participants} players
                   </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          );
+                  <View style={styles.progressBarContainer}>
+                    <View
+                      style={StyleSheet.flatten([
+                        styles.progressBar,
+                        {
+                          width: `${(event.currentParticipants / event.max_participants) * 100}%`,
+                        },
+                      ])}
+                    />
+                  </View>
+                </View>
+
+                {event.description && (
+                  <Text style={styles.eventDescription} numberOfLines={2}>
+                    {event.description}
+                  </Text>
+                )}
+                <View style={styles.eventActions}>
+                  {isPrivate && (
+                    <View style={styles.privateTag}>
+                      <Text style={styles.privateTagText}>{t.eventDetails.requestAccess}</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={StyleSheet.flatten([
+                      styles.joinEventButton,
+                      (isFull && !isPrivate) && styles.joinEventButtonDisabled,
+                    ])}
+                    onPress={() => handleJoinEvent(event)}
+                    activeOpacity={0.8}
+                    disabled={isJoining || (isFull && !isPrivate) || (isPrivate && requestPending)}
+                  >
+                    <Text style={styles.joinEventButtonText}>
+                      {isPrivate
+                        ? requestPending
+                          ? t.eventDetails.requestPending
+                          : t.eventDetails.requestAccess
+                        : isFull
+                          ? t.eventDetails.eventFull
+                          : t.eventDetails.joinGame}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            );
           })
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateEmoji}>📅</Text>
-            <Text style={styles.emptyStateTitle}>No events yet</Text>
+            <Text style={styles.emptyStateTitle}>{t.placeDetails?.noEvents || 'No events yet'}</Text>
             <Text style={styles.emptyStateDescription}>
               Be the first to create an event at this location!
             </Text>
@@ -582,9 +585,9 @@ export default function PlaceInfoModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeText}>✕</Text>
+            <Text style={{fontSize: 16, color: '#333'}}>✕</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Place Details</Text>
+          <Text style={styles.title}>{t.placeDetails?.title || 'Place Details'}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -596,7 +599,7 @@ export default function PlaceInfoModal({
           <View style={styles.basicInfo}>
             <Text style={styles.placeName}>{placeDetails.name}</Text>
             <Text style={styles.address}>{placeDetails.address}</Text>
-            
+
             <View style={styles.ratingContainer}>
               {placeDetails.rating && (
                 <View style={styles.ratingRow}>
@@ -610,13 +613,13 @@ export default function PlaceInfoModal({
             </View>
 
             {/* Distance */}
-            {userLocation && (placeDetails.coordinates?.lat || placeDetails.latitude) && (
+            {userLocation && (placeDetails as any).coordinates?.lat && (
               <Text style={styles.distanceText}>
-                📍 {calculateDistance(
+                <Text style={{fontSize: 13, color: '#3b82f6'}}>📍</Text> {calculateDistance(
                   userLocation.latitude,
                   userLocation.longitude,
-                  placeDetails.coordinates?.lat || placeDetails.latitude,
-                  placeDetails.coordinates?.lng || placeDetails.longitude
+                  (placeDetails as any).coordinates.lat,
+                  (placeDetails as any).coordinates.lng || 0
                 )} away
               </Text>
             )}
@@ -626,21 +629,21 @@ export default function PlaceInfoModal({
           <View style={styles.actionsContainer}>
             {placeDetails.phoneNumber && (
               <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
-                <Text style={styles.actionButtonIcon}>📞</Text>
-                <Text style={styles.actionButtonText}>Call</Text>
+                <Text style={{fontSize: 16, color: '#3b82f6'}}>📞</Text>
+                <Text style={styles.actionButtonText}>{t.placeDetails?.call || 'Call'}</Text>
               </TouchableOpacity>
             )}
 
             {placeDetails.website && (
               <TouchableOpacity style={styles.actionButton} onPress={handleWebsite}>
-                <Text style={styles.actionButtonIcon}>🌐</Text>
-                <Text style={styles.actionButtonText}>Website</Text>
+                <Text style={{fontSize: 16, color: '#3b82f6'}}>🌐</Text>
+                <Text style={styles.actionButtonText}>{t.placeDetails?.website || 'Website'}</Text>
               </TouchableOpacity>
             )}
 
             <TouchableOpacity style={styles.actionButton} onPress={handleDirections}>
-              <Text style={styles.actionButtonIcon}>🧭</Text>
-              <Text style={styles.actionButtonText}>Directions</Text>
+              <Text style={{fontSize: 16, color: '#3b82f6'}}>🧭</Text>
+              <Text style={styles.actionButtonText}>{t.placeDetails?.directions || 'Directions'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -661,8 +664,8 @@ export default function PlaceInfoModal({
 
           {/* Create Meetup Button */}
           <TouchableOpacity style={styles.createMeetupButton} onPress={handleCreateMeetup}>
-            <Text style={styles.createMeetupButtonIcon}>🏃</Text>
-            <Text style={styles.createMeetupButtonText}>Create Meetup Here</Text>
+            <Text style={{fontSize: 20, color: '#ffffff'}}>＋</Text>
+            <Text style={styles.createMeetupButtonText}>{t.placeDetails?.createMeetup || 'Create Meetup Here'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -697,6 +700,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: 'bold',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: 'bold',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
   },
   title: {
     fontSize: 18,
@@ -941,9 +954,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-  },
-  placeholder: {
-    width: 30,
   },
   distanceText: {
     fontSize: 14,

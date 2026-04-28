@@ -9,7 +9,6 @@ import {
   Modal,
   Switch,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 import Button from './ui/Button';
 import Card from './ui/Card';
@@ -116,7 +115,7 @@ export default function EventSearchFilter({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color={theme.colors.text} />
+            <Text style={{fontSize: 22, color: theme.colors.text}}>✕</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Search & Filters</Text>
           <TouchableOpacity onPress={handleResetFilters}>

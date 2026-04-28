@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import MapView, { Marker, Callout, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import { useToast } from './ToastProvider';
+import { useDialog } from '../contexts/DialogContext';
 import ExpoGoMap from './ExpoGoMap';
 import * as Location from 'expo-location';
 
@@ -62,7 +65,7 @@ const sportsLocations: SportLocation[] = [
     coordinate: { latitude: 40.7505, longitude: -73.9934 },
     description: 'Olympic-size swimming pool with diving boards',
     rating: 4.8,
-    icon: '🏊',
+    icon: 'water-outline',
     type: 'pool',
     facilities: ['Olympic Pool', 'Diving Boards', 'Locker Rooms', 'Sauna'],
     price: '$15/day',
@@ -75,7 +78,7 @@ const sportsLocations: SportLocation[] = [
     coordinate: { latitude: 40.7614, longitude: -73.9776 },
     description: 'Professional tennis courts with coaching available',
     rating: 4.6,
-    icon: '🎾',
+    icon: 'tennisball-outline',
     type: 'court',
     facilities: ['8 Courts', 'Pro Shop', 'Coaching', 'Restaurant'],
     price: '$25/hour',
@@ -101,7 +104,7 @@ const sportsLocations: SportLocation[] = [
     coordinate: { latitude: 40.7851, longitude: -73.9683 },
     description: 'Professional running track with scenic views',
     rating: 4.7,
-    icon: '🏃',
+    icon: 'walk-outline',
     type: 'track',
     facilities: ['400m Track', 'Water Stations', 'Stretching Area'],
     price: 'Free',
@@ -114,6 +117,8 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
   const [userLocation, setUserLocation] = useState<Region | null>(null);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const mapRef = useRef<MapView>(null);
+  const toast = useToast();
+  const dialog = useDialog();
 
   // Default region (New York City)
   const initialRegion: Region = {
@@ -132,7 +137,7 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
     try {
       const { status } = await Location.getForegroundPermissionsAsync();
       console.log('🔍 Existing permission status:', status);
-      
+
       if (status === 'granted') {
         console.log('✅ Location permission already granted');
         setHasLocationPermission(true);
@@ -147,7 +152,7 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
 
   useEffect(() => {
     if (onMapReady && mapRef && mapRef.current) {
-      onMapReady(mapRef);
+      onMapReady(mapRef as React.RefObject<MapView>);
     }
   }, [onMapReady]);
 
@@ -156,7 +161,7 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
       console.log('🔍 Requesting location permission...');
       const { status } = await Location.requestForegroundPermissionsAsync();
       console.log('📍 Permission status:', status);
-      
+
       if (status === 'granted') {
         console.log('✅ Location permission granted!');
         setHasLocationPermission(true);
@@ -165,13 +170,12 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
           onLocationPermissionGranted();
         }
       } else {
-        console.log('❌ Location permission denied');
-        Alert.alert('Permission denied', 'Location permission is required to show nearby sports facilities.');
+        dialog.showInfo('Permission denied', 'Location permission is required to show nearby sports facilities.');
       }
     } catch (err) {
       console.error('🚨 Location permission error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      Alert.alert('Error', `Failed to request location permission: ${errorMessage}`);
+      toast.showError('Error', `Failed to request location permission: ${errorMessage}`);
     }
   };
 
@@ -180,9 +184,8 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
       console.log('🌍 Getting current location...');
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
-        maximumAge: 60000,
       });
-      
+
       console.log('📍 Location received:', location.coords);
       const { latitude, longitude } = location.coords;
       const newRegion: Region = {
@@ -191,10 +194,10 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
       };
-      
+
       console.log('🗺️ Setting user location region:', newRegion);
       setUserLocation(newRegion);
-      
+
       // Animate to user location
       if (mapRef.current) {
         console.log('🎯 Animating to user location...');
@@ -205,7 +208,7 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
     } catch (error) {
       console.error('🚨 Location error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Location Error', `Unable to get your current location: ${errorMessage}`);
+      toast.showError('Location Error', `Unable to get your current location: ${errorMessage}`);
     }
   };
 
@@ -222,11 +225,11 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
 
   // Filter locations based on search query
   const filteredLocations = searchQuery
-    ? sportsLocationsData.filter(location =>
-        location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        location.sport.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        location.type.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? sportsLocationsData.filter((location: SportLocation) =>
+      location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      location.sport.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      location.type.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : sportsLocationsData;
 
   const getMarkerColor = (type: string) => {
@@ -273,7 +276,7 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
         )}
 
         {/* Sports Location Markers */}
-        {filteredLocations.map((location) => (
+        {filteredLocations.map((location: SportLocation) => (
           <Marker
             key={location.id}
             coordinate={location.coordinate}
@@ -305,7 +308,7 @@ export default function InteractiveMap({ onLocationSelect, searchQuery, onMapRea
           <Text style={styles.permissionText}>
             Allow location access to find nearby sports facilities and show your current position on the map.
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.permissionButton}
             onPress={requestLocationPermission}
             activeOpacity={0.8}

@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 import { ProfessionalButton } from './ui/ProfessionalButton';
 
@@ -17,11 +16,7 @@ export default function ErrorState({
 }: ErrorStateProps) {
   return (
     <View style={styles.container}>
-      <Ionicons 
-        name="warning-outline" 
-        size={64} 
-        color={theme.colors.error} 
-      />
+      <Text style={{fontSize: 58, color: theme.colors.error}}>•</Text>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       {onRetry && (

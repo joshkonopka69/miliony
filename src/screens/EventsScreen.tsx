@@ -8,8 +8,7 @@ import {
   ScrollView, 
   Image,
   ImageSourcePropType,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { ROUTES } from '../navigation/types';
 import { BottomNavBar } from '../components';
@@ -106,7 +105,7 @@ export default function EventsScreen() {
         onPress={() => handleChatPress(game)}
         activeOpacity={0.7}
       >
-        <Ionicons name="chatbubble-outline" size={24} color="#9ca3af" />
+        <Text style={{fontSize: 22, color: '#9ca3af'}}>•</Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -116,7 +115,7 @@ export default function EventsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color="#000000" />
+          <Text style={{fontSize: 22, color: '#000000'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Games</Text>
         <View style={styles.headerPlaceholder} />

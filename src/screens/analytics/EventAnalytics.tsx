@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { useAnalytics } from '../../hooks/useAnalytics';
 import { useTranslation } from '../../contexts/TranslationContext';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 import { MetricsCard } from '../../components/analytics/MetricsCard';
 import { AnalyticsChart } from '../../components/analytics/AnalyticsChart';
 import { DateRangePicker } from '../../components/analytics/DateRangePicker';
@@ -31,6 +33,9 @@ export default function EventAnalytics() {
     refreshAnalytics,
     clearError,
   } = useAnalytics();
+
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
 
   const [selectedDateRange, setSelectedDateRange] = useState<{
     start_date: string;
@@ -55,7 +60,7 @@ export default function EventAnalytics() {
 
   const loadEventAnalytics = async () => {
     if (!eventId) return;
-    
+
     try {
       await getEventAnalytics(eventId, selectedFilters);
     } catch (error) {
@@ -93,13 +98,13 @@ export default function EventAnalytics() {
   const handleExport = async (format: 'pdf' | 'csv' | 'excel' | 'json') => {
     try {
       if (!eventId) {
-        Alert.alert('Error', 'Please enter an event ID');
+        showError('Please enter an event ID', 'Error');
         return;
       }
       // Implementation would export event analytics data
-      Alert.alert('Export', `Event analytics exported as ${format.toUpperCase()}`);
+      showSuccess(`Event analytics exported as ${format.toUpperCase()}`, 'Export');
     } catch (error) {
-      Alert.alert('Error', 'Failed to export event analytics');
+      showError('Failed to export event analytics', 'Error');
     }
   };
 
@@ -206,7 +211,7 @@ export default function EventAnalytics() {
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Demographics</Text>
-        
+
         {demographics.age_groups && demographics.age_groups.length > 0 && (
           <View style={styles.demographicSection}>
             <Text style={styles.demographicTitle}>Age Groups</Text>
@@ -368,19 +373,19 @@ export default function EventAnalytics() {
     if (!eventAnalytics) return null;
 
     const insights = [];
-    
+
     if (eventAnalytics.attendance_rate > 80) {
       insights.push('High attendance rate indicates good event promotion');
     } else if (eventAnalytics.attendance_rate < 50) {
       insights.push('Low attendance rate - consider improving event promotion');
     }
-    
+
     if (eventAnalytics.feedback_scores.overall > 4) {
       insights.push('High satisfaction rating from participants');
     } else if (eventAnalytics.feedback_scores.overall < 3) {
       insights.push('Low satisfaction rating - consider improving event quality');
     }
-    
+
     if (eventAnalytics.engagement_score > 70) {
       insights.push('High engagement indicates good event content');
     }
@@ -421,7 +426,7 @@ export default function EventAnalytics() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.header}>
         <Text style={styles.title}>Event Analytics</Text>
         <ExportButton onExport={handleExport} />

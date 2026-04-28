@@ -11,6 +11,7 @@ import {
   TextInput,
   ActivityIndicator
 } from 'react-native';
+import { useDialog } from '../contexts/DialogContext';
 import GoogleMapsView from './GoogleMapsView';
 import EventPin from './EventPin';
 import EventSearchFilter, { EventSearchFilters } from './EventSearchFilter';
@@ -38,6 +39,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { errorHandler } from '../utils/errorHandler';
 import { hapticFeedback } from '../utils/hapticFeedback';
 import { performanceOptimizer } from '../utils/performanceOptimizer';
+import { useToast } from './ToastProvider';
+import { useConfirmation } from './ConfirmationModal';
 
 // MapEvent interface for event markers
 interface MapEvent {
@@ -60,6 +63,7 @@ interface EnhancedInteractiveMapProps {
   hideControls?: boolean; // Hide search bar and filter buttons
   events?: MapEvent[]; // Events to display as markers
   externalFilters?: any; // Filters from parent component
+  highlightMarkers?: boolean; // Flag to highlight markers when filters are active
 }
 
 const { width, height } = Dimensions.get('window');
@@ -72,10 +76,14 @@ export default function EnhancedInteractiveMap({
   hideControls = false,
   events = [], // Default to empty array
   externalFilters, // Filters from parent
+  highlightMarkers: externalHighlightMarkers,
 }: EnhancedInteractiveMapProps) {
   const { getUserId } = useAuth();
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const navigation = useAppNavigation();
+  const { showSuccess, showError, showInfo, showWarning } = useToast();
+  const dialog = useDialog();
+  const { showConfirmation } = useConfirmation();
   const mapRef = useRef<any>(null);
   const [region, setRegion] = useState<any>({
     latitude: 40.7829,
@@ -96,6 +104,7 @@ export default function EnhancedInteractiveMap({
     types: [],
     keywords: [],
     radius: 3000,
+    showEvents: true, // Default to showing events
   });
 
   // Update filters when external filters change
@@ -209,36 +218,89 @@ export default function EnhancedInteractiveMap({
   }, [currentFilters]);
 
   useEffect(() => {
-    // Filter events based on search query
+    // Filter events based on search query AND active sport filters (keywords AND types)
+    let filtered = [...allEvents];
+
+    // Map filter types to matching sport activities
+    const typeToSportsMap: Record<string, string[]> = {
+      'gym': ['gym', 'fitness', 'weightlifting', 'crossfit'],
+      'parks': ['running', 'jogging', 'walking', 'outdoor', 'calisthenics'],
+      'swimming_pool': ['swimming', 'aqua', 'water'],
+      'stadium': ['football', 'soccer', 'athletics', 'running'],
+      'tennis_court': ['tennis', 'padel'],
+      'basketball_court': ['basketball'],
+      'soccer': ['football', 'soccer'],
+      'football': ['football', 'soccer'],
+      'volleyball': ['volleyball', 'beach volleyball'],
+      'sport_halls': ['basketball', 'volleyball', 'handball', 'badminton', 'futsal'],
+      'sport_fields': ['football', 'soccer', 'rugby', 'baseball'],
+      'fight_clubs': ['boxing', 'mma', 'martial arts', 'kickboxing', 'muay thai', 'judo', 'wrestling', 'bjj'],
+      'outside_courts': ['basketball', 'tennis', 'volleyball'],
+      'water_sports': ['swimming', 'water polo', 'diving'],
+      'fitness': ['gym', 'fitness', 'crossfit', 'yoga', 'pilates'],
+      'outdoor': ['running', 'hiking', 'climbing', 'cycling'],
+      'martial_arts_gym': ['boxing', 'mma', 'kickboxing', 'muay thai'],
+      'grappling_hall': ['judo', 'wrestling', 'bjj', 'grappling'],
+      'climbing': ['climbing', 'bouldering'],
+      'yoga': ['yoga', 'pilates'],
+    };
+
+    const hasActiveFilters =
+      (currentFilters.keywords && currentFilters.keywords.length > 0) ||
+      (currentFilters.types && currentFilters.types.length > 0);
+
+    if (hasActiveFilters) {
+      console.log('🏀 Filtering events by active filters:', JSON.stringify({
+        keywords: currentFilters.keywords,
+        types: currentFilters.types
+      }));
+
+      filtered = filtered.filter(event => {
+        const activity = (event.activity || '').toLowerCase();
+
+        // Check keywords match
+        const matchesKeywords = currentFilters.keywords?.some((keyword: string) =>
+          activity.includes(keyword.toLowerCase())
+        ) || false;
+
+        // Check types match (using mapping)
+        const matchesTypes = currentFilters.types?.some((type: string) => {
+          const matchingSports = typeToSportsMap[type.toLowerCase()] || [type.toLowerCase()];
+          return matchingSports.some(sport => activity.includes(sport));
+        }) || false;
+
+        return matchesKeywords || matchesTypes;
+      });
+
+      console.log(`🏀 Filtered to ${filtered.length} events matching filters`);
+    }
+
+    // Then, apply search query filter if present
     if (localSearchQuery.length > 0) {
-      const filteredEvents = allEvents.filter(event =>
-        event.activity.toLowerCase().includes(localSearchQuery.toLowerCase()) ||
+      filtered = filtered.filter(event =>
+        event.activity?.toLowerCase().includes(localSearchQuery.toLowerCase()) ||
         event.description?.toLowerCase().includes(localSearchQuery.toLowerCase()) ||
-        event.placeName.toLowerCase().includes(localSearchQuery.toLowerCase())
+        event.placeName?.toLowerCase().includes(localSearchQuery.toLowerCase()) ||
+        event.name?.toLowerCase().includes(localSearchQuery.toLowerCase())
       );
-      setFilteredEvents(filteredEvents);
 
       // Navigate to search results screen if there are results
-      if (filteredEvents.length > 0) {
+      if (filtered.length > 0) {
         navigation.navigate(ROUTES.EVENT_SEARCH_RESULTS, {
           searchQuery: localSearchQuery,
-          events: filteredEvents
+          events: filtered
         });
       }
-    } else {
-      // Show all events when search is cleared
-      setFilteredEvents(allEvents);
     }
-  }, [localSearchQuery, allEvents, navigation]);
+
+    setFilteredEvents(filtered);
+  }, [localSearchQuery, allEvents, currentFilters.keywords, currentFilters.types, navigation]);
 
   const requestLocationPermission = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          'Permission Denied',
-          'Location permission is required to show nearby venues.'
-        );
+        showError('Location permission is required to show nearby venues.', 'Permission Denied');
         return;
       }
 
@@ -256,7 +318,7 @@ export default function EnhancedInteractiveMap({
       onLocationPermissionGranted?.();
     } catch (error) {
       console.error('Error getting location:', error);
-      Alert.alert('Error', 'Failed to get current location');
+      showError('Failed to get current location', 'Error');
     }
   };
 
@@ -293,6 +355,18 @@ export default function EnhancedInteractiveMap({
 
   const searchPlaces = async () => {
     if (!userLocation) return;
+
+    // Only search for places if filters (sport types or keywords) are active
+    const hasActiveFilters =
+      (currentFilters.types && currentFilters.types.length > 0) ||
+      (currentFilters.keywords && currentFilters.keywords.length > 0);
+
+    if (!hasActiveFilters) {
+      console.log('EnhancedInteractiveMap: No active filters, skipping places search');
+      setPlaces([]);
+      setLoading(false);
+      return;
+    }
 
     console.log('EnhancedInteractiveMap: searchPlaces called with filters:', currentFilters);
     console.log('EnhancedInteractiveMap: userLocation:', userLocation);
@@ -377,7 +451,7 @@ export default function EnhancedInteractiveMap({
         console.log('✅ Place info modal should be visible now');
       } else {
         console.log('❌ No place details received');
-        Alert.alert('Error', 'Unable to load place details');
+        showError('Unable to load place details', 'Error');
       }
     } catch (error) {
       console.log('❌ Error fetching place details:', error);
@@ -395,6 +469,67 @@ export default function EnhancedInteractiveMap({
     }
     setSelectedEvent(event);
     setShowEventDetails(true);
+  };
+
+  // Handle custom event marker click - converts event to place format for PlaceInfoModal
+  const handleEventSelect = async (event: any) => {
+    if (!event) {
+      console.error('Event is null or undefined');
+      return;
+    }
+
+    console.log('🎯 Custom event marker selected:', event);
+
+    // Convert event to a place-like object for PlaceInfoModal
+    const placeFromEvent = {
+      placeId: event.place_id || `event_${event.id}`,
+      name: event.name || event.activity || 'Event Location',
+      address: event.location_name || event.address || '',
+      coordinates: {
+        lat: event.latitude,
+        lng: event.longitude,
+        latitude: event.latitude,
+        longitude: event.longitude,
+      },
+      latitude: event.latitude,
+      longitude: event.longitude,
+      types: ['event_location'],
+      // Event-specific info
+      isEvent: true,
+      eventId: event.id,
+      eventData: event,
+      activity: event.activity,
+      participants_count: event.participants_count || 0,
+      max_participants: event.max_participants || 0,
+      description: event.description,
+    };
+
+    setSelectedPlace(placeFromEvent);
+
+    // Create enhanced details for the modal
+    const eventDetails = {
+      ...placeFromEvent,
+      formattedAddress: event.location_name || event.address || 'Event Location',
+      openingHours: event.start_time ? {
+        weekdayDescriptions: [`Event: ${new Date(event.start_time).toLocaleString()}`],
+        isOpen: event.status === 'active' || event.status === 'live',
+      } : undefined,
+      rating: undefined,
+      userRatingCount: event.participants_count,
+      photos: [],
+      // Custom event info
+      eventInfo: {
+        activity: event.activity,
+        participants: `${event.participants_count || 0}/${event.max_participants || 0}`,
+        status: event.status,
+        startTime: event.start_time,
+      },
+    };
+
+    setSelectedPlaceDetails(eventDetails as any);
+    setShowPlaceInfo(true);
+
+    console.log('✅ Event PlaceInfoModal should be visible now');
   };
 
   const handleCreateEvent = () => {
@@ -423,13 +558,13 @@ export default function EnhancedInteractiveMap({
         // Refresh events list to show the new event
         await loadEvents();
         setShowEventCreation(false);
-        Alert.alert('Success', 'Event created successfully!');
+        showSuccess('Event created successfully!', 'Success');
       } else {
-        Alert.alert('Error', result.error || 'Failed to create event');
+        showError(result.error || 'Failed to create event', 'Error');
       }
     } catch (error) {
       console.error('Error creating event:', error);
-      Alert.alert('Error', 'Failed to create event');
+      showError('Failed to create event', 'Error');
     } finally {
       setLoading(false);
     }
@@ -444,16 +579,16 @@ export default function EnhancedInteractiveMap({
     try {
       const userId = getUserId();
       if (!userId) {
-        Alert.alert('Error', 'You must be logged in to delete events');
+        showError('You must be logged in to delete events', 'Error');
         return;
       }
       await firestoreService.deleteEvent(eventId, userId);
       setFilteredEvents(prev => prev.filter(event => event && event.id !== eventId));
       setShowEventDetails(false);
-      Alert.alert('Success', 'Event deleted');
+      showSuccess('Event deleted', 'Success');
     } catch (error) {
       console.error('Error deleting event:', error);
-      Alert.alert('Error', 'Failed to delete event');
+      showError('Failed to delete event', 'Error');
     }
   };
 
@@ -474,19 +609,16 @@ export default function EnhancedInteractiveMap({
     // Haptic feedback for pin placement
     await hapticFeedback.mapPinPlaced();
 
-    // Show coordinates in an alert
-    Alert.alert(
-      'Pin Placed',
-      `Coordinates: ${coordinate.latitude.toFixed(6)}, ${coordinate.longitude.toFixed(6)}`,
-      [{ text: 'OK' }]
-    );
+    // Show coordinates in a toast
+    showSuccess(`Coordinates: ${coordinate.latitude.toFixed(6)}, ${coordinate.longitude.toFixed(6)}`, 'Pin Placed');
   };
 
   const handleDeletePin = (pinId: string) => {
-    Alert.alert(
-      'Delete Pin',
-      'Are you sure you want to delete this pin?',
-      [
+    showConfirmation({
+      title: 'Delete Pin',
+      message: 'Are you sure you want to delete this pin?',
+      icon: '🗑️',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -496,11 +628,11 @@ export default function EnhancedInteractiveMap({
             if (selectedPin === pinId) {
               setSelectedPin(null);
             }
-            Alert.alert('Success', 'Pin deleted successfully');
+            showSuccess('Pin deleted successfully', 'Success');
           },
         },
       ]
-    );
+    });
   };
 
   const handleEditPin = (pinId: string) => {
@@ -523,9 +655,9 @@ export default function EnhancedInteractiveMap({
                     : p
                 )
               );
-              Alert.alert('Success', 'Pin updated successfully');
+              showSuccess('Pin updated successfully', 'Success');
             } else {
-              Alert.alert('Error', 'Please enter a valid title');
+              showError('Please enter a valid title', 'Error');
             }
           },
         },
@@ -537,7 +669,7 @@ export default function EnhancedInteractiveMap({
 
   const handleShowPinList = () => {
     if (customPins.length === 0) {
-      Alert.alert('No Pins', 'You haven\'t placed any pins yet.');
+      showInfo('No Pins', 'You haven\'t placed any pins yet.');
       return;
     }
 
@@ -545,21 +677,24 @@ export default function EnhancedInteractiveMap({
       `${pin.title}\n${pin.description}`
     ).join('\n\n');
 
-    Alert.alert(
-      'Your Pins',
-      pinList,
-      [
-        { text: 'OK' },
+    dialog.showDialog({
+      type: 'info',
+      title: 'Your Pins',
+      message: pinList,
+      buttons: [
+        { text: 'OK', style: 'default' },
         { text: 'Clear All', style: 'destructive', onPress: handleClearAllPins }
-      ]
-    );
+      ],
+      autoHide: false,
+    });
   };
 
   const handleClearAllPins = () => {
-    Alert.alert(
-      'Clear All Pins',
-      'Are you sure you want to delete all pins?',
-      [
+    showConfirmation({
+      title: 'Clear All Pins',
+      message: 'Are you sure you want to delete all pins?',
+      icon: '🗑️',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Clear All',
@@ -567,23 +702,24 @@ export default function EnhancedInteractiveMap({
           onPress: () => {
             setCustomPins([]);
             setSelectedPin(null);
-            Alert.alert('Success', 'All pins cleared');
+            showSuccess('All pins cleared', 'Success');
           },
         },
       ]
-    );
+    });
   };
 
   const handlePinLongPress = (pinId: string) => {
-    Alert.alert(
-      'Pin Options',
-      'What would you like to do with this pin?',
-      [
+    showConfirmation({
+      title: 'Pin Options',
+      message: 'What would you like to do with this pin?',
+      icon: '📍',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Edit', onPress: () => handleEditPin(pinId) },
         { text: 'Delete', style: 'destructive', onPress: () => handleDeletePin(pinId) },
       ]
-    );
+    });
   };
 
   const handleCreateMeetupFromPlace = (placeDetails: PlaceDetails) => {
@@ -640,19 +776,12 @@ export default function EnhancedInteractiveMap({
     if (onLocationSelect) {
       onLocationSelect(randomPlace);
     } else {
-      // Fallback alert if no parent handler
-      Alert.alert(
+      dialog.showConfirm(
         'Create Event Here?',
         `Would you like to create an event at this location?\n\nLat: ${location.latitude.toFixed(5)}\nLng: ${location.longitude.toFixed(5)}`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Create Event',
-            onPress: () => {
-              Alert.alert('Feature Coming Soon', 'Event creation at custom locations will be available in the next update!');
-            }
-          }
-        ]
+        () => {
+          showInfo('Feature Coming Soon', 'Event creation at custom locations will be available in the next update!');
+        }
       );
     }
   };
@@ -674,15 +803,15 @@ export default function EnhancedInteractiveMap({
     try {
       const result = await enhancedEventService.joinEvent(eventId);
       if (result.success) {
-        Alert.alert('Success', 'You have joined the event!');
+        showSuccess('You have joined the event!', 'Success');
         // Refresh events list
         loadEvents();
       } else {
-        Alert.alert('Error', result.error || 'Failed to join event');
+        showError(result.error || 'Failed to join event', 'Error');
       }
     } catch (error) {
       console.error('Error joining event:', error);
-      Alert.alert('Error', 'Failed to join event');
+      showError('Failed to join event', 'Error');
     }
   };
 
@@ -695,15 +824,15 @@ export default function EnhancedInteractiveMap({
     try {
       const result = await enhancedEventService.leaveEvent(eventId);
       if (result.success) {
-        Alert.alert('Success', 'You have left the event');
+        showSuccess('You have left the event', 'Success');
         // Refresh events list
         loadEvents();
       } else {
-        Alert.alert('Error', result.error || 'Failed to leave event');
+        showError(result.error || 'Failed to leave event', 'Error');
       }
     } catch (error) {
       console.error('Error leaving event:', error);
-      Alert.alert('Error', 'Failed to leave event');
+      showError('Failed to leave event', 'Error');
     }
   };
 
@@ -715,13 +844,22 @@ export default function EnhancedInteractiveMap({
 
   return (
     <View style={styles.container}>
+      {/* Map View */}
       <GoogleMapsView
         onLocationSelect={onLocationSelect}
         onPlaceSelect={handlePlaceSelect}
         onLocationLongPress={handleLocationLongPress}
+        onEventSelect={handleEventSelect}
         searchQuery={searchQuery}
-        events={events}
+        events={currentFilters.showEvents !== false
+          ? (filteredEvents.length > 0 || currentFilters.keywords?.length > 0 ? filteredEvents : events)
+          : []}
         places={places}
+        highlightMarkers={externalHighlightMarkers ||
+          currentFilters.types.length > 0 ||
+          currentFilters.keywords.length > 0 ||
+          eventSearchFilters.activities.length > 0 ||
+          !!eventSearchFilters.query}
       />
 
       {/* Search and Filter Container - Only show if hideControls is false */}

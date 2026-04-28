@@ -1,4 +1,4 @@
-// BACKEND FUNCTIONS FOR SPORTMAP
+// BACKEND FUNCTIONS FOR SportsMap
 // Complete backend integration with authentication, events, and chat
 
 import { supabase } from '../config/supabase';
@@ -157,7 +157,7 @@ export class AuthService {
   static async sendPasswordReset(email: string): Promise<{ success: boolean; error?: string }> {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'sportmap://reset-password',
+        redirectTo: 'SportsMap://reset-password',
       });
 
       if (error) {
@@ -192,7 +192,7 @@ export class AuthService {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'sportmap://auth/callback',
+          redirectTo: 'SportsMap://auth/callback',
           skipBrowserRedirect: true,
         },
       });
@@ -208,7 +208,7 @@ export class AuthService {
         const WebBrowser = await import('expo-web-browser');
         const result = await WebBrowser.openAuthSessionAsync(
           data.url,
-          'sportmap://auth/callback'
+          'SportsMap://auth/callback'
         );
 
 

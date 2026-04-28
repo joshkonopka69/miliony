@@ -14,8 +14,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useAppNavigation } from '../navigation/hooks';
@@ -52,17 +51,17 @@ const SPORT_EMOJI_MAP: Record<string, string> = {
   basketball: '🏀',
   football: '⚽',
   soccer: '⚽',
-  running: '🏃‍♂️',
+  running: 'walk-outline‍♂️',
   tennis: '🎾',
-  cycling: '🚴‍♂️',
-  swimming: '🏊‍♂️',
+  cycling: 'bicycle-outline‍♂️',
+  swimming: 'water-outline‍♂️',
   gym: '💪',
   volleyball: '🏐',
-  climbing: '🧗‍♂️',
+  climbing: 'trending-up-outline‍♂️',
   yoga: '🧘',
   badminton: '🏸',
   boxing: '🥊',
-  default: '🏅',
+  default: '🏆',
 };
 
 const getSportEmoji = (sportType: string): string => {
@@ -126,7 +125,7 @@ const FilterChip: React.FC<{
       <ActivityIndicator size="small" color={isActive ? 'white' : '#6366f1'} />
     ) : (
       <>
-        <Text style={styles.filterEmoji}>{emoji}</Text>
+        <Text style={{fontSize: 14, color: '#666'}}>{emoji}</Text>
         <Text style={[styles.filterLabel, isActive && styles.filterLabelActive]}>{label}</Text>
       </>
     )}
@@ -134,12 +133,12 @@ const FilterChip: React.FC<{
 );
 
 // Logo Component
-const SportMapLogo = () => (
+const SportsMapLogo = () => (
   <View style={styles.logoContainer}>
     <View style={styles.logoCircle}>
       <Text style={styles.logoText}>SM</Text>
     </View>
-    <Text style={styles.logoTitle}>SportMap</Text>
+    <Text style={styles.logoTitle}>SportsMap</Text>
   </View>
 );
 
@@ -597,7 +596,7 @@ export default function EnhancedMapScreen() {
             <View
               style={[styles.eventMarker, { backgroundColor: getSportColor(event.sport_type) }]}
             >
-              <Text style={styles.markerEmoji}>{getSportEmoji(event.sport_type)}</Text>
+              <Text style={{fontSize: 16, color: '#FFD700'}}>{getSportEmoji(event.sport_type)}</Text>
               {event.currentParticipants > 0 && (
                 <View style={styles.participantBadge}>
                   <Text style={styles.badgeText}>{event.currentParticipants}</Text>
@@ -631,19 +630,19 @@ export default function EnhancedMapScreen() {
       {/* Top Bar */}
       <SafeAreaView style={styles.topBarSafeArea} edges={[]}>
         <View style={styles.topBar}>
-          <SportMapLogo />
+          <SportsMapLogo />
           <View style={styles.topBarActions}>
             <TouchableOpacity
               style={styles.topBarButton}
               onPress={() => navigation.navigate(ROUTES.NOTIFICATIONS)}
             >
-              <Ionicons name="notifications-outline" size={24} color="#000000" />
+              <Text style={{fontSize: 22, color: '#000000'}}>🔔</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.topBarButton}
               onPress={() => navigation.navigate(ROUTES.SETTINGS)}
             >
-              <Ionicons name="settings-outline" size={24} color="#000000" />
+              <Text style={{fontSize: 22, color: '#000000'}}>⚙</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -686,7 +685,7 @@ export default function EnhancedMapScreen() {
         <View style={styles.errorToast}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity onPress={() => setError(null)}>
-            <Ionicons name="close" size={20} color="#dc2626" />
+            <Text style={{fontSize: 18, color: '#dc2626'}}>✕</Text>
           </TouchableOpacity>
         </View>
       )}

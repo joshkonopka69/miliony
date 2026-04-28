@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   SafeAreaView,
   StatusBar,
   Switch,
@@ -17,6 +16,7 @@ import { useModeration } from '../../hooks/useModeration';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
 import { SecurityConfig } from '../../services/securityService';
+import { useToast } from '../../components/ToastProvider';
 
 interface SecuritySettingsScreenProps {
   navigation: any;
@@ -25,6 +25,7 @@ interface SecuritySettingsScreenProps {
 export default function SecuritySettingsScreen({ navigation }: SecuritySettingsScreenProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const {
     getSecurityConfig,
     updateSecurityConfig,
@@ -65,8 +66,8 @@ export default function SecuritySettingsScreen({ navigation }: SecuritySettingsS
   };
 
   const handleConfigChange = (key: string, value: any) => {
-    setSecurityConfig(prev => 
-      prev.map(config => 
+    setSecurityConfig(prev =>
+      prev.map(config =>
         config.key === key ? { ...config, value } : config
       )
     );
@@ -76,15 +77,15 @@ export default function SecuritySettingsScreen({ navigation }: SecuritySettingsS
     try {
       setIsSaving(true);
       const success = await updateSecurityConfig(key, value);
-      
+
       if (success) {
-        Alert.alert('Success', 'Security configuration updated successfully');
+        showSuccess('Security configuration updated successfully', 'Success');
       } else {
-        Alert.alert('Error', 'Failed to update security configuration');
+        showError('Failed to update security configuration', 'Error');
       }
     } catch (error) {
       console.error('Error saving security config:', error);
-      Alert.alert('Error', 'Failed to update security configuration');
+      showError('Failed to update security configuration', 'Error');
     } finally {
       setIsSaving(false);
     }
@@ -151,7 +152,7 @@ export default function SecuritySettingsScreen({ navigation }: SecuritySettingsS
     return (
       <View style={styles.analyticsCard}>
         <Text style={styles.analyticsTitle}>Security Analytics</Text>
-        
+
         <View style={styles.analyticsRow}>
           <Text style={styles.analyticsLabel}>Total Threats:</Text>
           <Text style={styles.analyticsValue}>{securityAnalytics.total_threats}</Text>
@@ -205,7 +206,7 @@ export default function SecuritySettingsScreen({ navigation }: SecuritySettingsS
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -225,7 +226,7 @@ export default function SecuritySettingsScreen({ navigation }: SecuritySettingsS
           <Text style={styles.sectionDescription}>
             Configure authentication and login security
           </Text>
-          
+
           {getCategoryConfigs('authentication').map(renderConfigItem)}
         </View>
 
@@ -234,7 +235,7 @@ export default function SecuritySettingsScreen({ navigation }: SecuritySettingsS
           <Text style={styles.sectionDescription}>
             Configure rate limiting for API endpoints and user actions
           </Text>
-          
+
           {getCategoryConfigs('rate_limiting').map(renderConfigItem)}
         </View>
 
@@ -243,7 +244,7 @@ export default function SecuritySettingsScreen({ navigation }: SecuritySettingsS
           <Text style={styles.sectionDescription}>
             Configure automated content filtering and moderation
           </Text>
-          
+
           {getCategoryConfigs('content_filtering').map(renderConfigItem)}
         </View>
 
@@ -252,7 +253,7 @@ export default function SecuritySettingsScreen({ navigation }: SecuritySettingsS
           <Text style={styles.sectionDescription}>
             Configure security monitoring and alerting
           </Text>
-          
+
           {getCategoryConfigs('monitoring').map(renderConfigItem)}
         </View>
 
@@ -261,7 +262,7 @@ export default function SecuritySettingsScreen({ navigation }: SecuritySettingsS
           <Text style={styles.sectionDescription}>
             Configure security notification settings
           </Text>
-          
+
           {getCategoryConfigs('notifications').map(renderConfigItem)}
         </View>
 

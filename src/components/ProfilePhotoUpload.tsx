@@ -5,10 +5,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useToast } from './ToastProvider';
+import { useDialog } from '../contexts/DialogContext';
 import * as ImagePicker from 'expo-image-picker';
 import { theme } from '../styles/theme';
 import Button from './ui/Button';
@@ -28,14 +28,15 @@ export default function ProfilePhotoUpload({
 }: ProfilePhotoUploadProps) {
   const [loading, setLoading] = useState(false);
   const [photo, setPhoto] = useState<string | null>(currentPhoto || null);
+  const toast = useToast();
+  const dialog = useDialog();
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
+      dialog.showInfo(
         'Permission Required',
-        'Please grant camera roll permissions to upload photos.',
-        [{ text: 'OK' }]
+        'Please grant camera roll permissions to upload photos.'
       );
       return false;
     }
@@ -44,7 +45,7 @@ export default function ProfilePhotoUpload({
 
   const pickImage = async () => {
     if (!editable) return;
-    
+
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
@@ -65,7 +66,7 @@ export default function ProfilePhotoUpload({
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      toast.showError('Error', 'Failed to pick image. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -76,10 +77,9 @@ export default function ProfilePhotoUpload({
 
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
+      dialog.showInfo(
         'Permission Required',
-        'Please grant camera permissions to take photos.',
-        [{ text: 'OK' }]
+        'Please grant camera permissions to take photos.'
       );
       return;
     }
@@ -100,7 +100,7 @@ export default function ProfilePhotoUpload({
       }
     } catch (error) {
       console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo. Please try again.');
+      toast.showError('Error', 'Failed to take photo. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -108,37 +108,31 @@ export default function ProfilePhotoUpload({
 
   const removePhoto = () => {
     if (!editable) return;
-    
-    Alert.alert(
+
+    dialog.showConfirm(
       'Remove Photo',
       'Are you sure you want to remove your profile photo?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            setPhoto(null);
-            onPhotoChange('');
-          },
-        },
-      ]
+      () => {
+        setPhoto(null);
+        onPhotoChange('');
+      }
     );
   };
 
   const showImageOptions = () => {
     if (!editable) return;
-    
-    Alert.alert(
-      'Profile Photo',
-      'Choose an option',
-      [
-        { text: 'Camera', onPress: takePhoto },
-        { text: 'Photo Library', onPress: pickImage },
-        ...(photo ? [{ text: 'Remove Photo', style: 'destructive', onPress: removePhoto }] : []),
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+
+    dialog.showDialog({
+      title: 'Profile Photo',
+      message: 'Choose an option',
+      type: 'info',
+      buttons: [
+        { text: 'Camera', onPress: takePhoto, style: 'default' },
+        { text: 'Photo Library', onPress: pickImage, style: 'default' },
+        ...(photo ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: removePhoto }] : []),
+        { text: 'Cancel', style: 'cancel' as const },
+      ],
+    });
   };
 
   return (
@@ -157,21 +151,17 @@ export default function ProfilePhotoUpload({
           <Image source={{ uri: photo }} style={styles.photo} />
         ) : (
           <View style={styles.placeholder}>
-            <Ionicons name="person" size={size * 0.4} color={theme.colors.textSecondary} />
+            <Text style={{fontSize: 16, color: theme.colors.textSecondary}}>👤</Text>
           </View>
         )}
-        
+
         {editable && (
           <View style={styles.editButton}>
-            <Ionicons 
-              name={photo ? "camera" : "add"} 
-              size={16} 
-              color={theme.colors.textOnPrimary} 
-            />
+            <Text style={{fontSize: 14, color: theme.colors.textOnPrimary}}>{photo ? "camera" : "add"}</Text>
           </View>
         )}
       </TouchableOpacity>
-      
+
       {editable && (
         <Text style={styles.helperText}>
           Tap to {photo ? 'change' : 'add'} photo

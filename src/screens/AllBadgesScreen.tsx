@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppNavigation } from '../navigation/hooks';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,9 +37,9 @@ export default function AllBadgesScreen() {
       try {
         const stats = await userService.getUserGameStats(user.id);
         setGameStats(stats);
-        console.log('✅ AllBadgesScreen: game stats loaded:', stats);
+        console.log('? AllBadgesScreen: game stats loaded:', stats);
       } catch (error) {
-        console.error('❌ AllBadgesScreen: error loading game stats:', error);
+        console.error('? AllBadgesScreen: error loading game stats:', error);
       }
     };
 
@@ -82,116 +81,116 @@ export default function AllBadgesScreen() {
       {
         sportKey: 'basketball',
         sport: t.allBadges.basketball,
-        icon: '🏀',
+        icon: '??',
         categoryImage: badgeImages.basketball,
         color: '#F97316',
         badges: [
-          { id: 'basketball_rookie', name: `${t.allBadges.basketball} ${t.allBadges.tiers.rookie}`, icon: '🏀', image: badgeImages.basketball, description: t.allBadges.playGames.replace('{count}', '1').replace('{sport}', t.allBadges.basketball).replace('{s}', ''), required: 1 },
+          { id: 'basketball_rookie', name: `${t.allBadges.basketball} ${t.allBadges.tiers.rookie}`, icon: '??', image: badgeImages.basketball, description: t.allBadges.playGames.replace('{count}', '1').replace('{sport}', t.allBadges.basketball).replace('{s}', ''), required: 1 },
 
-          { id: 'basketball_player', name: `${t.allBadges.basketball} ${t.allBadges.tiers.player}`, icon: '🏀', image: badgeImages.basketball, description: t.allBadges.playGames.replace('{count}', '5').replace('{sport}', t.allBadges.basketball).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
-          { id: 'basketball_pro', name: `${t.allBadges.basketball} ${t.allBadges.tiers.pro}`, icon: '🏀', image: badgeImages.basketball, description: t.allBadges.playGames.replace('{count}', '10').replace('{sport}', t.allBadges.basketball).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
-          { id: 'basketball_legend', name: `${t.allBadges.basketball} ${t.allBadges.tiers.legend}`, icon: '🏆', image: badgeImages.basketball, description: t.allBadges.playGames.replace('{count}', '20').replace('{sport}', t.allBadges.basketball).replace('{s}', language === 'en' ? 's' : ''), required: 20 },
+          { id: 'basketball_player', name: `${t.allBadges.basketball} ${t.allBadges.tiers.player}`, icon: '??', image: badgeImages.basketball, description: t.allBadges.playGames.replace('{count}', '5').replace('{sport}', t.allBadges.basketball).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
+          { id: 'basketball_pro', name: `${t.allBadges.basketball} ${t.allBadges.tiers.pro}`, icon: '??', image: badgeImages.basketball, description: t.allBadges.playGames.replace('{count}', '10').replace('{sport}', t.allBadges.basketball).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
+          { id: 'basketball_legend', name: `${t.allBadges.basketball} ${t.allBadges.tiers.legend}`, icon: '??', image: badgeImages.basketball, description: t.allBadges.playGames.replace('{count}', '20').replace('{sport}', t.allBadges.basketball).replace('{s}', language === 'en' ? 's' : ''), required: 20 },
         ],
 
       },
       {
         sportKey: 'football',
         sport: t.allBadges.football,
-        icon: '⚽',
+        icon: '?',
         categoryImage: badgeImages.football,
         color: '#10B981',
         badges: [
-          { id: 'football_rookie', name: `${t.allBadges.football} ${t.allBadges.tiers.rookie}`, icon: '⚽', image: badgeImages.football, description: t.allBadges.playGames.replace('{count}', '1').replace('{sport}', t.allBadges.football).replace('{s}', ''), required: 1 },
-          { id: 'football_player', name: `${t.allBadges.football} ${t.allBadges.tiers.player}`, icon: '⚽', image: badgeImages.football, description: t.allBadges.playGames.replace('{count}', '5').replace('{sport}', t.allBadges.football).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
-          { id: 'football_pro', name: `${t.allBadges.football} ${t.allBadges.tiers.pro}`, icon: '⚽', image: badgeImages.football, description: t.allBadges.playGames.replace('{count}', '10').replace('{sport}', t.allBadges.football).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
-          { id: 'football_legend', name: `${t.allBadges.football} ${t.allBadges.tiers.legend}`, icon: '🏆', image: badgeImages.football, description: t.allBadges.playGames.replace('{count}', '20').replace('{sport}', t.allBadges.football).replace('{s}', language === 'en' ? 's' : ''), required: 20 },
+          { id: 'football_rookie', name: `${t.allBadges.football} ${t.allBadges.tiers.rookie}`, icon: '?', image: badgeImages.football, description: t.allBadges.playGames.replace('{count}', '1').replace('{sport}', t.allBadges.football).replace('{s}', ''), required: 1 },
+          { id: 'football_player', name: `${t.allBadges.football} ${t.allBadges.tiers.player}`, icon: '?', image: badgeImages.football, description: t.allBadges.playGames.replace('{count}', '5').replace('{sport}', t.allBadges.football).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
+          { id: 'football_pro', name: `${t.allBadges.football} ${t.allBadges.tiers.pro}`, icon: '?', image: badgeImages.football, description: t.allBadges.playGames.replace('{count}', '10').replace('{sport}', t.allBadges.football).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
+          { id: 'football_legend', name: `${t.allBadges.football} ${t.allBadges.tiers.legend}`, icon: '??', image: badgeImages.football, description: t.allBadges.playGames.replace('{count}', '20').replace('{sport}', t.allBadges.football).replace('{s}', language === 'en' ? 's' : ''), required: 20 },
         ],
 
       },
       {
         sportKey: 'tennis',
         sport: t.allBadges.tennis,
-        icon: '🎾',
+        icon: '??',
         categoryImage: badgeImages.tennis,
         color: '#FFD700',
         badges: [
-          { id: 'tennis_rookie', name: `${t.allBadges.tennis} ${t.allBadges.tiers.rookie}`, icon: '🎾', image: badgeImages.tennis, description: t.allBadges.playGames.replace('{count}', '1').replace('{sport}', t.allBadges.tennis).replace('{s}', ''), required: 1 },
-          { id: 'tennis_player', name: `${t.allBadges.tennis} ${t.allBadges.tiers.player}`, icon: '🎾', image: badgeImages.tennis, description: t.allBadges.playGames.replace('{count}', '5').replace('{sport}', t.allBadges.tennis).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
-          { id: 'tennis_pro', name: `${t.allBadges.tennis} ${t.allBadges.tiers.pro}`, icon: '🎾', image: badgeImages.tennis, description: t.allBadges.playGames.replace('{count}', '10').replace('{sport}', t.allBadges.tennis).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
+          { id: 'tennis_rookie', name: `${t.allBadges.tennis} ${t.allBadges.tiers.rookie}`, icon: '??', image: badgeImages.tennis, description: t.allBadges.playGames.replace('{count}', '1').replace('{sport}', t.allBadges.tennis).replace('{s}', ''), required: 1 },
+          { id: 'tennis_player', name: `${t.allBadges.tennis} ${t.allBadges.tiers.player}`, icon: '??', image: badgeImages.tennis, description: t.allBadges.playGames.replace('{count}', '5').replace('{sport}', t.allBadges.tennis).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
+          { id: 'tennis_pro', name: `${t.allBadges.tennis} ${t.allBadges.tiers.pro}`, icon: '??', image: badgeImages.tennis, description: t.allBadges.playGames.replace('{count}', '10').replace('{sport}', t.allBadges.tennis).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
         ],
 
       },
       {
         sportKey: 'running',
         sport: t.allBadges.running,
-        icon: '🏃‍♂️',
+        icon: '???>?',
         categoryImage: badgeImages.running,
         color: '#EF4444',
         badges: [
-          { id: 'running_rookie', name: `${t.allBadges.running} ${t.allBadges.tiers.rookie}`, icon: '🏃‍♂️', image: badgeImages.running, description: t.allBadges.completeGames.replace('{count}', '1').replace('{sport}', t.allBadges.running).replace('{s}', ''), required: 1 },
-          { id: 'running_player', name: `${t.allBadges.running} ${t.allBadges.tiers.enthusiast}`, icon: '🏃‍♂️', image: badgeImages.running, description: t.allBadges.completeGames.replace('{count}', '5').replace('{sport}', t.allBadges.running).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
-          { id: 'running_pro', name: t.allBadges.tiers.marathoner, icon: '🏃‍♂️', image: badgeImages.running, description: t.allBadges.completeGames.replace('{count}', '10').replace('{sport}', t.allBadges.running).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
-          { id: 'running_legend', name: `${t.allBadges.running} ${t.allBadges.tiers.legend}`, icon: '🏆', image: badgeImages.running, description: t.allBadges.completeGames.replace('{count}', '20').replace('{sport}', t.allBadges.running).replace('{s}', language === 'en' ? 's' : ''), required: 20 },
+          { id: 'running_rookie', name: `${t.allBadges.running} ${t.allBadges.tiers.rookie}`, icon: '???>?', image: badgeImages.running, description: t.allBadges.completeGames.replace('{count}', '1').replace('{sport}', t.allBadges.running).replace('{s}', ''), required: 1 },
+          { id: 'running_player', name: `${t.allBadges.running} ${t.allBadges.tiers.enthusiast}`, icon: '???>?', image: badgeImages.running, description: t.allBadges.completeGames.replace('{count}', '5').replace('{sport}', t.allBadges.running).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
+          { id: 'running_pro', name: t.allBadges.tiers.marathoner, icon: '???>?', image: badgeImages.running, description: t.allBadges.completeGames.replace('{count}', '10').replace('{sport}', t.allBadges.running).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
+          { id: 'running_legend', name: `${t.allBadges.running} ${t.allBadges.tiers.legend}`, icon: '??', image: badgeImages.running, description: t.allBadges.completeGames.replace('{count}', '20').replace('{sport}', t.allBadges.running).replace('{s}', language === 'en' ? 's' : ''), required: 20 },
         ],
 
       },
       {
         sportKey: 'volleyball',
         sport: t.allBadges.volleyball,
-        icon: '🏐',
+        icon: '??',
         categoryImage: badgeImages.volleyball,
         color: '#3B82F6',
         badges: [
-          { id: 'volleyball_rookie', name: `${t.allBadges.volleyball} ${t.allBadges.tiers.rookie}`, icon: '🏐', image: badgeImages.volleyball, description: t.allBadges.playGames.replace('{count}', '1').replace('{sport}', t.allBadges.volleyball).replace('{s}', ''), required: 1 },
-          { id: 'volleyball_player', name: `${t.allBadges.volleyball} ${t.allBadges.tiers.player}`, icon: '🏐', image: badgeImages.volleyball, description: t.allBadges.playGames.replace('{count}', '5').replace('{sport}', t.allBadges.volleyball).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
-          { id: 'volleyball_pro', name: `${t.allBadges.volleyball} ${t.allBadges.tiers.pro}`, icon: '🏐', image: badgeImages.volleyball, description: t.allBadges.playGames.replace('{count}', '10').replace('{sport}', t.allBadges.volleyball).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
+          { id: 'volleyball_rookie', name: `${t.allBadges.volleyball} ${t.allBadges.tiers.rookie}`, icon: '??', image: badgeImages.volleyball, description: t.allBadges.playGames.replace('{count}', '1').replace('{sport}', t.allBadges.volleyball).replace('{s}', ''), required: 1 },
+          { id: 'volleyball_player', name: `${t.allBadges.volleyball} ${t.allBadges.tiers.player}`, icon: '??', image: badgeImages.volleyball, description: t.allBadges.playGames.replace('{count}', '5').replace('{sport}', t.allBadges.volleyball).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
+          { id: 'volleyball_pro', name: `${t.allBadges.volleyball} ${t.allBadges.tiers.pro}`, icon: '??', image: badgeImages.volleyball, description: t.allBadges.playGames.replace('{count}', '10').replace('{sport}', t.allBadges.volleyball).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
         ],
       },
       {
         sportKey: 'cycling',
         sport: t.allBadges.cycling,
-        icon: '🚴‍♂️',
+        icon: '???>?',
         categoryImage: badgeImages.cycling,
         color: '#8B5CF6',
         badges: [
-          { id: 'cycling_rookie', name: `${t.allBadges.cycling} ${t.allBadges.tiers.rookie}`, icon: '🚴‍♂️', image: badgeImages.cycling, description: t.allBadges.completeGames.replace('{count}', '1').replace('{sport}', t.allBadges.cycling).replace('{s}', ''), required: 1 },
-          { id: 'cycling_player', name: `${t.allBadges.cycling} ${t.allBadges.tiers.enthusiast}`, icon: '🚴‍♂️', image: badgeImages.cycling, description: t.allBadges.completeGames.replace('{count}', '5').replace('{sport}', t.allBadges.cycling).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
-          { id: 'cycling_pro', name: `${t.allBadges.cycling} ${t.allBadges.tiers.pro}`, icon: '🚴‍♂️', image: badgeImages.cycling, description: t.allBadges.completeGames.replace('{count}', '10').replace('{sport}', t.allBadges.cycling).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
+          { id: 'cycling_rookie', name: `${t.allBadges.cycling} ${t.allBadges.tiers.rookie}`, icon: '???>?', image: badgeImages.cycling, description: t.allBadges.completeGames.replace('{count}', '1').replace('{sport}', t.allBadges.cycling).replace('{s}', ''), required: 1 },
+          { id: 'cycling_player', name: `${t.allBadges.cycling} ${t.allBadges.tiers.enthusiast}`, icon: '???>?', image: badgeImages.cycling, description: t.allBadges.completeGames.replace('{count}', '5').replace('{sport}', t.allBadges.cycling).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
+          { id: 'cycling_pro', name: `${t.allBadges.cycling} ${t.allBadges.tiers.pro}`, icon: '???>?', image: badgeImages.cycling, description: t.allBadges.completeGames.replace('{count}', '10').replace('{sport}', t.allBadges.cycling).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
 
         ],
       },
       {
         sportKey: 'gym',
         sport: t.allBadges.gym,
-        icon: '💪',
+        icon: '??',
         categoryImage: badgeImages.gym,
         color: '#6B7280',
         badges: [
-          { id: 'gym_rookie', name: `${t.allBadges.gym} ${t.allBadges.tiers.rookie}`, icon: '💪', image: badgeImages.gym, description: t.allBadges.completeGames.replace('{count}', '1').replace('{sport}', t.allBadges.gym).replace('{s}', ''), required: 1 },
-          { id: 'gym_player', name: `${t.allBadges.gym} ${t.allBadges.tiers.regular}`, icon: '💪', image: badgeImages.gym, description: t.allBadges.completeGames.replace('{count}', '5').replace('{sport}', t.allBadges.gym).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
-          { id: 'gym_pro', name: `${t.allBadges.gym} ${t.allBadges.tiers.pro}`, icon: '💪', image: badgeImages.gym, description: t.allBadges.completeGames.replace('{count}', '10').replace('{sport}', t.allBadges.gym).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
+          { id: 'gym_rookie', name: `${t.allBadges.gym} ${t.allBadges.tiers.rookie}`, icon: '??', image: badgeImages.gym, description: t.allBadges.completeGames.replace('{count}', '1').replace('{sport}', t.allBadges.gym).replace('{s}', ''), required: 1 },
+          { id: 'gym_player', name: `${t.allBadges.gym} ${t.allBadges.tiers.regular}`, icon: '??', image: badgeImages.gym, description: t.allBadges.completeGames.replace('{count}', '5').replace('{sport}', t.allBadges.gym).replace('{s}', language === 'en' ? 's' : ''), required: 5 },
+          { id: 'gym_pro', name: `${t.allBadges.gym} ${t.allBadges.tiers.pro}`, icon: '??', image: badgeImages.gym, description: t.allBadges.completeGames.replace('{count}', '10').replace('{sport}', t.allBadges.gym).replace('{s}', language === 'en' ? 's' : ''), required: 10 },
         ],
       },
       {
         sportKey: 'swimming',
         sport: t.allBadges.swimming,
-        icon: '🏊‍♂️',
+        icon: '???>?',
         categoryImage: badgeImages.swimming,
         color: '#06B6D4',
         badges: [
-          { id: 'swimming_rookie', name: `${t.allBadges.swimming} ${t.allBadges.tiers.rookie}`, icon: '🏊‍♂️', image: badgeImages.swimming, description: `Complete 1 ${t.allBadges.swimming.toLowerCase()} swim`, required: 1 },
-          { id: 'swimming_player', name: `${t.allBadges.swimming} ${t.allBadges.tiers.enthusiast}`, icon: '🏊‍♂️', image: badgeImages.swimming, description: `Complete 5 ${t.allBadges.swimming.toLowerCase()} swims`, required: 5 },
+          { id: 'swimming_rookie', name: `${t.allBadges.swimming} ${t.allBadges.tiers.rookie}`, icon: '???>?', image: badgeImages.swimming, description: `Complete 1 ${t.allBadges.swimming.toLowerCase()} swim`, required: 1 },
+          { id: 'swimming_player', name: `${t.allBadges.swimming} ${t.allBadges.tiers.enthusiast}`, icon: '???>?', image: badgeImages.swimming, description: `Complete 5 ${t.allBadges.swimming.toLowerCase()} swims`, required: 5 },
         ],
       },
       {
         sportKey: 'special',
         sport: t.allBadges.special,
-        icon: '⭐',
+        icon: '?',
         categoryImage: badgeImages.allrounder,
         color: '#FFD700',
         badges: [
-          { id: 'all_rounder', name: t.allBadges.specialBadges.allRounderName, icon: '🌟', image: badgeImages.allrounder, description: t.allBadges.specialBadges.allRounderRequirement, required: 3 },
-          { id: 'social_butterfly', name: t.allBadges.specialBadges.socialButterflyName, icon: '🤝', image: badgeImages.community_star, description: t.allBadges.specialBadges.socialButterflyRequirement, required: 10 },
+          { id: 'all_rounder', name: t.allBadges.specialBadges.allRounderName, icon: '??', image: badgeImages.allrounder, description: t.allBadges.specialBadges.allRounderRequirement, required: 3 },
+          { id: 'social_butterfly', name: t.allBadges.specialBadges.socialButterflyName, icon: '??', image: badgeImages.community_star, description: t.allBadges.specialBadges.socialButterflyRequirement, required: 10 },
         ],
       },
     ];
@@ -224,7 +223,7 @@ export default function AllBadgesScreen() {
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color="#000000" />
+            <Text style={{fontSize: 22, color: '#000000'}}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t.allBadges.title}</Text>
           <View style={styles.placeholder} />
@@ -295,7 +294,7 @@ export default function AllBadgesScreen() {
 
                         {isEarned && (
                           <View style={styles.earnedBadge}>
-                            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                            <Text style={{fontSize: 18, color: '#10B981'}}>✓</Text>
                           </View>
                         )}
                       </View>
@@ -328,7 +327,7 @@ export default function AllBadgesScreen() {
                         </>
                       ) : (
                         <View style={styles.earnedContainer}>
-                          <Ionicons name="trophy" size={12} color="#FFD700" />
+                          <Text style={{fontSize: 11, color: '#FFD700'}}>🏆</Text>
                           <Text style={styles.earnedText}>{t.allBadges.earnedStatus}</Text>
                         </View>
                       )}

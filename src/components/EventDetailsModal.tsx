@@ -6,12 +6,12 @@ import {
   Modal,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import { useToast } from './ToastProvider';
+import { useDialog } from '../contexts/DialogContext';
 import Button from './ui/Button';
 import Card from './ui/Card';
 import { EventService } from '../services/eventService';
@@ -56,6 +56,8 @@ export default function EventDetailsModal({
     return null;
   }
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
+  const dialog = useDialog();
   const [isJoined, setIsJoined] = useState(
     currentUserId && event.participants ? event.participants.includes(currentUserId) : false
   );
@@ -67,7 +69,7 @@ export default function EventDetailsModal({
 
   const handleJoinEvent = async () => {
     if (!currentUserId) {
-      Alert.alert('Login Required', 'Please log in to join events.');
+      dialog.showInfo('Login Required', 'Please log in to join events.');
       return;
     }
 
@@ -76,9 +78,9 @@ export default function EventDetailsModal({
       await EventService.joinEvent(event.id, currentUserId);
       setIsJoined(true);
       onJoinEvent?.(event.id);
-      Alert.alert('Success', 'You have joined the event!');
+      toast.showSuccess('You have joined the event!');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to join event');
+      toast.showError(error.message || 'Failed to join event');
     } finally {
       setLoading(false);
     }
@@ -94,9 +96,9 @@ export default function EventDetailsModal({
       await EventService.leaveEvent(event.id, currentUserId);
       setIsJoined(false);
       onLeaveEvent?.(event.id);
-      Alert.alert('Success', 'You have left the event.');
+      toast.showSuccess('You have left the event.');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to leave event');
+      toast.showError(error.message || 'Failed to leave event');
     } finally {
       setLoading(false);
     }
@@ -137,7 +139,7 @@ export default function EventDetailsModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color={theme.colors.text} />
+            <Text style={{fontSize: 22, color: theme.colors.textPrimary}}>✕</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Event Details</Text>
           <View style={styles.headerSpacer} />
@@ -161,18 +163,18 @@ export default function EventDetailsModal({
           <Card style={styles.eventCard}>
             <Text style={styles.eventName}>{event.name}</Text>
             <Text style={styles.activity}>{event.activity}</Text>
-            
+
             {event.description && (
               <Text style={styles.description}>{event.description}</Text>
             )}
 
             <View style={styles.detailsRow}>
-              <Ionicons name="location" size={16} color={theme.colors.text} />
+              <Text style={{fontSize: 14, color: theme.colors.textPrimary}}>📍</Text>
               <Text style={styles.detailText}>{event.location_name}</Text>
             </View>
 
             <View style={styles.detailsRow}>
-              <Ionicons name="people" size={16} color={theme.colors.text} />
+              <Text style={{fontSize: 14, color: theme.colors.textPrimary}}>👥</Text>
               <Text style={styles.detailText}>
                 {event.participants_count}/{event.max_participants} participants
               </Text>
@@ -180,7 +182,7 @@ export default function EventDetailsModal({
 
             {event.start_time && (
               <View style={styles.detailsRow}>
-                <Ionicons name="time" size={16} color={theme.colors.text} />
+                <Text style={{fontSize: 14, color: theme.colors.textPrimary}}>🕒</Text>
                 <Text style={styles.detailText}>
                   Starts: {formatDateTime(event.start_time)}
                 </Text>
@@ -189,7 +191,7 @@ export default function EventDetailsModal({
 
             {event.end_time && (
               <View style={styles.detailsRow}>
-                <Ionicons name="time" size={16} color={theme.colors.text} />
+                <Text style={{fontSize: 14, color: theme.colors.textPrimary}}>🕒</Text>
                 <Text style={styles.detailText}>
                   Ends: {formatDateTime(event.end_time)}
                 </Text>
@@ -202,7 +204,7 @@ export default function EventDetailsModal({
             {isCreator ? (
               <Button
                 title="You Created This Event"
-                onPress={() => {}}
+                onPress={() => { }}
                 style={[styles.actionButton, styles.creatorButton]}
                 disabled
               />
@@ -223,7 +225,7 @@ export default function EventDetailsModal({
             ) : (
               <Button
                 title={isFull ? "Event Full" : "Event Not Available"}
-                onPress={() => {}}
+                onPress={() => { }}
                 style={[styles.actionButton, styles.disabledButton]}
                 disabled
               />
@@ -255,7 +257,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.text,
+    color: theme.colors.textPrimary,
   },
   headerSpacer: {
     width: 40,
@@ -302,7 +304,7 @@ const styles = StyleSheet.create({
   eventName: {
     fontSize: 24,
     fontWeight: '700',
-    color: theme.colors.text,
+    color: theme.colors.textPrimary,
     marginBottom: 8,
   },
   activity: {
@@ -313,7 +315,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 16,
-    color: theme.colors.text,
+    color: theme.colors.textPrimary,
     lineHeight: 24,
     marginBottom: 16,
   },
@@ -324,7 +326,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: theme.colors.text,
+    color: theme.colors.textPrimary,
     marginLeft: 8,
   },
   actionContainer: {

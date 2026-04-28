@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import { SMLogo } from '../components';
 import { friendService } from '../services/friendService';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 
 const LOCALE_MAP: Record<Language, string> = {
@@ -39,6 +41,8 @@ export default function NotificationsScreen() {
   const { t, language } = useTranslation();
   const locale = LOCALE_MAP[language] ?? 'en-US';
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const {
     notifications,
     unreadCount,
@@ -91,7 +95,7 @@ export default function NotificationsScreen() {
   const handleAcceptFriendRequest = async (notification: NotificationData) => {
     const senderId = notification.data?.senderId;
     if (!senderId || !user?.id) {
-      Alert.alert('Error', 'Unable to accept request. Missing sender information.');
+      showError('Unable to accept request. Missing sender information.', 'Error');
       return;
     }
 
@@ -101,23 +105,23 @@ export default function NotificationsScreen() {
       // Get the request ID from friend_requests table
       const requestId = await friendService.getReceivedRequestIdFromUser(user.id, senderId);
       if (!requestId) {
-        Alert.alert('Error', 'Friend request not found. It may have been cancelled.');
+        showError('Friend request not found. It may have been cancelled.', 'Error');
         return;
       }
 
       const success = await friendService.acceptFriendRequest(requestId);
       if (success) {
-        Alert.alert('Success', 'Friend request accepted! You are now friends.');
+        showSuccess('Friend request accepted! You are now friends.', 'Success');
         if (notification.id) {
           await deleteNotification(notification.id);
         }
         await refreshNotifications();
       } else {
-        Alert.alert('Error', 'Failed to accept friend request. Please try again.');
+        showError('Failed to accept friend request. Please try again.', 'Error');
       }
     } catch (error) {
       console.error('Error accepting friend request:', error);
-      Alert.alert('Error', 'An error occurred. Please try again.');
+      showError('An error occurred. Please try again.', 'Error');
     } finally {
       setProcessingRequests(prev => {
         const next = new Set(prev);
@@ -131,14 +135,15 @@ export default function NotificationsScreen() {
   const handleDeclineFriendRequest = async (notification: NotificationData) => {
     const senderId = notification.data?.senderId;
     if (!senderId || !user?.id) {
-      Alert.alert('Error', 'Unable to decline request. Missing sender information.');
+      showError('Unable to decline request. Missing sender information.', 'Error');
       return;
     }
 
-    Alert.alert(
-      'Decline Friend Request',
-      'Are you sure you want to decline this friend request?',
-      [
+    showConfirmation({
+      title: 'Decline Friend Request',
+      message: 'Are you sure you want to decline this friend request?',
+      icon: '??',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Decline',
@@ -149,7 +154,7 @@ export default function NotificationsScreen() {
             try {
               const requestId = await friendService.getReceivedRequestIdFromUser(user.id, senderId);
               if (!requestId) {
-                Alert.alert('Error', 'Friend request not found.');
+                showError('Friend request not found.', 'Error');
                 return;
               }
 
@@ -159,12 +164,13 @@ export default function NotificationsScreen() {
                   await deleteNotification(notification.id);
                 }
                 await refreshNotifications();
+                showSuccess('Friend request declined.', 'Success');
               } else {
-                Alert.alert('Error', 'Failed to decline friend request.');
+                showError('Failed to decline friend request.', 'Error');
               }
             } catch (error) {
               console.error('Error declining friend request:', error);
-              Alert.alert('Error', 'An error occurred.');
+              showError('An error occurred.', 'Error');
             } finally {
               setProcessingRequests(prev => {
                 const next = new Set(prev);
@@ -175,7 +181,7 @@ export default function NotificationsScreen() {
           },
         },
       ]
-    );
+    });
   };
 
   const getNotificationCopy = useCallback(
@@ -400,13 +406,14 @@ export default function NotificationsScreen() {
   };
 
   const handleDeleteSelected = () => {
-    Alert.alert(
-      t.notifications.deleteConfirmTitle,
-      t.notifications.deleteConfirmMessage.replace(
+    showConfirmation({
+      title: t.notifications.deleteConfirmTitle,
+      message: t.notifications.deleteConfirmMessage.replace(
         '{count}',
         String(selectedNotifications.size)
       ),
-      [
+      icon: '???',
+      buttons: [
         { text: t.common.cancel, style: 'cancel' },
         {
           text: t.notifications.deleteSelected,
@@ -416,24 +423,29 @@ export default function NotificationsScreen() {
             await Promise.all(promises);
             setSelectedNotifications(new Set());
             setIsSelectionMode(false);
+            showSuccess('Notifications deleted', 'Deleted');
           },
         },
       ]
-    );
+    });
   };
 
   const handleMarkAllAsRead = () => {
-    Alert.alert(
-      t.notifications.markAllReadTitle,
-      t.notifications.markAllReadMessage,
-      [
+    showConfirmation({
+      title: t.notifications.markAllReadTitle,
+      message: t.notifications.markAllReadMessage,
+      icon: '??',
+      buttons: [
         { text: t.common.cancel, style: 'cancel' },
         {
           text: t.notifications.markAllReadConfirm,
-          onPress: markAllAsRead,
+          onPress: async () => {
+            await markAllAsRead();
+            showSuccess('All notifications marked as read', 'Read');
+          },
         },
       ]
-    );
+    });
   };
 
   const getFilteredNotifications = (): NotificationData[] => {
@@ -461,7 +473,9 @@ export default function NotificationsScreen() {
       friend_request_accepted: '✅',
       event_invitation: '📅',
       event_invite: '📅',
+      event_created: '🎉',
       group_invite: '👥',
+      group_invite_accepted: '👥',
       event_cancelled: '❌',
       event_updated: '📝',
       event_update: '📝',
@@ -474,8 +488,6 @@ export default function NotificationsScreen() {
       weather_alert: '🌤️',
       achievement_unlocked: '🏆',
       friend_activity: '🎯',
-      event_created: '🎉',
-      group_invite_accepted: '🤝',
       general: '🔔',
     };
     return icons[type] || '🔔';
@@ -510,44 +522,47 @@ export default function NotificationsScreen() {
 
   const formatNotificationTime = (dateString: string): string => {
     try {
-      const date = new Date(dateString);
+      // FIX: Database returns timestamps without timezone suffix (e.g., "2026-01-26T13:58:53.52905")
+      // JavaScript incorrectly parses this as local time. We need to append 'Z' to treat it as UTC.
+      const normalizedDateString = dateString.endsWith('Z') || dateString.includes('+') || dateString.includes('-', 10)
+        ? dateString
+        : dateString + 'Z';
+
+      const date = new Date(normalizedDateString);
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
-      const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
-      // Check if Intl.RelativeTimeFormat is available
-      const hasRelativeTimeFormat =
-        typeof Intl !== 'undefined' &&
-        typeof Intl.RelativeTimeFormat === 'function';
-
-      if (!hasRelativeTimeFormat) {
-        if (diffMinutes < 1) return 'Just now';
-        if (diffMinutes < 60) return `${diffMinutes}m ago`;
-
-        const diffHours = Math.floor(diffMinutes / 60);
-        if (diffHours < 24) return `${diffHours}h ago`;
-
-        const diffDays = Math.floor(diffHours / 24);
-        if (diffDays < 7) return `${diffDays}d ago`;
-
-        return date.toLocaleDateString();
+      // Handle invalid dates or future dates
+      if (isNaN(diffMs) || diffMs < 0) {
+        return 'Just now';
       }
 
-      const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
-
-      if (diffMinutes < 1) return rtf.format(0, 'minute');
-      if (diffMinutes < 60) return rtf.format(-diffMinutes, 'minute');
-
+      const diffSeconds = Math.floor(diffMs / 1000);
+      const diffMinutes = Math.floor(diffSeconds / 60);
       const diffHours = Math.floor(diffMinutes / 60);
-      if (diffHours < 24) return rtf.format(-diffHours, 'hour');
-
       const diffDays = Math.floor(diffHours / 24);
-      if (diffDays < 7) return rtf.format(-diffDays, 'day');
+
+      // Use simple string formatting for reliability
+      if (diffSeconds < 60) {
+        return 'Just now';
+      }
+
+      if (diffMinutes < 60) {
+        return diffMinutes === 1 ? '1 minute ago' : `${diffMinutes} minutes ago`;
+      }
+
+      if (diffHours < 24) {
+        return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+      }
+
+      if (diffDays < 7) {
+        return diffDays === 1 ? 'Yesterday' : `${diffDays} days ago`;
+      }
 
       return date.toLocaleDateString(locale);
     } catch (e) {
       console.error('Error formatting notification time:', e);
-      return '';
+      return 'Just now';
     }
   };
 
@@ -560,7 +575,7 @@ export default function NotificationsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t.notifications.title}</Text>
         <View style={styles.headerActions}>
@@ -573,7 +588,7 @@ export default function NotificationsScreen() {
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity onPress={clearError}>
-            <Text style={styles.errorDismiss}>×</Text>
+            <Text style={{fontSize: 14, color: '#FF6B6B'}}>✕</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -588,7 +603,7 @@ export default function NotificationsScreen() {
           placeholderTextColor="#8e8e93"
         />
         <TouchableOpacity style={styles.searchButton}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Text style={{fontSize: 16, color: '#8e8e93'}}>🔍</Text>
         </TouchableOpacity>
       </View>
 
@@ -712,9 +727,7 @@ export default function NotificationsScreen() {
                         <View style={styles.notificationContent}>
                           <View style={styles.notificationHeader}>
                             <View style={styles.notificationIconContainer}>
-                              <Text style={styles.notificationIcon}>
-                                {getNotificationIcon(notification.type)}
-                              </Text>
+                              <Text style={{fontSize: 18, color: '#ffffff'}}>{getNotificationIcon(notification.type)}</Text>
                               {!notification.read && <View style={styles.unreadIndicator} />}
                             </View>
 
@@ -732,7 +745,7 @@ export default function NotificationsScreen() {
                                 style={styles.dismissButton}
                                 onPress={() => notification.id && deleteNotification(notification.id)}
                               >
-                                <Text style={styles.dismissIcon}>×</Text>
+                                <Text style={{fontSize: 14, color: '#999'}}>✕</Text>
                               </TouchableOpacity>
                             )}
 
@@ -742,7 +755,7 @@ export default function NotificationsScreen() {
                                 onPress={() => toggleNotificationSelection(notification.id)}
                               >
                                 {selectedNotifications.has(notification.id) && (
-                                  <Text style={styles.selectionCheckmark}>✓</Text>
+                                  <Text style={{fontSize: 13, color: '#000000'}}>✓</Text>
                                 )}
                               </TouchableOpacity>
                             )}
@@ -778,7 +791,7 @@ export default function NotificationsScreen() {
 
                           {notification.image_url && (
                             <View style={styles.notificationImageContainer}>
-                              <Text style={styles.notificationImagePlaceholder}>📷</Text>
+                              <Text style={{fontSize: 22, color: '#999'}}>📷</Text>
                             </View>
                           )}
                         </View>
@@ -789,7 +802,7 @@ export default function NotificationsScreen() {
                 </View>
               ) : (
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyIcon}>🔔</Text>
+                  <Text style={{fontSize: 43, color: '#ccc'}}>🔔</Text>
                   <Text style={styles.emptyTitle}>
                     {searchQuery ? t.notifications.emptySearchTitle : t.notifications.emptyTitle}
                   </Text>

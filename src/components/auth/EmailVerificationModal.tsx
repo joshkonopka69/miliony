@@ -7,8 +7,8 @@ import {
   Modal,
   ActivityIndicator,
   Animated,
-  Alert,
 } from 'react-native';
+import { useDialog } from '../../contexts/DialogContext';
 import { useAuth, AuthError } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/TranslationContext';
 import ErrorMessage from './ErrorMessage';
@@ -31,11 +31,12 @@ export default function EmailVerificationModal({
 }: EmailVerificationModalProps) {
   const { t } = useTranslation();
   const { sendEmailVerification } = useAuth();
-  
+  const dialog = useDialog();
+
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSuccess, setIsSuccess] = useState(false);
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
@@ -95,22 +96,13 @@ export default function EmailVerificationModal({
 
   // Handle continue without verification
   const handleContinue = () => {
-    Alert.alert(
+    dialog.showConfirm(
       'Continue Without Verification',
       'You can verify your email later in your account settings. Continue to the app?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Continue',
-          onPress: () => {
-            handleClose();
-            onSuccess?.();
-          },
-        },
-      ]
+      () => {
+        handleClose();
+        onSuccess?.();
+      }
     );
   };
 
@@ -122,7 +114,7 @@ export default function EmailVerificationModal({
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.modal,
             {
@@ -134,7 +126,7 @@ export default function EmailVerificationModal({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Verify Your Email</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.closeButton}
               onPress={handleClose}
               activeOpacity={0.7}
@@ -153,10 +145,10 @@ export default function EmailVerificationModal({
                 </View>
                 <Text style={styles.successTitle}>Verification Email Sent!</Text>
                 <Text style={styles.successMessage}>
-                  We've sent a verification link to {userEmail || 'your email'}. 
+                  We've sent a verification link to {userEmail || 'your email'}.
                   Please check your inbox and click the link to verify your account.
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.successButton}
                   onPress={handleClose}
                   activeOpacity={0.7}
@@ -170,9 +162,9 @@ export default function EmailVerificationModal({
                 <View style={styles.iconContainer}>
                   <Text style={styles.emailIcon}>📧</Text>
                 </View>
-                
+
                 <Text style={styles.description}>
-                  We've sent a verification email to {userEmail || 'your email address'}. 
+                  We've sent a verification email to {userEmail || 'your email address'}.
                   Please check your inbox and click the verification link to activate your account.
                 </Text>
 
@@ -187,7 +179,7 @@ export default function EmailVerificationModal({
 
                 {/* Action Buttons */}
                 <View style={styles.buttonsContainer}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.resendButton, isLoading && styles.resendButtonDisabled]}
                     onPress={handleResendVerification}
                     activeOpacity={0.7}
@@ -200,7 +192,7 @@ export default function EmailVerificationModal({
                     )}
                   </TouchableOpacity>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.continueButton}
                     onPress={handleContinue}
                     activeOpacity={0.7}
@@ -209,7 +201,7 @@ export default function EmailVerificationModal({
                     <Text style={styles.continueButtonText}>Continue Without Verification</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.cancelButton}
                     onPress={handleClose}
                     activeOpacity={0.7}
@@ -310,11 +302,11 @@ const styles = StyleSheet.create({
   },
   resendButton: {
     height: 52,
-    backgroundColor: '#FFD700',
+    backgroundColor: '#000000',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#FFD700',
+    shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -329,7 +321,7 @@ const styles = StyleSheet.create({
   resendButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000000',
+    color: '#FFFFFF',
   },
   continueButton: {
     height: 52,
@@ -390,12 +382,12 @@ const styles = StyleSheet.create({
   },
   successButton: {
     height: 52,
-    backgroundColor: '#FFD700',
+    backgroundColor: '#000000',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
-    shadowColor: '#FFD700',
+    shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -407,6 +399,6 @@ const styles = StyleSheet.create({
   successButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000000',
+    color: '#FFFFFF',
   },
 });

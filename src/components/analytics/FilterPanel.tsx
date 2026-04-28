@@ -9,8 +9,7 @@ import {
   SafeAreaView,
   StatusBar,
   Switch,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from 'react-native';
 import { AnalyticsFilters } from '../../services/analyticsService';
 
 interface FilterPanelProps {
@@ -151,11 +150,7 @@ export function FilterPanel({
           onPress={() => toggleSection(section)}
         >
           <Text style={styles.sectionTitle}>{title}</Text>
-          <Ionicons
-            name={expandedSections[section] ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color="#666666"
-          />
+          <Text style={{fontSize: 18, color: '#666666'}}>{expandedSections[section] ? '▲' : '▼'}</Text>
         </TouchableOpacity>
         
         {expandedSections[section] && (
@@ -201,7 +196,7 @@ export function FilterPanel({
               {item}
             </Text>
             {selectedItems.includes(item) && (
-              <Ionicons name="checkmark" size={16} color="#2196F3" />
+              <Text style={{fontSize: 14, color: '#2196F3'}}>✓</Text>
             )}
           </TouchableOpacity>
         ))}
@@ -363,7 +358,7 @@ export function FilterPanel({
       <View style={styles.header}>
         <Text style={styles.title}>Filters</Text>
         <TouchableOpacity onPress={onClose}>
-          <Ionicons name="close" size={24} color="#666666" />
+          <Text style={{fontSize: 22, color: '#666666'}}>✕</Text>
         </TouchableOpacity>
       </View>
       

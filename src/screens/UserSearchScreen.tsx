@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   StatusBar,
   TextInput,
-  Alert,
   ActivityIndicator,
   Animated,
   Image
@@ -17,6 +16,7 @@ import { useAppNavigation } from '../navigation';
 import { useUser } from '../contexts/UserContext';
 import { useFriends } from '../hooks/useFriends';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useToast } from '../components/ToastProvider';
 import { BottomNavBar, ActivityFilterModal, CreateEventModal, SMLogo } from '../components';
 
 export default function UserSearchScreen() {
@@ -24,6 +24,7 @@ export default function UserSearchScreen() {
   const { t } = useTranslation();
   const { searchUsers } = useUser();
   const { sendFriendRequest, cancelFriendRequest, isFriend, hasPendingRequest, friendRequests } = useFriends();
+  const { showSuccess, showError, showInfo } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -80,18 +81,18 @@ export default function UserSearchScreen() {
       setSearchResults(results);
     } catch (error) {
       console.error('Search error:', error);
-      Alert.alert('Error', 'Failed to search users. Please try again.');
+      showError('Failed to search users. Please try again.', 'Search Error');
     } finally {
       setIsSearching(false);
     }
   };
 
   const handleSendFriendRequest = async (userId: string, userName: string) => {
-    const success = await sendFriendRequest(userId, `Hi ${userName}, I'd like to connect with you on SportMap!`);
+    const success = await sendFriendRequest(userId, `Hi ${userName}, I'd like to connect with you on SportsMap!`);
     if (success) {
-      Alert.alert('Success', `Friend request sent to ${userName}!`);
+      showSuccess(`Friend request sent to ${userName}!`, 'Request Sent');
     } else {
-      Alert.alert('Error', 'Failed to send friend request. Please try again.');
+      showError('Failed to send friend request. Please try again.', 'Error');
     }
   };
 
@@ -111,10 +112,10 @@ export default function UserSearchScreen() {
       const success = await cancelFriendRequest(request.id);
 
       if (success) {
-        // The UserContext will handle the state update via polling or if we trigger it
+        showInfo('Friend request cancelled', 'Request Cancelled');
         console.log('Request cancelled successfully');
       } else {
-        Alert.alert('Error', 'Failed to cancel the invitation. Please try again.');
+        showError('Failed to cancel the invitation. Please try again.', 'Error');
       }
     } catch (error) {
       console.error('Error in handleCancelRequest:', error);
@@ -231,7 +232,7 @@ export default function UserSearchScreen() {
               style={styles.actionButton}
               onPress={() => handleViewProfile(user.id)}
             >
-              <Text style={styles.actionButtonText}>👤</Text>
+              <Text style={{fontSize: 16, color: '#666'}}>?</Text>
             </TouchableOpacity>
 
             {!isUserFriend && !hasPending && (
@@ -248,13 +249,13 @@ export default function UserSearchScreen() {
                 style={styles.cancelRequestButton}
                 onPress={() => handleCancelRequest(user.id)}
               >
-                <Text style={styles.cancelRequestButtonText}>✕</Text>
+                <Text style={styles.cancelRequestButtonText}>?</Text>
               </TouchableOpacity>
             )}
 
             {isUserFriend && (
               <View style={styles.friendBadge}>
-                <Text style={styles.friendBadgeText}>✓</Text>
+                <Text style={styles.friendBadgeText}>?</Text>
               </View>
             )}
           </View>
@@ -369,14 +370,14 @@ export default function UserSearchScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Find Friends</Text>
         <TouchableOpacity
           style={styles.filterButton}
           onPress={() => setShowFilters(!showFilters)}
         >
-          <Text style={styles.filterIcon}>🔍</Text>
+          <Text style={{fontSize: 16, color: '#666'}}>?</Text>
         </TouchableOpacity>
       </View>
 
@@ -429,7 +430,7 @@ export default function UserSearchScreen() {
             </View>
           ) : searchQuery ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🔍</Text>
+              <Text style={{fontSize: 43, color: '#ccc'}}>🔍</Text>
               <Text style={styles.emptyTitle}>No users found</Text>
               <Text style={styles.emptySubtitle}>
                 Try adjusting your search terms or filters
@@ -437,7 +438,7 @@ export default function UserSearchScreen() {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>👥</Text>
+              <Text style={{fontSize: 43, color: '#ccc'}}>🔍</Text>
               <Text style={styles.emptyTitle}>Find New Friends</Text>
               <Text style={styles.emptySubtitle}>
                 Search for friends by name, interests, or location

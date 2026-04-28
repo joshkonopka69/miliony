@@ -23,13 +23,15 @@ import { groupEventsByTime } from '../utils/eventGrouping';
 import { supabase, supabaseService } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmation } from '../components/ConfirmationModal';
 
 // Header Logo Component
 const HeaderLogo = () => (
   <View style={styles.logoContainer}>
     <SMLogo />
     <Image
-      source={require('../../assets/logo_text.png')}
+      source={require('../../assets/logo/sportsmap-text-logo.png')}
       style={styles.logoText}
       resizeMode="contain"
     />
@@ -40,6 +42,8 @@ export default function MyGamesScreen() {
   const navigation = useAppNavigation();
   const { getUserId } = useAuth();
   const { t } = useTranslation();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<MyEvent[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -178,7 +182,7 @@ export default function MyGamesScreen() {
 
     } catch (error) {
       console.error('❌ Error loading events:', error);
-      Alert.alert(t.common.error, t.myEvents.errorLoading);
+      showError(t.myEvents.errorLoading, t.common.error);
     } finally {
       setLoading(false);
     }
@@ -206,10 +210,11 @@ export default function MyGamesScreen() {
   };
 
   const handleLeaveEvent = (event: MyEvent) => {
-    Alert.alert(
-      t.myEvents.leaveEventTitle,
-      t.myEvents.leaveEventMessage.replace('{name}', event.name),
-      [
+    showConfirmation({
+      title: t.myEvents.leaveEventTitle,
+      message: t.myEvents.leaveEventMessage.replace('{name}', event.name),
+      icon: '🏃‍♂️',
+      buttons: [
         { text: t.common.cancel, style: 'cancel' },
         {
           text: t.myEvents.leaveEventConfirm || 'Leave',
@@ -222,18 +227,18 @@ export default function MyGamesScreen() {
               const success = await supabaseService.leaveEvent(event.id, userId);
               if (success) {
                 setEvents(prev => prev.filter(e => e.id !== event.id));
-                Alert.alert(t.common.success, t.myEvents.leaveEventSuccess);
+                showSuccess(t.myEvents.leaveEventSuccess, t.common.success);
               } else {
-                Alert.alert(t.common.error, "Failed to leave event");
+                showError("Failed to leave event", t.common.error);
               }
             } catch (error) {
               console.error('Error leaving event:', error);
-              Alert.alert(t.common.error, "An unexpected error occurred");
+              showError("An unexpected error occurred", t.common.error);
             }
           },
         },
       ]
-    );
+    });
   };
 
   const handleFilterPress = () => {

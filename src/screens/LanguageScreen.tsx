@@ -9,7 +9,7 @@ import {
   StatusBar,
   Animated,
   Dimensions,
-} from 'react-native';
+} from 'react-native';
 import { useAppNavigation } from '../navigation';
 import { useTranslation, Language } from '../contexts/TranslationContext';
 import { SMLogo } from '../components';
@@ -55,7 +55,7 @@ export default function LanguageScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t.languageScreen.headerTitle}</Text>
         <View style={styles.headerSpacer} />
@@ -104,7 +104,7 @@ export default function LanguageScreen() {
                     {lang.name}
                   </Text>
                   {language === lang.code && (
-                    <Text style={styles.checkmark}>✓</Text>
+                    <Text style={{fontSize: 16, color: '#000000'}}>✓</Text>
                   )}
                 </TouchableOpacity>
               ))}

@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
-  Alert,
   ActivityIndicator,
   Animated,
   TextInput,
@@ -19,6 +18,8 @@ import { useAppNavigation } from '../../navigation';
 import { useGroupManager } from '../../hooks/useGroups';
 import { GroupMember } from '../../services/groupService';
 import { SMLogo } from '../../components';
+import { useToast } from '../../components/ToastProvider';
+import { useConfirmation } from '../../components/ConfirmationModal';
 
 
 interface GroupMembersScreenProps {
@@ -32,6 +33,8 @@ interface GroupMembersScreenProps {
 export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
   const { groupId } = route.params;
   const navigation = useAppNavigation();
+  const { showSuccess, showError } = useToast();
+  const { showConfirmation } = useConfirmation();
   const {
     groupMembers,
     currentGroup,
@@ -138,13 +141,13 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
     try {
       const success = await updateMemberRole(groupId, selectedMemberForRole.user_id, newRole);
       if (success) {
-        Alert.alert('Success', `Member role updated to ${newRole}`);
+        showSuccess(`Member role updated to ${newRole}`, 'Success');
         await loadMembers();
       } else {
-        Alert.alert('Error', 'Failed to update member role');
+        showError('Failed to update member role', 'Error');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to update member role');
+      showError('Failed to update member role', 'Error');
     } finally {
       setShowRolePicker(false);
       setSelectedMemberForRole(null);
@@ -152,10 +155,11 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
   };
 
   const handleRemoveMember = (member: GroupMember) => {
-    Alert.alert(
-      'Remove Member',
-      `Are you sure you want to remove ${member.user?.display_name || 'this member'} from the group?`,
-      [
+    showConfirmation({
+      title: 'Remove Member',
+      message: `Are you sure you want to remove ${member.user?.display_name || 'this member'} from the group?`,
+      icon: '???',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
@@ -164,25 +168,26 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
             try {
               const success = await removeMember(groupId, member.user_id);
               if (success) {
-                Alert.alert('Success', 'Member removed from group');
+                showSuccess('Member removed from group', 'Success');
                 await loadMembers();
               } else {
-                Alert.alert('Error', 'Failed to remove member');
+                showError('Failed to remove member', 'Error');
               }
             } catch (error) {
-              Alert.alert('Error', 'Failed to remove member');
+              showError('Failed to remove member', 'Error');
             }
           },
         },
       ]
-    );
+    });
   };
 
   const handleRemoveSelected = () => {
-    Alert.alert(
-      'Remove Members',
-      `Are you sure you want to remove ${selectedMembers.size} member${selectedMembers.size !== 1 ? 's' : ''} from the group?`,
-      [
+    showConfirmation({
+      title: 'Remove Members',
+      message: `Are you sure you want to remove ${selectedMembers.size} member${selectedMembers.size !== 1 ? 's' : ''} from the group?`,
+      icon: '???',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
@@ -193,17 +198,17 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                 removeMember(groupId, memberId)
               );
               await Promise.all(promises);
-              Alert.alert('Success', 'Members removed from group');
+              showSuccess('Members removed from group', 'Success');
               setSelectedMembers(new Set());
               setIsSelectionMode(false);
               await loadMembers();
             } catch (error) {
-              Alert.alert('Error', 'Failed to remove members');
+              showError('Failed to remove members', 'Error');
             }
           },
         },
       ]
-    );
+    });
   };
 
   const getFilteredMembers = (): GroupMember[] => {
@@ -222,10 +227,10 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
 
   const getRoleIcon = (role: string): string => {
     switch (role) {
-      case 'admin': return '👑';
-      case 'moderator': return '🛡️';
-      case 'member': return '👤';
-      default: return '👤';
+      case 'admin': return '??';
+      case 'moderator': return '???';
+      case 'member': return '??';
+      default: return '??';
     }
   };
 
@@ -265,7 +270,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={{fontSize: 20, color: '#181611'}}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Group Members</Text>
         <SMLogo />
@@ -276,7 +281,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity onPress={clearError}>
-            <Text style={styles.errorDismiss}>×</Text>
+            <Text style={{fontSize: 14, color: '#FF6B6B'}}>✕</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -291,7 +296,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
           placeholderTextColor="#8e8e93"
         />
         <TouchableOpacity style={styles.searchButton}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Text style={{fontSize: 16, color: '#8e8e93'}}>🔍</Text>
         </TouchableOpacity>
       </View>
 
@@ -411,7 +416,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                               onPress={() => toggleMemberSelection(member.user_id)}
                             >
                               {selectedMembers.has(member.user_id) && (
-                                <Text style={styles.selectionCheckmark}>✓</Text>
+                                <Text style={styles.selectionCheckmark}>?</Text>
                               )}
                             </TouchableOpacity>
                           )}
@@ -443,7 +448,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                 </View>
               ) : (
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyIcon}>👥</Text>
+                  <Text style={{fontSize: 43, color: '#ccc'}}>🔍</Text>
                   <Text style={styles.emptyTitle}>
                     {searchQuery ? 'No members found' : 'No members yet'}
                   </Text>
@@ -493,7 +498,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                 style={styles.roleOption}
                 onPress={() => handleRoleChange('admin')}
               >
-                <Text style={styles.roleOptionIcon}>👑</Text>
+                <Text style={{fontSize: 16, color: '#666'}}>?</Text>
                 <Text style={styles.roleOptionText}>Admin</Text>
                 <Text style={styles.roleOptionDescription}>Full group control</Text>
               </TouchableOpacity>
@@ -502,7 +507,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                 style={styles.roleOption}
                 onPress={() => handleRoleChange('moderator')}
               >
-                <Text style={styles.roleOptionIcon}>🛡️</Text>
+                <Text style={styles.roleOptionIcon}>???</Text>
                 <Text style={styles.roleOptionText}>Moderator</Text>
                 <Text style={styles.roleOptionDescription}>Moderate content and members</Text>
               </TouchableOpacity>
@@ -511,7 +516,7 @@ export default function GroupMembersScreen({ route }: GroupMembersScreenProps) {
                 style={styles.roleOption}
                 onPress={() => handleRoleChange('member')}
               >
-                <Text style={styles.roleOptionIcon}>👤</Text>
+                <Text style={{fontSize: 16, color: '#666'}}>?</Text>
                 <Text style={styles.roleOptionText}>Member</Text>
                 <Text style={styles.roleOptionDescription}>Basic group access</Text>
               </TouchableOpacity>
